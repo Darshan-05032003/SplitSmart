@@ -38,9 +38,15 @@ class GeminiExtractorTest {
     @After
     fun tearDown() = server.close()
 
-    private fun extractor(apiKey: String = "test-key", policy: BackoffPolicy = BackoffPolicy(10, 100, 2.0, maxAttempts = 3)) = GeminiExtractor(
-        client = client, apiKey = apiKey, baseUrl = server.url("/"), backoff = policy, dispatchers = TestDispatcherProvider(Dispatchers.Unconfined),
-        random = Random(1), sleep = { sleeps += it },
+    private fun extractor(
+        apiKey: String = "test-key",
+        policy: BackoffPolicy = BackoffPolicy(10, 100, 2.0, maxAttempts = 3),
+        models: List<String> = GeminiExtractor.MODELS,
+        cache: ModelCache = InMemoryModelCache(),
+        httpClient: OkHttpClient = client,
+    ) = GeminiExtractor(
+        client = httpClient, apiKey = apiKey, baseUrl = server.url("/"), models = models, modelCache = cache, backoff = policy,
+        dispatchers = TestDispatcherProvider(Dispatchers.Unconfined), random = Random(1), sleep = { sleeps += it },
     )
 
     private fun candidate(text: String) = """{"candidates":[{"content":{"parts":[{"text":${Json.encodeToString(kotlinx.serialization.serializer<String>(), text)}}],"role":"model"},"finishReason":"STOP"}]}"""
@@ -67,6 +73,80 @@ class GeminiExtractorTest {
     }
 
     @Test
+    fun `request disables thinking as far as the model allows and bounds the output`() = runTest {
+        server.enqueue(MockResponse.Builder().code(200).body(candidate("{}")).build())
+        extractor().extract(SAMPLE_OCR_TEXT)
+        val config = Json.parseToJsonElement(server.takeRequest().body!!.utf8()).jsonObject["generationConfig"]!!.jsonObject
+        assertThat(config["thinkingConfig"]!!.jsonObject["thinkingLevel"]!!.jsonPrimitive.content).isEqualTo("minimal")
+        assertThat(config["maxOutputTokens"]!!.jsonPrimitive.content).isEqualTo("8192")
+        assertThat(GeminiExtractor.DEFAULT_MODEL).isEqualTo("gemini-3.1-flash-lite")
+    }
+
+    @Test
+    fun `404 model not found falls back to the next model once and caches the one that answered`() = runTest {
+        val cache = InMemoryModelCache()
+        server.enqueue(MockResponse.Builder().code(404).body("""{"error":{"message":"models/a is not found"}}""").build())
+        server.enqueue(MockResponse.Builder().code(200).body(candidate(SAMPLE_LLM_JSON)).build())
+        assertThat(extractor(models = listOf("a", "b", "c"), cache = cache).extract("x")).isEqualTo(SAMPLE_LLM_JSON)
+        assertThat(server.takeRequest().url.encodedPath).isEqualTo("/v1beta/models/a:generateContent")
+        assertThat(server.takeRequest().url.encodedPath).isEqualTo("/v1beta/models/b:generateContent")
+        assertThat(cache.get()).isEqualTo("b")
+        assertThat(sleeps).isEmpty() // a 404 is not a transient failure: no backoff
+
+        // next extraction goes straight to the cached model
+        server.enqueue(MockResponse.Builder().code(200).body(candidate("{}")).build())
+        extractor(models = listOf("a", "b", "c"), cache = cache).extract("x")
+        assertThat(server.takeRequest().url.encodedPath).isEqualTo("/v1beta/models/b:generateContent")
+        assertThat(server.requestCount).isEqualTo(3)
+    }
+
+    @Test
+    fun `cached model that disappears falls back to the list in order`() = runTest {
+        val cache = InMemoryModelCache("b")
+        server.enqueue(MockResponse.Builder().code(404).build())
+        server.enqueue(MockResponse.Builder().code(200).body(candidate("{}")).build())
+        extractor(models = listOf("a", "b"), cache = cache).extract("x")
+        assertThat(server.takeRequest().url.encodedPath).isEqualTo("/v1beta/models/b:generateContent")
+        assertThat(server.takeRequest().url.encodedPath).isEqualTo("/v1beta/models/a:generateContent")
+        assertThat(cache.get()).isEqualTo("a")
+    }
+
+    @Test
+    fun `a cached id that is no longer in the list is ignored`() = runTest {
+        server.enqueue(MockResponse.Builder().code(200).body(candidate("{}")).build())
+        extractor(models = listOf("a"), cache = InMemoryModelCache("retired-model")).extract("x")
+        assertThat(server.takeRequest().url.encodedPath).isEqualTo("/v1beta/models/a:generateContent")
+    }
+
+    @Test
+    fun `every model 404 ends in ClientError after trying each exactly once`() = runTest {
+        repeat(3) { server.enqueue(MockResponse.Builder().code(404).build()) }
+        val cache = InMemoryModelCache()
+        val ex = runCatching { extractor(models = listOf("a", "b", "c"), cache = cache).extract("x") }.exceptionOrNull() as LlmException.ClientError
+        assertThat(ex.code).isEqualTo(404)
+        assertThat(server.requestCount).isEqualTo(3)
+        assertThat(cache.get()).isNull()
+    }
+
+    @Test
+    fun `other client errors do not switch models`() = runTest {
+        server.enqueue(MockResponse.Builder().code(400).build())
+        assertThat(runCatching { extractor(models = listOf("a", "b")).extract("x") }.exceptionOrNull()).isInstanceOf(LlmException.ClientError::class.java)
+        server.enqueue(MockResponse.Builder().code(401).build())
+        assertThat(runCatching { extractor(models = listOf("a", "b")).extract("x") }.exceptionOrNull()).isInstanceOf(LlmException.Unauthorized::class.java)
+        assertThat(server.requestCount).isEqualTo(2)
+    }
+
+    @Test
+    fun `unknown host is Offline and not retried`() = runTest {
+        val offline = client.newBuilder().dns { throw java.net.UnknownHostException("no network") }.build()
+        val ex = runCatching { extractor(httpClient = offline).extract("x") }.exceptionOrNull()
+        assertThat(ex).isInstanceOf(LlmException.Offline::class.java)
+        assertThat((ex as LlmException).kind).isEqualTo(com.darshan.splitsmart.domain.model.LlmFailure.OFFLINE)
+        assertThat(sleeps).isEmpty()
+    }
+
+    @Test
     fun `missing key fails fast without a network call`() = runTest {
         val ex = runCatching { extractor(apiKey = "").extract("x") }.exceptionOrNull()
         assertThat(ex).isInstanceOf(LlmException.KeyMissing::class.java)
@@ -80,7 +160,8 @@ class GeminiExtractorTest {
         assertThat(ex.code).isEqualTo(400)
         assertThat(server.requestCount).isEqualTo(1)
         server.enqueue(MockResponse.Builder().code(404).build())
-        assertThat(runCatching { extractor().extract("x") }.exceptionOrNull()).isInstanceOf(LlmException.ClientError::class.java)
+        // with a single model a 404 is terminal (with several, the next model is tried: see the fallback tests)
+        assertThat(runCatching { extractor(models = listOf("only-model")).extract("x") }.exceptionOrNull()).isInstanceOf(LlmException.ClientError::class.java)
     }
 
     @Test

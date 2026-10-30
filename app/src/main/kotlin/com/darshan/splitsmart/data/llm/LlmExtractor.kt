@@ -20,6 +20,10 @@ sealed class LlmException(message: String, cause: Throwable? = null) : Exception
     class ClientError(val code: Int, detail: String? = null) : LlmException("client error ($code)${detail.suffix()}") { override val kind get() = LlmFailure.CLIENT_ERROR }
     class ServerError(val code: Int, detail: String? = null) : LlmException("server error ($code)${detail.suffix()}") { override val kind get() = LlmFailure.SERVER_ERROR; override val retryable get() = true }
     class Malformed(reason: String) : LlmException("malformed response: $reason") { override val kind get() = LlmFailure.MALFORMED }
+    /** DNS lookup failed: the device is offline (or has no DNS). Not retried: the on-device draft stays and "Try AI again" is offered. */
+    class Offline(cause: Throwable) : LlmException("offline", cause) { override val kind get() = LlmFailure.OFFLINE }
+    /** TLS handshake or certificate-pin check failed. Never retried; nothing was sent (OkHttp checks pins before writing the request). */
+    class Insecure(cause: Throwable) : LlmException("insecure connection: ${cause.javaClass.simpleName}", cause) { override val kind get() = LlmFailure.INSECURE }
 
     private companion object {
         /** Server error messages are kept short and free of control characters; they never contain the key. */

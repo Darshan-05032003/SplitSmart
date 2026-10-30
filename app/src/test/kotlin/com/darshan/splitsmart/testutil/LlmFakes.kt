@@ -8,9 +8,12 @@ class FakeLlmExtractor(var response: String = SAMPLE_LLM_JSON) : LlmExtractor {
     var failWith: LlmException? = null
     val calls = AtomicInteger()
     var lastText: String? = null
+    /** Simulated model latency (virtual time under runTest). */
+    var delayMs: Long = 0
     override suspend fun extract(ocrText: String): String {
         calls.incrementAndGet()
         lastText = ocrText
+        if (delayMs > 0) kotlinx.coroutines.delay(delayMs)
         failWith?.let { throw it }
         return response
     }

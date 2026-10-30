@@ -27,6 +27,9 @@ import com.darshan.splitsmart.ui.ErrorReason
 import com.darshan.splitsmart.ui.toErrorReason
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,6 +63,7 @@ data class ReviewForm(
     val source: ExtractionSource = ExtractionSource.REGEX,
     val llmFailure: LlmFailure? = null,
     val warnings: Set<ExtractionWarning> = emptySet(),
+    val retryAfterSeconds: Long? = null,
 )
 
 data class ReviewErrors(
@@ -80,6 +84,10 @@ data class ReviewUiState(
     val subtotalPaise: Long? = null,
     val mismatchPaise: Long? = null,
     val error: ErrorReason? = null,
+    /** The form shows the on-device parser's provisional draft while the AI call is still running. */
+    val refining: Boolean = false,
+    /** The AI answered after the user had already edited the provisional draft: offered, never forced. */
+    val pendingAi: ReviewForm? = null,
 )
 
 sealed interface ReviewEvent {
@@ -105,6 +113,8 @@ class ReviewViewModel @Inject constructor(
     private val _events = Channel<ReviewEvent>(Channel.BUFFERED)
     val events: Flow<ReviewEvent> = _events.receiveAsFlow()
     private var draft: ReceiptDraft? = null
+    private var extractionJob: Job? = null
+    private var editedWhileRefining = false
 
     init {
         load()
@@ -112,7 +122,7 @@ class ReviewViewModel @Inject constructor(
 
     private fun load() {
         _uiState.value = ReviewUiState(phase = ReviewPhase.LOADING)
-        viewModelScope.launch {
+        extractionJob = viewModelScope.launch {
             val loaded = runCatching { drafts.get(draftId) }.getOrElse { fail(it.toErrorReason()); return@launch }
                 ?: run { fail(ErrorReason.NOT_FOUND); return@launch }
             draft = loaded
@@ -128,10 +138,47 @@ class ReviewViewModel @Inject constructor(
         }
     }
 
-    private suspend fun runExtraction(draft: ReceiptDraft) {
+    /**
+     * Runs the LLM extraction. If it has not answered within [PROVISIONAL_DELAY_MS], the on-device parser's result is
+     * shown as an editable provisional draft ("AI is refining…") so the user is never blocked on the network. When the
+     * AI answers it replaces the draft, unless the user already edited it: then the AI result is offered instead.
+     */
+    private suspend fun runExtraction(draft: ReceiptDraft) = coroutineScope {
+        editedWhileRefining = false
+        val provisional = launch {
+            delay(PROVISIONAL_DELAY_MS)
+            val result = extractReceipt.provisional(draft.ocrText)
+            if (_uiState.value.phase == ReviewPhase.EXTRACTING) {
+                setForm(result.toForm(payerId = _uiState.value.form?.payerId, title = _uiState.value.form?.title ?: ""), persist = false, phase = ReviewPhase.EDITING, refining = true)
+            }
+        }
         val result = extractReceipt.extract(draft.ocrText)
-        setForm(result.toForm(payerId = _uiState.value.form?.payerId, title = _uiState.value.form?.title ?: ""), persist = true, phase = ReviewPhase.EDITING)
+        provisional.cancel()
+        val state = _uiState.value
+        val current = state.form
+        val aiForm = result.toForm(payerId = current?.payerId, title = current?.title ?: "")
+        when {
+            state.phase != ReviewPhase.EXTRACTING && state.phase != ReviewPhase.EDITING -> Unit // saving / left
+            state.refining && editedWhileRefining && current != null -> {
+                if (result.source == ExtractionSource.LLM) {
+                    _uiState.update { it.copy(refining = false, pendingAi = aiForm) }
+                } else {
+                    setForm(current.copy(llmFailure = result.llmFailure, retryAfterSeconds = result.retryAfterSeconds), refining = false)
+                }
+            }
+            else -> setForm(aiForm, persist = true, phase = ReviewPhase.EDITING, refining = false)
+        }
     }
+
+    /** Replaces the edited draft with the AI result the user was offered (title and payer are kept). */
+    fun applyAiResult() {
+        val pending = _uiState.value.pendingAi ?: return
+        val current = _uiState.value.form ?: return
+        if (_uiState.value.phase != ReviewPhase.EDITING) return
+        setForm(pending.copy(title = current.title, payerId = current.payerId), phase = ReviewPhase.EDITING, clearPendingAi = true)
+    }
+
+    fun dismissAiResult() = _uiState.update { it.copy(pendingAi = null) }
 
     private fun fail(reason: ErrorReason) {
         _uiState.update { it.copy(phase = ReviewPhase.ERROR, error = reason) }
@@ -145,22 +192,29 @@ class ReviewViewModel @Inject constructor(
     fun rerunExtraction() {
         val current = draft ?: return
         if (_uiState.value.phase != ReviewPhase.EDITING) return
-        _uiState.update { it.copy(phase = ReviewPhase.EXTRACTING) }
-        viewModelScope.launch { runExtraction(current) }
+        _uiState.update { it.copy(phase = ReviewPhase.EXTRACTING, pendingAi = null) }
+        extractionJob = viewModelScope.launch { runExtraction(current) }
     }
 
     // ----- editing -----
-    private fun setForm(form: ReviewForm, persist: Boolean = true, phase: ReviewPhase? = null) {
+    private fun setForm(form: ReviewForm, persist: Boolean = true, phase: ReviewPhase? = null, refining: Boolean? = null, clearPendingAi: Boolean = false) {
         val subtotal = form.items.sumOf { Money.parseInrToPaise(it.amount) ?: 0L }
         val total = Money.parseInrToPaise(form.total)
         val mismatch = total?.let { subtotal + (Money.parseInrToPaise(form.tax) ?: 0L) + (Money.parseInrToPaise(form.tip) ?: 0L) - it }
-        _uiState.update { it.copy(phase = phase ?: it.phase, form = form, subtotalPaise = subtotal, mismatchPaise = mismatch, errors = if (phase != null) ReviewErrors() else it.errors) }
+        _uiState.update {
+            it.copy(
+                phase = phase ?: it.phase, form = form, subtotalPaise = subtotal, mismatchPaise = mismatch,
+                errors = if (phase != null) ReviewErrors() else it.errors, refining = refining ?: it.refining,
+                pendingAi = if (clearPendingAi) null else it.pendingAi,
+            )
+        }
         if (persist) savedStateHandle[KEY_FORM] = json.encodeToString(ReviewForm.serializer(), form)
     }
 
-    private fun updateForm(transform: (ReviewForm) -> ReviewForm) {
+    private fun updateForm(marksEdit: Boolean = true, transform: (ReviewForm) -> ReviewForm) {
         val current = _uiState.value.form ?: return
         if (_uiState.value.phase != ReviewPhase.EDITING) return
+        if (marksEdit && _uiState.value.refining) editedWhileRefining = true
         setForm(transform(current))
     }
 
@@ -169,8 +223,8 @@ class ReviewViewModel @Inject constructor(
         s.copy(errors = s.errors.copy(items = if (errors.isEmpty()) s.errors.items - key else s.errors.items + (key to errors)))
     }
 
-    fun onTitleChange(v: String) { updateForm { it.copy(title = v.take(INPUT_LIMIT)) }; _uiState.update { it.copy(errors = it.errors.copy(title = null)) } }
-    fun onPayerChange(memberId: String?) = updateForm { it.copy(payerId = memberId) }
+    fun onTitleChange(v: String) { updateForm(marksEdit = false) { it.copy(title = v.take(INPUT_LIMIT)) }; _uiState.update { it.copy(errors = it.errors.copy(title = null)) } }
+    fun onPayerChange(memberId: String?) = updateForm(marksEdit = false) { it.copy(payerId = memberId) }
     fun onItemNameChange(key: String, v: String) { updateItem(key) { it.copy(name = v.take(INPUT_LIMIT)) }; clearItemError(key, ItemError.NAME) }
     fun onItemQtyChange(key: String, v: String) { updateItem(key) { it.copy(qty = v.take(4)) }; clearItemError(key, ItemError.QTY) }
     fun onItemAmountChange(key: String, v: String) { updateItem(key) { it.copy(amount = v.take(AMOUNT_LIMIT)) }; clearItemError(key, ItemError.AMOUNT) }
@@ -209,7 +263,8 @@ class ReviewViewModel @Inject constructor(
             _uiState.update { it.copy(errors = errors) }
             return
         }
-        _uiState.update { it.copy(phase = ReviewPhase.SAVING, errors = ReviewErrors()) }
+        if (state.refining) extractionJob?.cancel() // the user is happy with the draft: stop waiting for the AI
+        _uiState.update { it.copy(phase = ReviewPhase.SAVING, errors = ReviewErrors(), refining = false, pendingAi = null) }
         viewModelScope.launch {
             try {
                 val bill = buildBill(current, form.copy(items = rows), defaultTitle)
@@ -276,6 +331,7 @@ class ReviewViewModel @Inject constructor(
         source = source,
         llmFailure = llmFailure,
         warnings = warnings,
+        retryAfterSeconds = retryAfterSeconds,
     )
 
     companion object {
@@ -283,5 +339,7 @@ class ReviewViewModel @Inject constructor(
         private const val KEY_FORM = "form"
         private const val INPUT_LIMIT = 200
         private const val AMOUNT_LIMIT = 24
+        /** A fast AI answer replaces the spinner directly; only a slower one shows the provisional draft first. */
+        const val PROVISIONAL_DELAY_MS = 400L
     }
 }

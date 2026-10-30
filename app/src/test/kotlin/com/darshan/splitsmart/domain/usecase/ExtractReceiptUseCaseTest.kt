@@ -16,7 +16,42 @@ import org.junit.Test
 
 class ExtractReceiptUseCaseTest {
     private val llm = FakeLlmExtractor()
-    private val useCase = ExtractReceiptUseCase(llm, TestDispatcherProvider(Dispatchers.Unconfined), RecordingAnalyticsTracker(), RecordingCrashReporter())
+    private val analytics = RecordingAnalyticsTracker()
+    private val crashes = RecordingCrashReporter()
+    private val useCase = ExtractReceiptUseCase(llm, TestDispatcherProvider(Dispatchers.Unconfined), analytics, crashes)
+
+    @Test
+    fun `rate limit carries the server's retry-after in whole seconds`() = runTest {
+        llm.failWith = LlmException.RateLimited(retryAfterMs = 12_500)
+        val r = useCase.extract(SAMPLE_OCR_TEXT)
+        assertThat(r.llmFailure).isEqualTo(LlmFailure.RATE_LIMITED)
+        assertThat(r.retryAfterSeconds).isEqualTo(13)
+        llm.failWith = LlmException.RateLimited(null)
+        assertThat(useCase.extract(SAMPLE_OCR_TEXT).retryAfterSeconds).isNull()
+    }
+
+    @Test
+    fun `offline and pin failures fall back with their own reason`() = runTest {
+        llm.failWith = LlmException.Offline(java.net.UnknownHostException())
+        assertThat(useCase.extract(SAMPLE_OCR_TEXT).llmFailure).isEqualTo(LlmFailure.OFFLINE)
+        assertThat(crashes.nonFatals).isEmpty() // being offline is a user condition, not a defect
+        llm.failWith = LlmException.Insecure(javax.net.ssl.SSLPeerUnverifiedException("Certificate pinning failure!"))
+        val r = useCase.extract(SAMPLE_OCR_TEXT)
+        assertThat(r.llmFailure).isEqualTo(LlmFailure.INSECURE)
+        assertThat(r.source).isEqualTo(ExtractionSource.REGEX)
+        assertThat(crashes.nonFatals).hasSize(1) // a pin failure is worth knowing about
+        assertThat(analytics.last("llm_parse_failure")["failure"]).isEqualTo("insecure")
+    }
+
+    @Test
+    fun `provisional result is the on-device parse, instant and without analytics or an llm call`() = runTest {
+        val r = useCase.provisional(SAMPLE_OCR_TEXT)
+        assertThat(r.source).isEqualTo(ExtractionSource.REGEX)
+        assertThat(r.llmFailure).isNull()
+        assertThat(r.receipt.totalPaise).isEqualTo(35_700)
+        assertThat(llm.calls.get()).isEqualTo(0)
+        assertThat(analytics.events).isEmpty()
+    }
 
     @Test
     fun `uses the LLM result when it is valid`() = runTest {

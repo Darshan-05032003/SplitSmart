@@ -83,6 +83,109 @@ class ReviewViewModelTest {
     }
 
     @Test
+    fun `slow AI shows the on-device draft immediately and replaces it when the AI answers`() = runTest(dispatcher) {
+        llm.delayMs = 3_000
+        val vm = vm()
+        vm.uiState.test {
+            assertThat(awaitItem().phase).isEqualTo(ReviewPhase.LOADING)
+            assertThat(awaitItem().phase).isEqualTo(ReviewPhase.EXTRACTING)
+            val provisional = awaitItem()
+            assertThat(provisional.phase).isEqualTo(ReviewPhase.EDITING)
+            assertThat(provisional.refining).isTrue()
+            assertThat(provisional.form!!.source).isEqualTo(ExtractionSource.REGEX)
+            assertThat(provisional.form!!.llmFailure).isNull()
+            assertThat(provisional.form!!.items).hasSize(2)
+            assertThat(testScheduler.currentTime).isEqualTo(ReviewViewModel.PROVISIONAL_DELAY_MS)
+            val refined = awaitItem()
+            assertThat(refined.refining).isFalse()
+            assertThat(refined.form!!.source).isEqualTo(ExtractionSource.LLM)
+            assertThat(refined.pendingAi).isNull()
+            assertThat(testScheduler.currentTime).isEqualTo(3_000)
+        }
+    }
+
+    @Test
+    fun `edits made while the AI is refining are kept and the AI result is offered`() = runTest(dispatcher) {
+        llm.delayMs = 3_000
+        val vm = vm()
+        vm.uiState.test {
+            while (!awaitItem().refining) { /* until the provisional draft */ }
+            val key = vm.uiState.value.form!!.items[0].key
+            vm.onItemNameChange(key, "Paneer (mine)")
+            assertThat(awaitItem().form!!.items[0].name).isEqualTo("Paneer (mine)")
+            val offered = awaitItem()
+            assertThat(offered.refining).isFalse()
+            assertThat(offered.form!!.items[0].name).isEqualTo("Paneer (mine)") // never overwritten
+            assertThat(offered.pendingAi!!.source).isEqualTo(ExtractionSource.LLM)
+            vm.applyAiResult()
+            val applied = awaitItem()
+            assertThat(applied.form!!.source).isEqualTo(ExtractionSource.LLM)
+            assertThat(applied.form!!.items[0].name).isEqualTo("Paneer Tikka")
+            assertThat(applied.pendingAi).isNull()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `an offered AI result can be dismissed`() = runTest(dispatcher) {
+        llm.delayMs = 3_000
+        val vm = vm()
+        vm.uiState.test {
+            while (!awaitItem().refining) { /* provisional */ }
+            vm.onTaxChange("20")
+            awaitItem()
+            assertThat(awaitItem().pendingAi).isNotNull()
+            vm.dismissAiResult()
+            val s = awaitItem()
+            assertThat(s.pendingAi).isNull()
+            assertThat(s.form!!.tax).isEqualTo("20")
+            assertThat(s.form!!.source).isEqualTo(ExtractionSource.REGEX)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `AI failure after edits keeps the edits and records the reason`() = runTest(dispatcher) {
+        llm.delayMs = 3_000
+        llm.failWith = LlmException.Timeout(java.io.InterruptedIOException())
+        val vm = vm()
+        vm.uiState.test {
+            while (!awaitItem().refining) { /* provisional */ }
+            vm.onTipChange("50")
+            awaitItem()
+            val s = awaitItem()
+            assertThat(s.refining).isFalse()
+            assertThat(s.form!!.tip).isEqualTo("50")
+            assertThat(s.form!!.llmFailure).isEqualTo(LlmFailure.TIMEOUT)
+            assertThat(s.pendingAi).isNull()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `saving the provisional draft stops waiting for the AI`() = runTest(dispatcher) {
+        llm.delayMs = 10_000
+        val vm = vm()
+        vm.uiState.test {
+            while (!awaitItem().refining) { /* provisional */ }
+            vm.save("Dinner")
+            cancelAndIgnoreRemainingEvents()
+        }
+        dispatcher.scheduler.advanceUntilIdle()
+        assertThat(bills.bills.value).hasSize(1)
+        assertThat(bills.bills.value.single().source).isEqualTo(BillSource.SCAN_REGEX)
+        assertThat(testScheduler.currentTime).isLessThan(10_000)
+    }
+
+    @Test
+    fun `rate limit retry-after reaches the form`() = runTest(dispatcher) {
+        llm.failWith = LlmException.RateLimited(30_000)
+        val state = vm().awaitEditing()
+        assertThat(state.form!!.llmFailure).isEqualTo(LlmFailure.RATE_LIMITED)
+        assertThat(state.form!!.retryAfterSeconds).isEqualTo(30)
+    }
+
+    @Test
     fun `fallback source and failure reason are exposed`() = runTest(dispatcher) {
         llm.failWith = LlmException.KeyMissing()
         val state = vm().awaitEditing()

@@ -78,7 +78,7 @@ class ReviewFlowIntegrationTest {
         compose.setContent { SplitSmartTheme { ReviewRoute(viewModel = vm(), onBack = {}, onSaved = { savedId = it }) } }
         compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.REVIEW_SAVE) }
         compose.onAllNodesWithTag(SplitSmartTestTags.REVIEW_ITEM).assertCountEquals(2)
-        compose.onNodeWithText("Scanned (AI)").assertIsDisplayed()
+        compose.onNodeWithText("AI extraction").assertIsDisplayed() // review source label
         compose.onNodeWithTag(SplitSmartTestTags.REVIEW_TITLE).performTextInput("Team dinner")
         compose.onAllNodesWithTag(SplitSmartTestTags.REVIEW_ITEM_AMOUNT)[0].performScrollTo().performTextClearance()
         compose.onAllNodesWithTag(SplitSmartTestTags.REVIEW_ITEM_AMOUNT)[0].performTextInput("300")
@@ -99,11 +99,37 @@ class ReviewFlowIntegrationTest {
         llm.failWith = LlmException.KeyMissing()
         compose.setContent { SplitSmartTheme { ReviewRoute(viewModel = vm(), onBack = {}, onSaved = {}) } }
         compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.FALLBACK_BANNER) }
-        compose.onNodeWithText("Scanned (on-device)").assertIsDisplayed()
+        compose.onNodeWithText("On-device parser").assertIsDisplayed() // review source label
         compose.onAllNodesWithTag(SplitSmartTestTags.REVIEW_ITEM).assertCountEquals(2)
         compose.onNodeWithText("Paneer Tikka", substring = true).assertExists()
-        // key missing: no point offering a retry of the AI path
+        // key missing: no point offering a retry of the AI path, and the banner says how to configure the key
         assertThat(compose.onAllNodesWithTagExists(SplitSmartTestTags.REVIEW_RERUN)).isFalse()
+        compose.onNodeWithText("LLM_API_KEY", substring = true).assertExists()
+    }
+
+    @Test
+    fun `a slow AI shows the editable on-device draft with a refining banner, then the AI result`() {
+        llm.delayMs = 1_500
+        compose.setContent { SplitSmartTheme { ReviewRoute(viewModel = vm(), onBack = {}, onSaved = {}) } }
+        // the provisional delay runs on the (paused) Robolectric main looper: advance its clock while waiting
+        compose.waitUntil(5_000) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(100))
+            compose.onAllNodesWithTagExists(SplitSmartTestTags.REFINING_BANNER)
+        }
+        compose.onNodeWithText("On-device draft").assertIsDisplayed()
+        compose.onAllNodesWithTag(SplitSmartTestTags.REVIEW_ITEM).assertCountEquals(2)
+        compose.waitUntilWithMainLooper(timeoutMillis = 10_000) { !compose.onAllNodesWithTagExists(SplitSmartTestTags.REFINING_BANNER) }
+        compose.onNodeWithText("AI extraction").assertIsDisplayed()
+        assertThat(compose.onAllNodesWithTagExists(SplitSmartTestTags.FALLBACK_BANNER)).isFalse()
+    }
+
+    @Test
+    fun `rate limit copy shows the server's wait`() {
+        llm.failWith = LlmException.RateLimited(20_000)
+        compose.setContent { SplitSmartTheme { ReviewRoute(viewModel = vm(), onBack = {}, onSaved = {}) } }
+        compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.FALLBACK_BANNER) }
+        compose.onNodeWithText("Try again in 20 s", substring = true).assertExists()
+        compose.onNodeWithTag(SplitSmartTestTags.REVIEW_RERUN).assertExists()
     }
 }
 

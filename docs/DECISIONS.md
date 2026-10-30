@@ -71,3 +71,22 @@ Decisions taken during the build, with the reasoning, so nothing is a surprise l
 
 ## Compromises
 - **No device or emulator:** CameraX capture and ML Kit recognition are implemented and compile/lint clean but were not executed on hardware; the Baseline Profile was not generated and the macrobenchmarks were not run (commands in README: `./gradlew :app:generateBaselineProfile`, `./gradlew :macrobenchmark:connectedBenchmarkAndroidTest`). The scan flow is proven on the JVM with `FakeReceiptCamera` + `FakeTextRecognizer`. Manual check: `./gradlew installDebug`, open a group → Scan receipt.
+
+## Polish: fast Gemini model, provisional draft, AI error states (2026-10-30)
+- **Model switch to `gemini-3.1-flash-lite`** with a fallback list `gemini-3.1-flash-lite` → `gemini-flash-lite-latest` → `gemini-3.5-flash-lite` (`GeminiExtractor.MODELS`, one constant). Candidates came from `GET v1beta/models` for this key (generateContent support). Each was measured once with the same 7-item restaurant receipt (508 prompt tokens) and the production request shape:
+
+  | Model | thinking | HTTP | Latency | Result |
+  |---|---|---|---|---|
+  | `gemini-3.1-flash-lite` | `thinkingLevel: minimal` | 200 | **3,050 ms** | 7 items, tax ₹191.00, total ₹2,101.00, exact |
+  | `gemini-flash-lite-latest` | minimal | 200 | 3,509 ms | exact |
+  | `gemini-3.5-flash-lite` | minimal | 200 | 4,005 ms | exact |
+  | `gemini-3.8-flash` | minimal | 400 | 446 ms | "Thinking level MINIMAL is not supported for this model" |
+  | `gemini-3.8-flash` | low | — | > 120,000 ms | client timeout (was 147 s at default thinking) |
+  | `gemini-2.5-flash` | — | 404 | — | not available to new keys (recorded earlier) |
+
+  The Flash-Lite models are ~40x faster than `gemini-3.8-flash` and were exact on this receipt; the fallback order is by measured latency.
+- **Latency levers:** `thinkingConfig.thinkingLevel = "minimal"` (the Gemini 3 replacement for `thinkingBudget: 0`; the lowest level the Flash-Lite models accept), `temperature 0`, `responseMimeType: application/json` + `responseSchema`, `maxOutputTokens 8192`, and a compact prompt (7 rules instead of 9, same semantics, still declaring the `<receipt>` block as data).
+- **404 → next model once, then cache:** a 404 from one model moves to the next model in the list (each tried at most once per extraction, no backoff because a 404 is not transient). The model that answered is stored in DataStore (`splitsmart_settings`, key `llm_model`, `DataStoreModelCache`) and tried first next time; a cached id no longer in the list is ignored. Other 4xx (400/401/403) never switch models.
+- **Timeouts back to 10 s connect / 30 s read / 15 s write / 45 s call** (`LlmHttpClient.*_TIMEOUT_S`): ~10x the measured 3-4 s. Retries (429/5xx/timeout/IO) keep `BackoffPolicy.LLM`.
+- **Provisional draft:** if the AI has not answered within 400 ms (`ReviewViewModel.PROVISIONAL_DELAY_MS`), the on-device parser's result is shown as an editable draft with an "AI is refining…" banner. The AI result replaces it when it arrives; if the user already edited the draft, the AI result is offered ("Use AI result" / "Keep mine") instead of overwriting their edits. Saving the draft cancels the AI call. A fast answer goes straight from the spinner to the AI form (no flicker).
+- **Error mapping:** new `LlmFailure.OFFLINE` (`UnknownHostException`, not retried, no non-fatal) and `LlmFailure.INSECURE` (`SSLException` incl. `SSLPeerUnverifiedException` from a pin mismatch: never retried, recorded as a non-fatal; before this a pin failure was an `IOException` → "network" and was retried 4 times). 429 carries `Retry-After` to the screen ("Try again in N s"). 401/403 and a missing key explain how to set `LLM_API_KEY`.

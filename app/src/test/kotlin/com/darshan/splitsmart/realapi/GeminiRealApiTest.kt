@@ -24,11 +24,10 @@ class GeminiRealApiTest {
     @Test
     fun `tiny receipt round trip through the real pinned client`() = runBlocking {
         assumeTrue("LLM_API_KEY not configured", BuildConfig.LLM_API_KEY.isNotEmpty())
-        // Production pins + production host; generous timeouts so the measured latency is the model's, not ours. One attempt, no retries.
-        val client = LlmHttpClient.create(GeminiPins.pinner()).newBuilder()
-            .readTimeout(150, java.util.concurrent.TimeUnit.SECONDS).callTimeout(180, java.util.concurrent.TimeUnit.SECONDS).build()
+        // Production pins, production host, production timeouts (30 s read / 45 s call) and model list. One attempt, no retries.
+        val client = LlmHttpClient.create(GeminiPins.pinner())
         val extractor = GeminiExtractor(
-            client = client, apiKey = BuildConfig.LLM_API_KEY, baseUrl = GeminiExtractor.PRODUCTION_BASE_URL,
+            client = client, apiKey = BuildConfig.LLM_API_KEY, baseUrl = GeminiExtractor.PRODUCTION_BASE_URL, models = GeminiExtractor.MODELS,
             backoff = BackoffPolicy.NONE, dispatchers = DefaultDispatcherProvider(),
         )
         var raw = ""
@@ -36,7 +35,7 @@ class GeminiRealApiTest {
             try {
                 raw = extractor.extract("Cafe Udupi\nMasala Dosa 120.00\nFilter Coffee x2 80.00\nGST 5% 10.00\nTotal 210.00")
             } catch (e: Exception) {
-                println("REAL_API ${GeminiExtractor.DEFAULT_MODEL} FAILED after ${'$'}{System.currentTimeMillis()} ${e.javaClass.simpleName}: ${e.message}")
+                println("REAL_API ${GeminiExtractor.DEFAULT_MODEL} FAILED ${e.javaClass.simpleName}: ${e.message}")
                 throw e
             }
         }

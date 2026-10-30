@@ -41,13 +41,19 @@ object GeminiPins {
 
 /** The one OkHttp client used for the LLM. [pinner] is injectable so tests can talk to MockWebServer unpinned. */
 object LlmHttpClient {
+    const val CONNECT_TIMEOUT_S = 10L
+    const val READ_TIMEOUT_S = 30L
+    const val WRITE_TIMEOUT_S = 15L
+    const val CALL_TIMEOUT_S = 45L
+
     fun create(pinner: CertificatePinner?, dispatcher: Dispatcher? = null): OkHttpClient = OkHttpClient.Builder().apply {
-        // The one measured real call (gemini-3.8-flash, 2026-10-30) took 147 s; these are the longest waits the review
-        // screen tolerates before the on-device parser takes over ("Try AI again" stays available).
-        connectTimeout(10, TimeUnit.SECONDS)
-        readTimeout(60, TimeUnit.SECONDS)
-        writeTimeout(15, TimeUnit.SECONDS)
-        callTimeout(90, TimeUnit.SECONDS)
+        // gemini-3.1-flash-lite with minimal thinking answers a receipt in ~3-4 s (measured 2026-10-30); 30 s read /
+        // 45 s per call is ~10x headroom. The review screen shows the on-device draft meanwhile, so the user never waits
+        // on these; a slower answer falls back to that draft and "Try AI again" stays available.
+        connectTimeout(CONNECT_TIMEOUT_S, TimeUnit.SECONDS)
+        readTimeout(READ_TIMEOUT_S, TimeUnit.SECONDS)
+        writeTimeout(WRITE_TIMEOUT_S, TimeUnit.SECONDS)
+        callTimeout(CALL_TIMEOUT_S, TimeUnit.SECONDS)
         followRedirects(false)
         followSslRedirects(false)
         retryOnConnectionFailure(false) // GeminiExtractor owns retries (backoff + jitter)

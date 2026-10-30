@@ -45,17 +45,27 @@ class ExtractReceiptUseCase @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: LlmException) {
-            fallback(text, e.kind, e)
+            val retryAfter = (e as? LlmException.RateLimited)?.retryAfterMs?.let { ms -> (ms + 999) / 1_000 }
+            fallback(text, e.kind, e).copy(retryAfterSeconds = retryAfter)
         } catch (e: Exception) {
             fallback(text, LlmFailure.NETWORK, e)
         }
     }
 
-    /** A missing key is configuration, not a defect; every other LLM failure is recorded as a non-fatal with context keys. */
+    /**
+     * The on-device parser's result, available instantly. The review screen shows it as a provisional draft while the
+     * LLM call is in flight, so the user is never blocked on the network. No analytics: this is not an outcome.
+     */
+    suspend fun provisional(ocrText: String): ExtractionResult = withContext(dispatchers.default) { regexResult(ocrText.trim(), null) }
+
+    /**
+     * A missing key or being offline is a user condition, not a defect; every other LLM failure (including a TLS/pin
+     * failure) is recorded as a non-fatal with context keys.
+     */
     private fun fallback(text: String, failure: LlmFailure, cause: Throwable): ExtractionResult {
         val result = regexResult(text, failure)
         analytics.track(AnalyticsEvent.LlmParseFailure(failure, fallbackUsed = true, fallbackItemCount = result.receipt.items.size))
-        if (failure != LlmFailure.KEY_MISSING) {
+        if (failure != LlmFailure.KEY_MISSING && failure != LlmFailure.OFFLINE) {
             crashReporter.recordNonFatal(cause, mapOf("llm_failure" to failure.name.lowercase(), "text_length" to text.length))
         }
         return result

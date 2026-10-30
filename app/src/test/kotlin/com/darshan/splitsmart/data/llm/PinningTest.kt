@@ -48,6 +48,23 @@ class PinningTest {
     }
 
     @Test
+    fun `pin mismatch through the extractor is Insecure, never retried and sends nothing`() = kotlinx.coroutines.test.runTest {
+        val wrong = CertificatePinner.Builder().add("localhost", "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=").build()
+        val client = LlmHttpClient.create(wrong).newBuilder().sslSocketFactory(clientCerts.sslSocketFactory(), clientCerts.trustManager).build()
+        val sleeps = mutableListOf<Long>()
+        val extractor = GeminiExtractor(
+            client = client, apiKey = "k", baseUrl = server.url("/"), backoff = com.darshan.splitsmart.core.BackoffPolicy.LLM,
+            dispatchers = com.darshan.splitsmart.testutil.TestDispatcherProvider(kotlinx.coroutines.Dispatchers.Unconfined), sleep = { sleeps += it },
+        )
+        val ex = runCatching { extractor.extract("Dosa 120.00") }.exceptionOrNull()
+        assertThat(ex).isInstanceOf(LlmException.Insecure::class.java)
+        assertThat(ex!!.cause).isInstanceOf(SSLPeerUnverifiedException::class.java)
+        assertThat((ex as LlmException).kind).isEqualTo(com.darshan.splitsmart.domain.model.LlmFailure.INSECURE)
+        assertThat(sleeps).isEmpty()
+        assertThat(server.requestCount).isEqualTo(0)
+    }
+
+    @Test
     fun `matching pin or no pinner is accepted`() {
         val right = CertificatePinner.Builder().add("localhost", CertificatePinner.pin(serverCert.certificate)).build()
         assertThat(get(right)).isEqualTo("ok")
@@ -70,8 +87,8 @@ class PinningTest {
     fun `production client has sane timeouts and pins only the gemini host`() {
         val client = LlmHttpClient.create(GeminiPins.pinner())
         assertThat(client.connectTimeoutMillis).isEqualTo(10_000)
-        assertThat(client.readTimeoutMillis).isEqualTo(60_000)
-        assertThat(client.callTimeoutMillis).isEqualTo(90_000)
+        assertThat(client.readTimeoutMillis).isEqualTo(30_000)
+        assertThat(client.callTimeoutMillis).isEqualTo(45_000)
         assertThat(client.certificatePinner.findMatchingPins(GeminiPins.HOST)).hasSize(4)
         assertThat(client.followRedirects).isFalse()
     }

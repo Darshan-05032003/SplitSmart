@@ -30,6 +30,10 @@
         <item quantity="one">%d member</item>
         <item quantity="other">%d members</item>
     </plurals>
+    <plurals name="item_count">
+        <item quantity="one">%d item</item>
+        <item quantity="other">%d items</item>
+    </plurals>
     <plurals name="bill_count">
         <item quantity="one">%d bill</item>
         <item quantity="other">%d bills</item>
@@ -92,8 +96,22 @@
     <string name="review_default_title">Scanned bill</string>
     <string name="review_title_label">What was it for?</string>
     <string name="review_warnings">Some values were repaired. Please check them.</string>
-    <string name="review_fallback_key_missing">AI extraction is off (no Gemini API key). Items were read by the on-device parser; check them carefully.</string>
+    <string name="review_fallback_key_missing">AI extraction is off: this build has no Gemini API key. Add LLM_API_KEY=your-key to local.properties and rebuild. Items below were read by the on-device parser; check them.</string>
     <string name="review_fallback_unavailable">AI extraction was unavailable (%1$s). Items were read by the on-device parser.</string>
+    <string name="review_fallback_unauthorized">Gemini rejected the API key (HTTP 401/403). Check LLM_API_KEY in local.properties and rebuild. Items below were read by the on-device parser.</string>
+    <string name="review_fallback_rate_limited_after">Too many AI requests right now. Try again in %1$d s. Items below were read by the on-device parser.</string>
+    <string name="review_fallback_rate_limited">Too many AI requests right now. Try again in a minute. Items below were read by the on-device parser.</string>
+    <string name="review_fallback_timeout">The AI took too long to answer. Items below were read by the on-device parser.</string>
+    <string name="review_fallback_offline">You are offline. Connect to the internet and try AI again. Items below were read by the on-device parser.</string>
+    <string name="review_fallback_insecure">The AI service certificate did not match the pinned keys, so nothing was sent. Items below were read by the on-device parser.</string>
+    <string name="review_fallback_incomplete">The AI result did not arrive. Items below were read by the on-device parser.</string>
+    <string name="review_refining">AI is refining… You can already edit this on-device draft.</string>
+    <string name="review_ai_ready">AI result is ready: %1$s, total %2$s.</string>
+    <string name="review_ai_apply">Use AI result</string>
+    <string name="review_ai_keep">Keep mine</string>
+    <string name="review_source_llm">AI extraction</string>
+    <string name="review_source_regex">On-device parser</string>
+    <string name="review_source_draft">On-device draft</string>
     <string name="review_rerun">Try AI again</string>
     <string name="review_item_name">Item</string>
     <string name="review_item_qty">Qty</string>
@@ -115,6 +133,8 @@
     <string name="llm_failure_client">request rejected</string>
     <string name="llm_failure_server">service error</string>
     <string name="llm_failure_malformed">unreadable answer</string>
+    <string name="llm_failure_offline">offline</string>
+    <string name="llm_failure_insecure">certificate check failed</string>
 
     <string name="member_unknown">Former member</string>
     <string name="group_balances_title">Who owes whom</string>

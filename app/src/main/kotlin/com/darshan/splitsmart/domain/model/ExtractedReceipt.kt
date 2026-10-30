@@ -13,11 +13,13 @@ enum class ExtractionSource { LLM, REGEX }
 enum class ExtractionWarning { NEGATIVE_DROPPED, ABSURD_DROPPED, ITEM_MATH_FIXED, NAME_FILLED, QTY_FIXED, ITEMS_CAPPED, TOTAL_DERIVED, SUM_MISMATCH }
 
 /** Why the LLM path was not used (the regex parser took over). */
-enum class LlmFailure { KEY_MISSING, NETWORK, TIMEOUT, UNAUTHORIZED, RATE_LIMITED, CLIENT_ERROR, SERVER_ERROR, MALFORMED }
+enum class LlmFailure { KEY_MISSING, NETWORK, TIMEOUT, UNAUTHORIZED, RATE_LIMITED, CLIENT_ERROR, SERVER_ERROR, MALFORMED, OFFLINE, INSECURE }
 
 data class ExtractionResult(
     val receipt: ExtractedReceipt,
     val source: ExtractionSource,
     val warnings: Set<ExtractionWarning>,
     val llmFailure: LlmFailure?,
+    /** Server-provided wait for [LlmFailure.RATE_LIMITED] (Retry-After), shown to the user. */
+    val retryAfterSeconds: Long? = null,
 )

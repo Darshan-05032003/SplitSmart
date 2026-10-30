@@ -7,6 +7,7 @@ import com.darshan.splitsmart.data.llm.GeminiExtractor
 import com.darshan.splitsmart.data.llm.GeminiPins
 import com.darshan.splitsmart.data.llm.LlmExtractor
 import com.darshan.splitsmart.data.llm.LlmHttpClient
+import com.darshan.splitsmart.data.llm.ModelCache
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,10 +24,12 @@ object LlmModule {
 
     @Provides
     @Singleton
-    fun llmExtractor(client: OkHttpClient, dispatchers: DispatcherProvider): LlmExtractor = GeminiExtractor(
+    fun llmExtractor(client: OkHttpClient, modelCache: ModelCache, dispatchers: DispatcherProvider): LlmExtractor = GeminiExtractor(
         client = client,
         apiKey = BuildConfig.LLM_API_KEY,
         baseUrl = GeminiExtractor.PRODUCTION_BASE_URL,
+        models = GeminiExtractor.MODELS,
+        modelCache = modelCache,
         backoff = BackoffPolicy.LLM,
         dispatchers = dispatchers,
     )

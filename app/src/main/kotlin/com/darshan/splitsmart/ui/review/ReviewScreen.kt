@@ -78,7 +78,7 @@ fun ReviewRoute(viewModel: ReviewViewModel = hiltViewModel(), onBack: () -> Unit
             onTitle = viewModel::onTitleChange, onPayer = viewModel::onPayerChange, onItemName = viewModel::onItemNameChange,
             onItemQty = viewModel::onItemQtyChange, onItemAmount = viewModel::onItemAmountChange, onAddItem = viewModel::addItem,
             onRemoveItem = viewModel::removeItem, onTax = viewModel::onTaxChange, onTip = viewModel::onTipChange, onTotal = viewModel::onTotalChange,
-            onUseComputedTotal = viewModel::useComputedTotal,
+            onUseComputedTotal = viewModel::useComputedTotal, onApplyAi = viewModel::applyAiResult, onDismissAi = viewModel::dismissAiResult,
         ),
     )
 }
@@ -99,6 +99,8 @@ data class ReviewCallbacks(
     val onTip: (String) -> Unit,
     val onTotal: (String) -> Unit,
     val onUseComputedTotal: () -> Unit,
+    val onApplyAi: () -> Unit = {},
+    val onDismissAi: () -> Unit = {},
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -137,12 +139,24 @@ fun ReviewScreen(state: ReviewUiState, snackbar: SnackbarHostState, callbacks: R
 private fun ReviewForm(state: ReviewUiState, form: ReviewForm, callbacks: ReviewCallbacks, modifier: Modifier) {
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            AssistChip(onClick = {}, label = { Text(if (form.source == ExtractionSource.LLM) stringResource(R.string.bill_source_llm) else stringResource(R.string.bill_source_regex)) })
+            AssistChip(onClick = {}, label = {
+                Text(
+                    stringResource(
+                        when {
+                            form.source == ExtractionSource.LLM -> R.string.review_source_llm
+                            state.refining -> R.string.review_source_draft
+                            else -> R.string.review_source_regex
+                        },
+                    ),
+                )
+            }, modifier = Modifier.testTag(SplitSmartTestTags.REVIEW_SOURCE))
             if (form.warnings.isNotEmpty()) Text(stringResource(R.string.review_warnings), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (form.source == ExtractionSource.REGEX) {
-            FallbackBanner(form.llmFailure, callbacks.onRerun)
+        when {
+            state.refining -> RefiningBanner()
+            form.source == ExtractionSource.REGEX -> FallbackBanner(form.llmFailure, form.retryAfterSeconds, callbacks.onRerun)
         }
+        state.pendingAi?.let { AiReadyCard(it, callbacks) }
         OutlinedTextField(
             value = form.title, onValueChange = callbacks.onTitle, singleLine = true,
             label = { Text(stringResource(R.string.review_title_label)) }, placeholder = { Text(stringResource(R.string.review_default_title)) },
@@ -174,17 +188,49 @@ private fun ReviewForm(state: ReviewUiState, form: ReviewForm, callbacks: Review
 }
 
 @Composable
-private fun FallbackBanner(failure: LlmFailure?, onRerun: () -> Unit) {
+fun fallbackMessage(failure: LlmFailure?, retryAfterSeconds: Long?): String = when (failure) {
+    null -> stringResource(R.string.review_fallback_incomplete)
+    LlmFailure.KEY_MISSING -> stringResource(R.string.review_fallback_key_missing)
+    LlmFailure.UNAUTHORIZED -> stringResource(R.string.review_fallback_unauthorized)
+    LlmFailure.RATE_LIMITED -> retryAfterSeconds?.let { stringResource(R.string.review_fallback_rate_limited_after, it.toInt()) }
+        ?: stringResource(R.string.review_fallback_rate_limited)
+    LlmFailure.TIMEOUT -> stringResource(R.string.review_fallback_timeout)
+    LlmFailure.OFFLINE -> stringResource(R.string.review_fallback_offline)
+    LlmFailure.INSECURE -> stringResource(R.string.review_fallback_insecure)
+    else -> stringResource(R.string.review_fallback_unavailable, failure.label())
+}
+
+@Composable
+private fun RefiningBanner() {
+    Card(modifier = Modifier.fillMaxWidth().testTag(SplitSmartTestTags.REFINING_BANNER)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.review_refining), style = MaterialTheme.typography.bodyMedium)
+            androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
+        }
+    }
+}
+
+@Composable
+private fun AiReadyCard(pending: ReviewForm, callbacks: ReviewCallbacks) {
+    val total = Money.parseInrToPaise(pending.total)?.let { Money.formatInr(it) } ?: pending.total
+    val items = androidx.compose.ui.res.pluralStringResource(R.plurals.item_count, pending.items.size, pending.items.size)
+    Card(modifier = Modifier.fillMaxWidth().testTag(SplitSmartTestTags.AI_READY_CARD)) {
+        Column(Modifier.padding(12.dp)) {
+            Text(stringResource(R.string.review_ai_ready, items, total), style = MaterialTheme.typography.bodyMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = callbacks.onApplyAi, modifier = Modifier.testTag(SplitSmartTestTags.AI_APPLY)) { Text(stringResource(R.string.review_ai_apply)) }
+                TextButton(onClick = callbacks.onDismissAi) { Text(stringResource(R.string.review_ai_keep)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FallbackBanner(failure: LlmFailure?, retryAfterSeconds: Long?, onRerun: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth().testTag(SplitSmartTestTags.FALLBACK_BANNER)) {
         Column(Modifier.padding(12.dp)) {
-            Text(
-                when (failure) {
-                    LlmFailure.KEY_MISSING, null -> stringResource(R.string.review_fallback_key_missing)
-                    else -> stringResource(R.string.review_fallback_unavailable, failure.label())
-                },
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            if (failure != null && failure != LlmFailure.KEY_MISSING && failure != LlmFailure.UNAUTHORIZED) {
+            Text(fallbackMessage(failure, retryAfterSeconds), style = MaterialTheme.typography.bodyMedium)
+            if (failure != LlmFailure.KEY_MISSING && failure != LlmFailure.UNAUTHORIZED) {
                 TextButton(onClick = onRerun, modifier = Modifier.testTag(SplitSmartTestTags.REVIEW_RERUN)) { Text(stringResource(R.string.review_rerun)) }
             }
         }
@@ -202,6 +248,8 @@ private fun LlmFailure.label(): String = stringResource(
         LlmFailure.CLIENT_ERROR -> R.string.llm_failure_client
         LlmFailure.SERVER_ERROR -> R.string.llm_failure_server
         LlmFailure.MALFORMED -> R.string.llm_failure_malformed
+        LlmFailure.OFFLINE -> R.string.llm_failure_offline
+        LlmFailure.INSECURE -> R.string.llm_failure_insecure
     },
 )
 
