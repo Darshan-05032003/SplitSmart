@@ -144,3 +144,23 @@ One entry per feature, written after attacking the feature as a pentester. Sever
   - Run the generator and benchmarks on a device and commit `baseline-prof.txt`; until then cold start has no profile.
   - Consider `penaltyDeath` for disk-on-main in CI-driven instrumented runs once a device is available.
   - LeakCanary heap dumps live in the debug app's files dir; nothing to do for release.
+
+## Polish: fast Gemini model, pins verified on a device, provisional draft, AI error mapping, UPI visibility (2026-10-30/31)
+- Attacks tried:
+  - **Model switch:** `gemini-3.1-flash-lite` with a fallback list. A 404 only moves to the next *listed* model (each at most once per extraction, no loop); a cached model id that is not in the compiled list is ignored, so a tampered DataStore value cannot point the app at an arbitrary model or path (`a cached id that is no longer in the list is ignored`). The model id is a path segment built from constants only.
+  - **Key handling during the measurements:** the key was read from `local.properties` inside a Python process and sent only in the `x-goog-api-key` header; it was never printed, echoed, logged or written to a file. `git grep -F <key>` and the diff check stayed empty before every commit. Release builds still carry the key in `BuildConfig` (extractable from the APK); documented, unchanged.
+  - **Pins from a real device:** every in-app call on the emulator used `LlmHttpClient.create(GeminiPins.pinner())` and succeeded (HTTP 200, `llm_parse_success` in logcat), so the pin set matches what Android's TLS stack sees, not only the JVM. Live chains re-fetched with openssl on 2026-10-31 (ECDSA: leaf → WE2 → GTS Root R4; RSA: leaf → WR2 → GTS Root R1): all four SPKI pins unchanged.
+  - **Pin mismatch behaviour:** before this change a pin failure surfaced as an `IOException` → "network" and was retried 4 times with backoff. Now `SSLException` (incl. `SSLPeerUnverifiedException`) becomes `LlmException.Insecure`: never retried, recorded as a non-fatal, shown as "certificate did not match the pinned keys, so nothing was sent" (OkHttp checks pins before writing the request; `PinningTest` asserts `requestCount == 0` and no backoff sleeps).
+  - **Provisional draft:** the on-device parse shown while the AI runs is the same validated regex result as the fallback (no new trust); it is not persisted until the user edits it; AI output never overwrites user edits (offered instead); saving cancels the in-flight call so a late answer cannot change a saved bill.
+  - **Error mapping:** 401/403 (bad key) and a missing key never offer "Try AI again" (pointless and it would spam the API); 429 shows the server's `Retry-After` (capped by `BackoffPolicy`); offline (`UnknownHostException`) is not retried and not a non-fatal; error detail strings from the server are truncated and control-character-stripped and never contain the key.
+  - **UPI package visibility:** no `<queries>` meant Android 11+ hid every UPI app from `queryIntentActivities`, so the app always answered "no UPI app" on a real phone. Added `VIEW upi://pay` (scheme + host only, no broad `QUERY_ALL_PACKAGES`); `UpiPackageVisibilityTest` guards it. Links are still parsed by `UpiLinkBuilder` before launch and go through the system chooser.
+  - **Analytics on a device:** logcat (debug-only Firebase verbose logging) showed `llm_parse_success`, `llm_parse_failure` (`failure=offline`) and `settle_up_tap` with counts/enums only; no names, UPI IDs, amounts or receipt text.
+- What broke:
+  - **Medium (functional, fixed):** missing UPI `<queries>` (above).
+  - **Low (fixed):** pin failures were misreported as network errors and retried.
+- Fixed now:
+  - `LlmException.Insecure` / `Offline`, `<queries>` + test, model allow-list for the cache.
+- Scope for improvement:
+  - Move the Gemini call behind a small backend (key off the device, server-side quota per user).
+  - `gemini-flash-lite-latest` is an alias whose target can change; it is only the second fallback.
+  - The "your name" match is by display name; a member id picked once would be sturdier.

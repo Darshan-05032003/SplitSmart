@@ -143,3 +143,24 @@ on the build machine (Robolectric SQLite on the JVM, JDK 17 toolchain, Gradle `-
 - Fix applied / recommendation:
   - Thread-name parsing in the stress print (applied).
   - Recommendation: once a device is available, commit the generated `baseline-prof.txt` and record startup/scroll medians in the README's Performance section; consider `R8 fullMode` size tuning if the 46 MB APK matters (the ML Kit unbundled variant downloads the model via Play services instead).
+
+## Polish: real Gemini latency and fallback behaviour (2026-10-30/31)
+- Scenario and scale:
+  - One real `generateContent` call per candidate model with the same 7-item restaurant receipt (508 prompt tokens, ~405 output tokens) and the production request shape (schema, temperature 0, minimal thinking); then `realApiTest` once; then three in-app extractions on the emulator (5-, 7- and 8-item receipts) and one in airplane mode. 10 real Gemini requests in total (1 model list, 5 measurements, 3 in-app, 1 `realApiTest`).
+  - `./gradlew stressTest` re-run after the changes (all 17 simulations).
+- Results (numbers):
+  - `gemini-3.1-flash-lite` **3,050 ms**, `gemini-flash-lite-latest` 3,509 ms, `gemini-3.5-flash-lite` 4,005 ms (all HTTP 200 and exact: 7 items, tax ₹191.00, total ₹2,101.00); `gemini-3.8-flash` 400 for `minimal`, > 120,000 ms (client timeout) at `low`.
+  - `realApiTest` (production pinned client and timeouts): **1,178 ms**, 2 items, total 21,000 paise, 0 warnings.
+  - In-app on the emulator, tap "Continue" → `llm_parse_success` in logcat: **~2.7 s** (Spice Garden, 7 items), **~2.4 s** (Blue Tokai, 5 items, rotated 4°, tip ₹100), **3.3-7 s** (Mainland China, 8 items; not timed exactly: the provisional draft was visible in every capture for the first ~3.3 s, the AI result by the next screenshot; 1 warning: a 10 % discount makes items + tax exceed the total by ₹270, shown as a mismatch).
+  - Airplane mode: `UnknownHostException` → `llm_parse_failure failure=offline`, on-device result shown at once, no retries, "Try AI again" offered.
+  - Stress after the changes: all green; e.g. 1,000 concurrent LLM calls with 600 × 429 → 1,600 requests, 0 failures in 746 ms; 10,000 receipts through the regex parser in 1.0 s; 1,000 extractions off the main thread in 66 ms.
+- What broke:
+  - Nothing under load. On the device the OCR layout (column order) and the regex fallback (dropped qty column) needed fixes, both now covered by regression tests with the real OCR text.
+- Failure flow (step by step):
+  1. The user taps "Continue" after OCR; the review screen shows the AI spinner.
+  2. After 400 ms without an answer the on-device draft appears ("AI is refining…"); the user can already edit or save.
+  3. The pinned client waits at most 30 s per read and 45 s per call; 429/5xx/timeouts retry with full-jitter backoff (0.5 s → 8 s, 4 attempts, `Retry-After` honoured); 401/403, other 4xx, offline and pin failures stop at once.
+  4. A 404 tries the next model in the list once and caches the one that answers.
+  5. On any final failure the draft stays, the banner names the reason and "Try AI again" re-runs the extraction (except for key problems).
+- Fix applied / recommendation:
+  - Timeouts lowered from 60/90 s to 30/45 s (~10x the measured latency). Recommendation: watch `llm_parse_failure` by `failure` in Analytics; if `timeout` rises, consider `gemini-flash-lite-latest` first.
