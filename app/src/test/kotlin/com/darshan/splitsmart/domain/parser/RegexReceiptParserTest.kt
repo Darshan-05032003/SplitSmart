@@ -79,4 +79,47 @@ class RegexReceiptParserTest {
         assertThat(r.items.map { it.name }).containsExactly("पनीर टिक्का", "Café Latte").inOrder()
         assertThat(r.totalPaise).isEqualTo(43_000)
     }
+
+    /** OCR text exactly as ML Kit + OcrLayout produced it on the emulator (2026-10-31); the "2" of the first row was lost. */
+    private val mainlandChina = """MAINLAND CHINA
+Phoenix Market city, Viman Nagar
+GSTIN 27AABCM4455Q1Z9
+KOT 118 Table 22 Covers 4
+31/10/2026 20:47
+Item Qty Rate Amount
+Veg Manchow Sou 160.00 320.00
+Chilli Paneer 1 380.00 380.00
+Hakka Noodles 2 290.00 580.00
+Veg Fried Rice 1 270.00 270.00
+Crispy Corn 1 260.00 260.00
+Spring Rolls 1 240.00 240.00
+Fresh Lime Soda 3 110.00 330.00
+Brownie Sizzler 1 320.00 320.00
+Sub Total 2700.00
+Discount 10% -270.00
+CGST 2.5% 60.75
+SGST 2.5% 60.75
+Service Charge 5% 121.50
+Round Off 0.00
+NET PAYABLE 2673.00
+Thank you for dining with us"""
+
+    @Test
+    fun `emulator regression - a dropped qty column is recovered from rate and amount`() {
+        val r = RegexReceiptParser.parse(mainlandChina)
+        assertThat(r.items).hasSize(8)
+        assertThat(r.items[0]).isEqualTo(ExtractedItem("Veg Manchow Sou", 2, 16_000, 32_000))
+        assertThat(r.items[1]).isEqualTo(ExtractedItem("Chilli Paneer", 1, 38_000, 38_000))
+        assertThat(r.items[6]).isEqualTo(ExtractedItem("Fresh Lime Soda", 3, 11_000, 33_000))
+        assertThat(r.itemsSubtotalPaise).isEqualTo(270_000)
+        assertThat(r.taxPaise).isEqualTo(24_300)
+        assertThat(r.tipPaise).isEqualTo(0)
+        assertThat(r.totalPaise).isEqualTo(267_300) // net payable after the discount line (which is skipped)
+    }
+
+    @Test
+    fun `a trailing number that does not divide the amount stays part of the line`() {
+        val r = RegexReceiptParser.parse("Combo Meal 333.33 500.00")
+        assertThat(r.items.single()).isEqualTo(ExtractedItem("Combo Meal 333.33", 1, 50_000, 50_000))
+    }
 }

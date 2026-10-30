@@ -23,6 +23,8 @@ object RegexReceiptParser {
     private val QTY_SUFFIX = Regex("""^(.+?)\s*[xX×*]\s*(\d{1,3})$""")
     private val QTY_AT_RATE = Regex("""^(.+?)\s+(\d{1,3})\s*@\s*(\d{1,9}(?:\.\d{1,2})?)$""")
     private val QTY_RATE_COLUMNS = Regex("""^(.+?)\s+(\d{1,3})\s+(\d{1,9}(?:\.\d{1,2})?)$""")
+    /** "Veg Manchow Soup 160.00 320.00": OCR dropped the single-digit qty column; qty = amount / rate when exact. */
+    private val RATE_COLUMN = Regex("""^(.+?)\s+(\d{1,9}\.\d{2})$""")
     private val HAS_LETTER = Regex("""\p{L}""")
     private val TRAILING_PUNCT = Regex("""[\s\-:.,]+$""")
 
@@ -64,6 +66,10 @@ object RegexReceiptParser {
                 val q = m.groupValues[2].toInt()
                 val rate = Money.parseInrToPaise(m.groupValues[3])
                 if (q in 1..999 && rate != null && rate * q == lineTotal) { name = m.groupValues[1]; qty = q }
+            }
+            ?: RATE_COLUMN.matchEntire(head)?.let { m ->
+                val rate = Money.parseInrToPaise(m.groupValues[2])
+                if (rate != null && rate > 0 && lineTotal % rate == 0L && lineTotal / rate in 1..999) { name = m.groupValues[1]; qty = (lineTotal / rate).toInt() }
             }
             ?: QTY_PREFIX.matchEntire(head)?.let { m -> qty = m.groupValues[1].toInt(); name = m.groupValues[2] }
             ?: QTY_SUFFIX.matchEntire(head)?.let { m -> name = m.groupValues[1]; qty = m.groupValues[2].toInt() }
