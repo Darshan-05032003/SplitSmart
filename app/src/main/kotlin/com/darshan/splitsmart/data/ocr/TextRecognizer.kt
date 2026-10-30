@@ -11,12 +11,15 @@ import javax.inject.Inject
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-/** One recognised line with its position so the receipt can be re-assembled top to bottom. */
-data class OcrLine(val text: String, val top: Int, val left: Int)
+/**
+ * One recognised line with its position so the receipt can be re-assembled in reading order. [width]/[height] = 0
+ * means "size unknown"; [angle] is ML Kit's line rotation in degrees (clockwise positive).
+ */
+data class OcrLine(val text: String, val top: Int, val left: Int, val width: Int = 0, val height: Int = 0, val angle: Float = 0f)
 
 data class OcrResult(val lines: List<OcrLine>) {
-    /** Lines in reading order (top → bottom, then left → right). */
-    val text: String get() = lines.sortedWith(compareBy({ it.top }, { it.left })).joinToString("\n") { it.text }
+    /** Lines in reading order, with the columns of one printed row joined back together (see [OcrLayout]). */
+    val text: String get() = OcrLayout.assemble(lines)
 }
 
 class RecognitionException(cause: Throwable) : Exception(cause)
@@ -40,7 +43,11 @@ class MlKitTextRecognizer @Inject constructor(@ApplicationContext private val co
                 recognizer.process(input)
                     .addOnSuccessListener { text ->
                         val lines = text.textBlocks.flatMap { block -> block.lines }.mapIndexed { i, line ->
-                            OcrLine(line.text, top = line.boundingBox?.top ?: i, left = line.boundingBox?.left ?: 0)
+                            val box = line.boundingBox
+                            OcrLine(
+                                line.text, top = box?.top ?: i, left = box?.left ?: 0,
+                                width = box?.width() ?: 0, height = box?.height() ?: 0, angle = line.angle,
+                            )
                         }
                         cont.resume(OcrResult(lines))
                     }
