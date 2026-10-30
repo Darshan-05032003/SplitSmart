@@ -126,7 +126,7 @@ private fun BillDetailContent(detail: BillDetail, onSplit: () -> Unit, modifier:
                 )
                 Button(
                     onClick = onSplit,
-                    colors = ButtonDefaults.buttonColors(containerColor = onHero, contentColor = MaterialTheme.colorScheme.primary),
+                    colors = ButtonDefaults.buttonColors(containerColor = onHero, contentColor = SplitSmartTheme.colors.heroAction),
                     modifier = Modifier.fillMaxWidth().padding(top = 6.dp).testTag(SplitSmartTestTags.SPLIT_BUTTON),
                 ) {
                     Icon(appIcon(AppIcons.Split), contentDescription = null, modifier = Modifier.size(20.dp))

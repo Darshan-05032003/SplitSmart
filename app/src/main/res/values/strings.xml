@@ -119,7 +119,7 @@
     <string name="review_tax">Tax (₹)</string>
     <string name="review_tip">Tip (₹)</string>
     <string name="review_total">Total (₹)</string>
-    <string name="review_mismatch">Items + tax + tip differ from the total by %1$s</string>
+    <string name="review_mismatch">Items + tax + tip differ from the total by %1$s. A discount or round-off? Keep the printed total or use the computed one.</string>
     <string name="review_use_computed">Use computed total</string>
     <string name="review_save">Save bill</string>
     <string name="llm_failure_key_missing">no API key</string>

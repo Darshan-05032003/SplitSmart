@@ -306,7 +306,7 @@ private fun BalanceHero(overview: HomeOverview, onScan: () -> Unit, onEditName: 
         Spacer(Modifier.size(6.dp))
         Button(
             onClick = onScan,
-            colors = ButtonDefaults.buttonColors(containerColor = onHero, contentColor = MaterialTheme.colorScheme.primary),
+            colors = ButtonDefaults.buttonColors(containerColor = onHero, contentColor = SplitSmartTheme.colors.heroAction),
             modifier = Modifier.fillMaxWidth().testTag(SplitSmartTestTags.HOME_SCAN),
         ) {
             Icon(appIcon(AppIcons.Camera), contentDescription = null, modifier = Modifier.size(20.dp))

@@ -139,6 +139,8 @@ data class SplitSmartColors(
     val owe: ToneColors,
     val heroGradient: Brush,
     val onHero: Color,
+    /** Text/icon colour of the white action button on a hero card (dark coral in both themes for contrast on white). */
+    val heroAction: Color,
 )
 
 internal val LightSplitSmartColors = SplitSmartColors(
@@ -146,6 +148,7 @@ internal val LightSplitSmartColors = SplitSmartColors(
     owe = ToneColors(Palette.Red40, Palette.Red90),
     heroGradient = Brush.linearGradient(listOf(Palette.Coral40, Palette.Coral50, Palette.Saffron60)),
     onHero = Color.White,
+    heroAction = Palette.Coral40,
 )
 
 internal val DarkSplitSmartColors = SplitSmartColors(
@@ -153,6 +156,7 @@ internal val DarkSplitSmartColors = SplitSmartColors(
     owe = ToneColors(Palette.Red80, Palette.Red30),
     heroGradient = Brush.linearGradient(listOf(Palette.Coral30, Color(0xFFA8461A), Color(0xFF9A5A12))),
     onHero = Color.White,
+    heroAction = Palette.Coral30,
 )
 
 internal val LocalSplitSmartColors = staticCompositionLocalOf { LightSplitSmartColors }

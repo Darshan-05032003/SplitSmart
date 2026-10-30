@@ -292,7 +292,7 @@ private fun SummaryCard(detail: GroupDetail, onSettleUp: () -> Unit) {
         if (detail.debts.isNotEmpty()) {
             Button(
                 onClick = onSettleUp,
-                colors = ButtonDefaults.buttonColors(containerColor = onHero, contentColor = MaterialTheme.colorScheme.primary),
+                colors = ButtonDefaults.buttonColors(containerColor = onHero, contentColor = SplitSmartTheme.colors.heroAction),
                 modifier = Modifier.fillMaxWidth().padding(top = 6.dp).testTag(SplitSmartTestTags.SETTLE_UP_BUTTON),
             ) {
                 Icon(appIcon(AppIcons.Wallet), contentDescription = null, modifier = Modifier.size(20.dp))
