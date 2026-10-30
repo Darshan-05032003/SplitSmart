@@ -43,3 +43,26 @@ on the build machine (Robolectric SQLite on the JVM, JDK 17 toolchain, Gradle `-
   3. Beyond that the text is truncated: the last lines (often totals) can be lost. The review screen lets the user fix totals by hand.
 - Fix applied / recommendation:
   - Per-line normalisation and an input cap (applied). Recommendation: when truncation happens, keep the first and last N lines (headers + totals) instead of a plain prefix; tracked as scope for improvement for feature 3.
+
+## Feature: LLM extraction (Gemini client, JSON repair, regex parser)
+- Scenario and scale:
+  - `LlmStressTest`: 1,000 concurrent `GeminiExtractor.extract` calls (real OkHttp, 128 connections) against a MockWebServer whose dispatcher answers 429 to 60 % of the first 1,000 requests and 200 afterwards; backoff 200 ms → 2 s, full jitter, 4 attempts.
+  - `ParserStressTest.10000 synthetic OCR receipts`: `OcrTextNormalizer` + `RegexReceiptParser` + `ReceiptValidator` on 10,000 generated receipts (2–15 items, GST lines, OCR noise).
+  - `ParserStressTest.10000 malformed json blobs`: 2,500 random-character blobs, 2,500 truncated JSON, 2,500 fenced JSON with extra commas, 2,500 well-formed, through `JsonRepair` + `ReceiptJsonParser`.
+  - Earlier scenarios re-run unchanged.
+- Results (numbers):
+  - LLM storm: **1,600 requests (1,000 + 600 retries) completed in 793 ms, 0 failures**; retry delays spread over 0..200 ms with **at most 74 of 600 retries in any 20 ms slot** (uniform jitter would give ~60), heap 16 → 138 MB.
+  - Regex parser: **10,000 receipts in 1,151 ms (115 µs each)**, 8.0 items/receipt, total found on 10,000/10,000, 10,000 validated; heap flat.
+  - JSON repair: **10,000 blobs in 275 ms**, 3,944 repaired → 3,944 parsed (every repaired blob parsed; the well-formed and fenced quarters recovered, random garbage rejected cleanly; no unexpected exception).
+  - Real Gemini call (manual, once): 147 s latency on `gemini-3.8-flash` — see DECISIONS.
+- What broke:
+  - The first stress run with OkHttp's default dispatcher (5 requests per host) serialised the 1,000 calls; the client now accepts an injected `Dispatcher` (production keeps the default: one receipt at a time).
+  - The real model latency (147 s) exceeded the original 45 s call timeout: in production every real scan would have fallen back to the regex parser. Timeouts raised to 60/90 s; see recommendation.
+- Failure flow (step by step):
+  1. 1,000 users scan at once → 600 get 429 from the API.
+  2. Each throttled client sleeps a random `[0, 200 ms]` (then `[0, 400]`, `[0, 800]`…), so retries arrive spread out instead of as a second spike.
+  3. After 4 attempts the call fails with `RateLimited` → the regex parser produces the review form and the banner offers "Try AI again".
+  4. A slow model answer hits the 60 s read timeout → same fallback; no thread is blocked (suspending IO on `Dispatchers.IO`).
+- Fix applied / recommendation:
+  - Full-jitter backoff + Retry-After cap (applied). Injected dispatcher for stress (applied).
+  - Recommendation: show the on-device result immediately and upgrade it when the AI answer arrives; add `thinkingConfig` to shorten model latency once a further real call is permitted.

@@ -86,4 +86,33 @@
     <string name="scan_error_recognition">Text recognition failed. Try again.</string>
     <string name="scan_error_image">That image could not be read.</string>
     <string name="scan_error_capture">The camera could not take a photo.</string>
+
+    <string name="review_title">Review receipt</string>
+    <string name="review_extracting">Reading the receipt with AI…</string>
+    <string name="review_default_title">Scanned bill</string>
+    <string name="review_title_label">What was it for?</string>
+    <string name="review_warnings">Some values were repaired. Please check them.</string>
+    <string name="review_fallback_key_missing">AI extraction is off (no Gemini API key). Items were read by the on-device parser; check them carefully.</string>
+    <string name="review_fallback_unavailable">AI extraction was unavailable (%1$s). Items were read by the on-device parser.</string>
+    <string name="review_rerun">Try AI again</string>
+    <string name="review_item_name">Item</string>
+    <string name="review_item_qty">Qty</string>
+    <string name="review_item_amount">₹ Total</string>
+    <string name="review_add_item">Add item</string>
+    <string name="review_remove_item">Remove %1$s</string>
+    <string name="review_tax">Tax (₹)</string>
+    <string name="review_tip">Tip (₹)</string>
+    <string name="review_total">Total (₹)</string>
+    <string name="review_subtotal">Items add up to %1$s</string>
+    <string name="review_mismatch">Items + tax + tip differ from the total by %1$s</string>
+    <string name="review_use_computed">Use computed total</string>
+    <string name="review_save">Save bill</string>
+    <string name="llm_failure_key_missing">no API key</string>
+    <string name="llm_failure_network">no connection</string>
+    <string name="llm_failure_timeout">timed out</string>
+    <string name="llm_failure_unauthorized">key rejected</string>
+    <string name="llm_failure_rate_limited">rate limited</string>
+    <string name="llm_failure_client">request rejected</string>
+    <string name="llm_failure_server">service error</string>
+    <string name="llm_failure_malformed">unreadable answer</string>
 </resources>

@@ -24,6 +24,12 @@ object Money {
         return "${paise / 100}.${(paise % 100).toString().padStart(2, '0')}"
     }
 
+    /** Plain rupees with two decimals ("1234.56"), for editable text fields. */
+    fun toPlainRupees(paise: Long): String {
+        val abs = kotlin.math.abs(paise)
+        return "${if (paise < 0) "-" else ""}${abs / 100}.${(abs % 100).toString().padStart(2, '0')}"
+    }
+
     /** Parses user input such as "1,234.50", "₹99", "Rs. 10.5" into paise. Returns null for anything malformed. */
     fun parseInrToPaise(text: String): Long? {
         val trimmed = text.trim()

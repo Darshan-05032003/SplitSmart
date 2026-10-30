@@ -72,4 +72,15 @@ object SyntheticReceipts {
         sb.append("TOTAL Rs. ").append(random.nextInt(100, 6_000)).append(".OO\n")
         return sb.toString()
     }
+
+    /** A well-formed Gemini-style JSON receipt. */
+    fun llmJson(random: Random): String {
+        val items = (0 until random.nextInt(1, 12)).map {
+            val qty = random.nextInt(1, 4)
+            val unit = random.nextInt(1_000, 50_000)
+            """{"name":"${this.items.random(random)}","qty":$qty,"unitPaise":$unit,"totalPaise":${qty * unit}}"""
+        }
+        val subtotal = random.nextInt(1_000, 500_000)
+        return """{"items":[${items.joinToString(",")}],"taxPaise":${random.nextInt(0, 5_000)},"tipPaise":0,"totalPaise":$subtotal}"""
+    }
 }

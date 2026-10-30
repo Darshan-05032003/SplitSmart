@@ -48,3 +48,26 @@ One entry per feature, written after attacking the feature as a pentester. Sever
   - Schedule the purge with WorkManager (currently only explicit `rescan`/delete paths free space).
   - `MlKitTextRecognizer` and `CameraXReceiptCamera` are device-only; their error paths are covered through the interfaces but not on hardware in this build.
   - Captured photos are stored unencrypted in the cache (receipts are low sensitivity; a Keystore-wrapped cipher would be the next step).
+
+## Feature: LLM extraction (Gemini over pinned OkHttp, JSON repair, regex fallback, review screen)
+- Attacks tried:
+  - **SSL pinning bypass:** a TLS MockWebServer with a *trusted* certificate but a non-matching SPKI pin must be rejected (`PinningTest.wrong pin is rejected even though the certificate is trusted`, asserts `SSLPeerUnverifiedException` and that no request reached the server). Correct pin and no-pinner paths accepted. Pins apply only to `generativelanguage.googleapis.com`; a look-alike host (`notgenerativelanguage.googleapis.com`) has no pins (so it would also never be contacted with our key, see below).
+  - **Pin-rotation risk:** Google rotates leaf certificates every few weeks and serves two different chains (ECDSA via `WE2`/`GTS Root R4`, RSA via `WR2`/`GTS Root R1`) depending on the negotiated signature algorithm. Pinning only the ECDSA leaf would brick the feature within weeks or on an RSA negotiation. Mitigation: pin both intermediates (primary) and both roots (backup, valid to 2028); fallback to the regex parser keeps the app usable if all pins fail; the `realApiTest` smoke test validates the pin set against the live host.
+  - **Key exposure:** the key goes in the `x-goog-api-key` header, never the URL (`GeminiExtractorTest` asserts `url.query == null`), so it cannot leak through proxies' access logs or OkHttp URL logging. No logging interceptor exists; exceptions carry only HTTP codes. `BuildConfig.LLM_API_KEY` is still extractable from the APK (documented in README; a store release should proxy through a backend).
+  - **Prompt injection:** receipt text is wrapped in `<receipt>` tags and declared as data; `responseSchema` + `responseMimeType=application/json` constrain the output shape; the output is still treated as untrusted (repair → parse → validate, every number range-checked).
+  - **Hostile model output:** prose instead of JSON, fenced JSON, trailing commas, smart quotes, `NaN`, truncated JSON, comments, 600 kB blobs, `1e40` amounts, negative amounts, 250 items, blank names, qty 0 / 5000 (`JsonRepairTest`, `ReceiptJsonParserTest`, `ReceiptValidatorTest`, `ParserStressTest.10000 malformed json blobs`).
+  - **Network abuse:** 400/401/403/404/429/5xx/timeout/dropped socket/malformed body each mapped to a typed `LlmException`; 4xx and malformed bodies are never retried (no amplification); retries use full-jitter backoff and honour `Retry-After` (capped at 8 s so a hostile `Retry-After: 999999` cannot freeze the UI).
+  - **Hostile OCR into the regex parser:** 11-digit amounts, negative discounts, GSTIN/phone/date lines, unicode names (`RegexReceiptParserTest`); 10,000 synthetic receipts (`ParserStressTest`).
+  - **Review screen:** every field re-validated on save (name, qty 1..999, amount, tax/tip/total), 200-item cap, rapid triple save, process death mid-edit (`ReviewViewModelTest`).
+- What broke:
+  - **Medium:** the first `JsonRepair` cut the text at the *last* `}`, which silently dropped the trailing items of a truncated response (the LLM output limit case) instead of closing them; found by `closes truncated json`.
+  - **Medium:** the validator re-derived a unit price from a line total that contradicted the stated unit price (inventing data); changed to "unit unknown" so the user sees the gap.
+  - **Low:** `Retry-After` was initially honoured uncapped.
+- Fixed now:
+  - Walker stops at the first balanced top-level object and closes truncated structures (regression test `closes truncated json`).
+  - `ReceiptValidator` sets `unitPaise = 0` + `ITEM_MATH_FIXED` when the stated unit contradicts the total (`item math is repaired towards the line total`).
+  - `BackoffPolicy.delayMs` caps `Retry-After` at `maxDelayMs` (`retry-after wins over the computed delay but is capped`).
+- Scope for improvement:
+  - The API key lives in the APK (`BuildConfig`); production should call Gemini through a backend or Firebase App Check-gated proxy.
+  - Pin expiry: both roots expire 2028-01-28; schedule a pin refresh (and keep the regex fallback) before then.
+  - Receipt text is sent to Google; a privacy notice in the UI/onboarding would be appropriate for a store release.

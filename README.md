@@ -3,14 +3,14 @@
 Photograph a restaurant receipt, let on-device OCR and Gemini turn it into line items, split it paise-exactly between
 friends, and settle up with one-tap UPI links. Offline-first (Room), Kotlin, Jetpack Compose, Hilt.
 
-> Build status: feature 2 of 7 (receipt scanning). This README grows with every feature.
+> Build status: feature 3 of 7 (LLM extraction). This README grows with every feature.
 
 ## Features
 | # | Feature | Status |
 |---|---|---|
 | 1 | Groups and members (Room), offline-first, bill history | done |
 | 2 | Receipt scanning: CameraX capture + gallery import → ML Kit on-device text recognition | done (device-only parts compile-only, see below) |
-| 3 | LLM extraction: Gemini over OkHttp with SSL pinning, strict JSON, validate + repair, editable review, regex fallback | planned |
+| 3 | LLM extraction: Gemini over OkHttp with SSL pinning, strict JSON, validate + repair, editable review, regex fallback | done |
 | 4 | Split calculator: equal / by item / by share, proportional tax + tip, paise-exact remainders, who-owes-whom simplification | planned |
 | 5 | One-tap UPI settle-up links (`upi://pay` per debt) + share as text / QR | planned |
 | 6 | Firebase Crashlytics + Analytics: scan / parse success, splits created, settle-up taps, custom keys, non-fatals | planned |
@@ -68,19 +68,57 @@ flowchart LR
    applied only when that file exists, so a clean clone without Firebase still builds.
 4. `./gradlew assembleDebug` and install `app/build/outputs/apk/debug/app-debug.apk`.
 
+## LLM extraction and SSL pinning
+- OCR text → `GeminiExtractor` → `generateContent` on `gemini-3.8-flash` with `responseMimeType: application/json` and a response
+  schema for `{items:[{name,qty,unitPaise,totalPaise}],taxPaise,tipPaise,totalPaise}` (integers in paise). The key travels in the
+  `x-goog-api-key` header, never in the URL. (`gemini-2.5-flash` returned 404 "no longer available to new users" on 2026-10-30.)
+- The answer is treated as untrusted: `JsonRepair` (fences, prose, trailing commas, smart quotes, truncation) → tolerant parser →
+  `ReceiptValidator` (drops negative/absurd amounts, fixes `qty × unit`, caps 200 items, derives or flags the total). Every repair
+  is shown as a warning on the editable review screen.
+- Any failure (no key, 4xx, 401, 429, 5xx, timeout, malformed) falls back to the on-device `RegexReceiptParser`; the review screen
+  says why and offers "Try AI again". Retries: full-jitter exponential backoff (0.5 s → 8 s, 4 attempts), `Retry-After` honoured and capped.
+- **Certificate pinning** (`GeminiPins`, OkHttp `CertificatePinner`): Google serves two chains for `generativelanguage.googleapis.com`
+  (ECDSA leaf → `WE2` → `GTS Root R4`; RSA leaf → `WR2` → `GTS Root R1`), and leaf certificates rotate every few weeks, so the app pins the
+  intermediates (primary) and roots (backup) of both chains:
+
+  | Role | Certificate | SPKI SHA-256 pin |
+  |---|---|---|
+  | primary | GTS WE2 (intermediate, ECDSA chain) | `sha256/vh78KSg1Ry4NaqGDV10w/cTb9VH3BQUZoCWNa93W/EY=` |
+  | primary | GTS WR2 (intermediate, RSA chain) | `sha256/YPtHaftLw6/0vnc2BnNKGF54xiCA28WFcccjkA4ypCM=` |
+  | backup | GTS Root R4 (expires 2028-01-28) | `sha256/mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=` |
+  | backup | GTS Root R1 (expires 2028-01-28) | `sha256/hxqRlPTu1bMS/0DITB1SSu0vd4u/8l8TjPgfaAp63Gc=` |
+
+  Fetched on 2026-10-30 with:
+  ```bash
+  openssl s_client -connect generativelanguage.googleapis.com:443 -servername generativelanguage.googleapis.com -showcerts </dev/null
+  # for every certificate in the printed chain (save each PEM block to a file):
+  openssl x509 -in cert.pem -pubkey -noout | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | openssl enc -base64
+  # the RSA chain appears when the client only offers RSA signature algorithms:
+  openssl s_client -connect generativelanguage.googleapis.com:443 -servername generativelanguage.googleapis.com -sigalgs "RSA+SHA256:RSA-PSS+SHA256" -showcerts </dev/null
+  # roots cross-checked against https://pki.goog/repo/certs/gtsr1.pem and gtsr4.pem
+  ```
+  **Rotation risk:** if Google moves to new intermediates *and* new roots at once, every pin fails and the LLM path degrades to the
+  on-device parser (the app keeps working). Refresh the pins before 2028 or after any Google PKI announcement. The pinner is injectable
+  (`LlmHttpClient.create(pinner)`), and `PinningTest` proves that a wrong pin is rejected on a real TLS handshake.
+- **Real call:** `./gradlew realApiTest` makes exactly one request with your key through the production pinned client. Result on
+  2026-10-30: HTTP 200, 2 items, total 21,000 paise, 0 warnings, latency 147 s (`gemini-3.8-flash`). Production timeouts are 60 s
+  read / 90 s call; a slower answer falls back to the on-device parser.
+
 ## Tests
 ```bash
 ./gradlew testDebugUnitTest            # unit + integration (Robolectric, Compose, Room in-memory, Hilt)
 ./gradlew koverVerifyDebug koverLogDebug  # ≥ 80 % line coverage on domain + data (enforced)
 ./gradlew stressTest                   # load / stress simulations (excluded from the normal suite)
+./gradlew realApiTest                  # ONE real Gemini call (needs LLM_API_KEY); excluded from the normal suite
 ./gradlew lintDebug assembleDebug      # part of the pre-commit gate
 ```
 | Suite | Count | Notes |
 |---|---|---|
-| Unit | 63 | money, validators, models, use cases, OCR normalizer, ViewModels |
-| Integration | 22 | Room DAO + repository + real AutoMigration, image store / FileProvider, Room + ViewModel + Compose flows, Hilt `MainActivity` navigation |
-| Stress | 5 | 100k bills in Room; 1,000 concurrent writes; 10,000 OCR texts; adversarial OCR input; 1,000 concurrent image imports |
-| Coverage (domain + data) | 89.0 % line (device-only CameraX / ML Kit classes included) | `koverVerify` fails the build below 80 % |
+| Unit | 118 | money, validators, models, use cases, OCR normalizer, backoff, JSON repair / parser / validator, regex parser, ViewModels |
+| Integration | 40 | Room DAO + repository + real AutoMigration, image store / FileProvider, Gemini client vs MockWebServer (success, 4xx, 401, 429 + Retry-After, 5xx, timeout, dropped socket, malformed), TLS pinning rejection, Room + ViewModel + Compose flows, Hilt `MainActivity` navigation |
+| Stress | 8 | 100k bills in Room; 1,000 concurrent writes; 10,000 OCR texts; adversarial OCR input; 1,000 concurrent image imports; 1,000 concurrent LLM calls with 429s; 10,000 receipts through the regex parser; 10,000 malformed JSON blobs |
+| Real API | 1 | `realApiTest`: one real Gemini call through the pinned client (manual) |
+| Coverage (domain + data) | 92.4 % line (device-only CameraX / ML Kit classes included) | `koverVerify` fails the build below 80 % |
 
 ### Not run: no device
 No phone or emulator was available while building, so these are implemented, compiled and lint-checked but not executed on hardware:
@@ -98,12 +136,15 @@ To try them: `./gradlew installDebug`, open a group, tap **Scan receipt**. The w
 - `allowBackup=false`, data extraction rules exclude everything, no cleartext traffic, only the launcher activity is exported.
 - Receipt images live in a private `cache/receipts/` directory exposed only through a non-exported FileProvider; file names are app-generated UUIDs, path-traversal names are rejected (tested), gallery imports are capped at 20 MB and `file://` sources inside the app's private storage are refused.
 - OCR text is sanitised (zero-width / bidi / control characters removed, 20k-char cap) before it reaches any parser or the LLM.
+- Gemini: certificate pinning with primary + backup pins for both Google chains; key in a header, never a URL; receipt text wrapped as data in the prompt (prompt-injection mitigation); model output repaired, parsed and range-validated before use; 4xx and malformed answers are never retried.
 - Full log: [`docs/SECURITY_REVIEW.md`](docs/SECURITY_REVIEW.md).
 
 ## Load-test highlights
 - 100,000 bills + 100,000 items inserted in 1.4 s (~72k rows/s); a 1,000-bill group history loads in 73 ms; paged query 5 ms.
 - 1,000 concurrent member + bill writes complete in 0.7 s with no lost rows.
 - 10,000 OCR receipt texts normalised in 0.9 s (89 µs each) with flat heap; 1,000 concurrent image imports in 59 ms.
+- 1,000 concurrent Gemini calls with 60 % 429s: 1,600 requests in 0.8 s, 0 failures, retries spread by full jitter (max 74 of 600 in any 20 ms slot).
+- 10,000 receipts through the regex parser in 1.15 s (115 µs each); 10,000 malformed JSON blobs through the repairer in 0.28 s, no escaping exceptions.
 - Full log: [`docs/LOAD_TEST_REPORT.md`](docs/LOAD_TEST_REPORT.md).
 
 ## Docs
