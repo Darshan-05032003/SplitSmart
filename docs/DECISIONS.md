@@ -10,5 +10,14 @@ Decisions taken during the build, with the reasoning, so nothing is a surprise l
 - **compileSdk / targetSdk 37** (latest stable platform installed), **minSdk 26**.
 - Robolectric tests pin `@Config(sdk = [35])` because Robolectric 4.17 doesn't ship an SDK 37 runtime yet.
 
+## Feature 1: groups, members, bills
+- **Table names:** `split_groups` instead of `groups` because `GROUPS` is an SQLite keyword (window functions); `group_members`, `bills`, `bill_items`.
+- **`@Relation` ordering:** Room cannot order a relation, so `BillWithItems` exposes `rawItems` (Room) and `items` (sorted by `sort_order`).
+- **Payer deletion = SET NULL:** removing a member must never delete the bills they paid; the UI shows "Paid by nobody yet".
+- **Dialog drafts in SavedStateHandle:** an open Add-member / Add-bill dialog survives rotation and process death; validation errors are transient on purpose.
+- **Money cap:** `Money.MAX_PAISE` = ₹1 crore. A first draft had the literal 100× too large; the unit test caught it (see SECURITY_REVIEW).
+- **Build script:** `LLM_API_KEY` read from `local.properties` (or the environment), quotes and whitespace stripped, into `BuildConfig.LLM_API_KEY` (empty when absent). Firebase plugins are applied only when `app/google-services.json` exists so a clean clone builds. `stressTest` and `realApiTest` are filtered `Test` tasks excluded from `testDebugUnitTest`.
+- **SSL pins (prepared for feature 3):** `generativelanguage.googleapis.com` serves two chains depending on the negotiated signature algorithm: ECDSA (leaf → `WE2` → `GTS Root R4`) and RSA (leaf → `WR2` → `GTS Root R1`). Leaf certs rotate every few weeks, so the app pins the intermediates (primary) and the roots (backup) of both chains; roots were cross-checked against `https://pki.goog/repo/certs/`.
+
 ## Compromises
 _None yet._
