@@ -3,6 +3,7 @@ package com.darshan.splitsmart.data.repository
 import com.darshan.splitsmart.core.DispatcherProvider
 import com.darshan.splitsmart.data.local.BillDao
 import com.darshan.splitsmart.data.local.toDomain
+import com.darshan.splitsmart.data.local.shareEntities
 import com.darshan.splitsmart.data.local.toEntity
 import com.darshan.splitsmart.domain.model.Bill
 import com.darshan.splitsmart.domain.repository.BillRepository
@@ -31,7 +32,7 @@ class BillRepositoryImpl @Inject constructor(
     override suspend fun getBill(billId: String): Bill? = withContext(dispatchers.io) { billDao.getById(billId)?.toDomainOrNull() }
 
     override suspend fun saveBill(bill: Bill): Bill = withContext(dispatchers.io) {
-        billDao.upsertWithItems(bill.toEntity(), bill.items.map { it.copy(billId = bill.id).toEntity() })
+        billDao.upsertWithItems(bill.toEntity(), bill.items.map { it.copy(billId = bill.id).toEntity() }, bill.shareEntities())
         bill
     }
 

@@ -75,12 +75,23 @@ interface BillDao {
     @Query("DELETE FROM bill_items WHERE bill_id = :billId")
     suspend fun deleteItemsForBill(billId: String)
 
-    /** Replaces the bill and all of its items atomically. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertShares(shares: List<BillShareEntity>)
+
+    @Query("DELETE FROM bill_shares WHERE bill_id = :billId")
+    suspend fun deleteSharesForBill(billId: String)
+
+    @Query("SELECT COUNT(*) FROM bill_shares")
+    suspend fun countShares(): Int
+
+    /** Replaces the bill, all of its items and its split shares atomically. */
     @Transaction
-    suspend fun upsertWithItems(bill: BillEntity, items: List<BillItemEntity>) {
+    suspend fun upsertWithItems(bill: BillEntity, items: List<BillItemEntity>, shares: List<BillShareEntity> = emptyList()) {
         insertBill(bill)
         deleteItemsForBill(bill.id)
         if (items.isNotEmpty()) insertItems(items)
+        deleteSharesForBill(bill.id)
+        if (shares.isNotEmpty()) insertShares(shares)
     }
 
     /** Bulk path used by the stress tests. */

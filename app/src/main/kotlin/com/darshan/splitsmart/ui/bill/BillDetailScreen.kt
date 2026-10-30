@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -44,7 +45,7 @@ import com.darshan.splitsmart.ui.components.formatDate
 import com.darshan.splitsmart.ui.components.label
 
 @Composable
-fun BillDetailRoute(viewModel: BillDetailViewModel = hiltViewModel(), onBack: () -> Unit) {
+fun BillDetailRoute(viewModel: BillDetailViewModel = hiltViewModel(), onBack: () -> Unit, onSplit: (String) -> Unit = {}) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val failedText = stringResource(R.string.error_unknown)
@@ -56,12 +57,12 @@ fun BillDetailRoute(viewModel: BillDetailViewModel = hiltViewModel(), onBack: ()
             }
         }
     }
-    BillDetailScreen(state, snackbar, onBack = onBack, onDelete = viewModel::deleteBill, onRetry = viewModel::retry)
+    BillDetailScreen(state, snackbar, onBack = onBack, onDelete = viewModel::deleteBill, onRetry = viewModel::retry, onSplit = { onSplit(viewModel.billId) })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BillDetailScreen(state: BillDetailUiState, snackbar: SnackbarHostState, onBack: () -> Unit, onDelete: () -> Unit, onRetry: () -> Unit) {
+fun BillDetailScreen(state: BillDetailUiState, snackbar: SnackbarHostState, onBack: () -> Unit, onDelete: () -> Unit, onRetry: () -> Unit, onSplit: () -> Unit = {}) {
     val content = state.bill as? LoadState.Content
     Scaffold(
         topBar = {
@@ -83,15 +84,38 @@ fun BillDetailScreen(state: BillDetailUiState, snackbar: SnackbarHostState, onBa
             LoadState.Loading -> LoadingView(Modifier.padding(padding))
             LoadState.Empty -> EmptyView(stringResource(R.string.error_not_found), Modifier.padding(padding))
             is LoadState.Error -> ErrorView(bill.reason, onRetry, Modifier.padding(padding))
-            is LoadState.Content -> BillDetailContent(bill.data, Modifier.padding(padding))
+            is LoadState.Content -> BillDetailContent(bill.data, onSplit, Modifier.padding(padding))
         }
     }
 }
 
 @Composable
-private fun BillDetailContent(detail: BillDetail, modifier: Modifier) {
+private fun BillDetailContent(detail: BillDetail, onSplit: () -> Unit, modifier: Modifier) {
     val bill = detail.bill
     LazyColumn(modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        item {
+            Button(onClick = onSplit, modifier = Modifier.fillMaxWidth().testTag(SplitSmartTestTags.SPLIT_BUTTON)) {
+                Text(stringResource(if (bill.split == null) R.string.bill_split_button else R.string.bill_split_edit_button))
+            }
+        }
+        bill.split?.let { split ->
+            item { Text(stringResource(R.string.bill_shares_title), style = MaterialTheme.typography.titleMedium) }
+            items(split.shares, key = { "s" + it.memberId }) { share ->
+                val name = detail.members.find { it.id == share.memberId }?.name ?: stringResource(R.string.member_unknown)
+                Column(Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag(SplitSmartTestTags.SHARE_ROW)) {
+                    Row(Modifier.fillMaxWidth()) {
+                        Text(name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                        Text(Money.formatInr(share.totalPaise), style = MaterialTheme.typography.bodyLarge)
+                    }
+                    Text(
+                        stringResource(R.string.bill_share_breakdown, Money.formatInr(share.itemsPaise), Money.formatInr(share.taxPaise), Money.formatInr(share.tipPaise)) +
+                            if (share.adjustmentPaise != 0L) " · " + stringResource(R.string.bill_share_adjustment, Money.formatInr(share.adjustmentPaise)) else "",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                HorizontalDivider()
+            }
+        }
         item {
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {

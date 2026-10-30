@@ -3,7 +3,7 @@
 Photograph a restaurant receipt, let on-device OCR and Gemini turn it into line items, split it paise-exactly between
 friends, and settle up with one-tap UPI links. Offline-first (Room), Kotlin, Jetpack Compose, Hilt.
 
-> Build status: feature 3 of 7 (LLM extraction). This README grows with every feature.
+> Build status: feature 4 of 7 (split calculator). This README grows with every feature.
 
 ## Features
 | # | Feature | Status |
@@ -11,7 +11,7 @@ friends, and settle up with one-tap UPI links. Offline-first (Room), Kotlin, Jet
 | 1 | Groups and members (Room), offline-first, bill history | done |
 | 2 | Receipt scanning: CameraX capture + gallery import → ML Kit on-device text recognition | done (device-only parts compile-only, see below) |
 | 3 | LLM extraction: Gemini over OkHttp with SSL pinning, strict JSON, validate + repair, editable review, regex fallback | done |
-| 4 | Split calculator: equal / by item / by share, proportional tax + tip, paise-exact remainders, who-owes-whom simplification | planned |
+| 4 | Split calculator: equal / by item / by share, proportional tax + tip, paise-exact remainders, who-owes-whom simplification | done |
 | 5 | One-tap UPI settle-up links (`upi://pay` per debt) + share as text / QR | planned |
 | 6 | Firebase Crashlytics + Analytics: scan / parse success, splits created, settle-up taps, custom keys, non-fatals | planned |
 | 7 | Performance: Baseline Profile + Macrobenchmark modules, LeakCanary, StrictMode, work off the main thread | planned |
@@ -104,6 +104,12 @@ flowchart LR
   2026-10-30: HTTP 200, 2 items, total 21,000 paise, 0 warnings, latency 147 s (`gemini-3.8-flash`). Production timeouts are 60 s
   read / 90 s call; a slower answer falls back to the on-device parser.
 
+## Split calculator
+- Three modes: **equally**, **by item** (tap who had what; untouched items are shared by everyone) and **by share / percentage** (any non-negative weights).
+- Tax and tip are allocated proportionally to each person's items (by item) or by the same weights; an **adjustment** line carries discounts / round-off so people pay exactly the printed total.
+- Paise are apportioned with the **largest-remainder method** (`LargestRemainder`), so every split sums exactly to the bill and nobody is more than one paisa from their ideal share; property-tested on thousands of random bills and on 1,000 people × 10,000 items.
+- **Who owes whom:** every split bill with a known payer is netted per group and simplified greedily (largest debtor pays largest creditor, at most n − 1 transfers).
+
 ## Tests
 ```bash
 ./gradlew testDebugUnitTest            # unit + integration (Robolectric, Compose, Room in-memory, Hilt)
@@ -114,11 +120,11 @@ flowchart LR
 ```
 | Suite | Count | Notes |
 |---|---|---|
-| Unit | 118 | money, validators, models, use cases, OCR normalizer, backoff, JSON repair / parser / validator, regex parser, ViewModels |
-| Integration | 40 | Room DAO + repository + real AutoMigration, image store / FileProvider, Gemini client vs MockWebServer (success, 4xx, 401, 429 + Retry-After, 5xx, timeout, dropped socket, malformed), TLS pinning rejection, Room + ViewModel + Compose flows, Hilt `MainActivity` navigation |
-| Stress | 8 | 100k bills in Room; 1,000 concurrent writes; 10,000 OCR texts; adversarial OCR input; 1,000 concurrent image imports; 1,000 concurrent LLM calls with 429s; 10,000 receipts through the regex parser; 10,000 malformed JSON blobs |
+| Unit | 154 | money, validators, models, use cases, OCR normalizer, backoff, JSON repair / parser / validator, regex parser, split math (incl. property tests), debt simplifier, ViewModels |
+| Integration | 45 | Room DAO + repository + real AutoMigrations (v1→v2→v3), image store / FileProvider, Gemini client vs MockWebServer (success, 4xx, 401, 429 + Retry-After, 5xx, timeout, dropped socket, malformed), TLS pinning rejection, Room + ViewModel + Compose flows, Hilt `MainActivity` navigation |
+| Stress | 11 | 100k bills in Room; 1,000 concurrent writes; 10,000 OCR texts; adversarial OCR input; 1,000 concurrent image imports; 1,000 concurrent LLM calls with 429s; 10,000 receipts through the regex parser; 10,000 malformed JSON blobs; 1,000 people × 10,000 items split; 10,000 random splits; 1,000-member debt netting |
 | Real API | 1 | `realApiTest`: one real Gemini call through the pinned client (manual) |
-| Coverage (domain + data) | 92.4 % line (device-only CameraX / ML Kit classes included) | `koverVerify` fails the build below 80 % |
+| Coverage (domain + data) | 93.8 % line (device-only CameraX / ML Kit classes included) | `koverVerify` fails the build below 80 % |
 
 ### Not run: no device
 No phone or emulator was available while building, so these are implemented, compiled and lint-checked but not executed on hardware:
@@ -136,6 +142,7 @@ To try them: `./gradlew installDebug`, open a group, tap **Scan receipt**. The w
 - `allowBackup=false`, data extraction rules exclude everything, no cleartext traffic, only the launcher activity is exported.
 - Receipt images live in a private `cache/receipts/` directory exposed only through a non-exported FileProvider; file names are app-generated UUIDs, path-traversal names are rejected (tested), gallery imports are capped at 20 MB and `file://` sources inside the app's private storage are refused.
 - OCR text is sanitised (zero-width / bidi / control characters removed, 20k-char cap) before it reaches any parser or the LLM.
+- Split math never uses floating point; `Bill` refuses a split whose shares do not sum to its total, and inconsistent stored shares read back as "not split" instead of crashing.
 - Gemini: certificate pinning with primary + backup pins for both Google chains; key in a header, never a URL; receipt text wrapped as data in the prompt (prompt-injection mitigation); model output repaired, parsed and range-validated before use; 4xx and malformed answers are never retried.
 - Full log: [`docs/SECURITY_REVIEW.md`](docs/SECURITY_REVIEW.md).
 
@@ -145,6 +152,7 @@ To try them: `./gradlew installDebug`, open a group, tap **Scan receipt**. The w
 - 10,000 OCR receipt texts normalised in 0.9 s (89 µs each) with flat heap; 1,000 concurrent image imports in 59 ms.
 - 1,000 concurrent Gemini calls with 60 % 429s: 1,600 requests in 0.8 s, 0 failures, retries spread by full jitter (max 74 of 600 in any 20 ms slot).
 - 10,000 receipts through the regex parser in 1.15 s (115 µs each); 10,000 malformed JSON blobs through the repairer in 0.28 s, no escaping exceptions.
+- 1,000 people × 10,000 items split by item in 20 ms, exact to the paisa; 10,000 random splits verified exact in 0.8 s; 1,000-member debt netting in 11 ms.
 - Full log: [`docs/LOAD_TEST_REPORT.md`](docs/LOAD_TEST_REPORT.md).
 
 ## Docs

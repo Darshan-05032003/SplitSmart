@@ -39,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -47,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.darshan.splitsmart.R
 import com.darshan.splitsmart.core.Money
 import com.darshan.splitsmart.domain.model.Bill
+import com.darshan.splitsmart.domain.model.Debt
 import com.darshan.splitsmart.domain.model.Member
 import com.darshan.splitsmart.ui.LoadState
 import com.darshan.splitsmart.ui.SplitSmartTestTags
@@ -181,6 +183,34 @@ private fun GroupDetailContent(detail: GroupDetail, callbacks: GroupDetailCallba
             item { Text(stringResource(R.string.bills_empty), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp)) }
         }
         items(detail.bills, key = { "b" + it.id }) { bill -> BillRow(bill, onClick = { callbacks.onOpenBill(bill.id) }) }
+        if (detail.bills.isNotEmpty()) {
+            item {
+                Spacer(Modifier.padding(top = 16.dp))
+                Text(stringResource(R.string.group_balances_title), style = MaterialTheme.typography.titleMedium)
+            }
+            if (detail.debts.isEmpty()) {
+                item { Text(stringResource(R.string.group_all_settled), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp)) }
+            }
+            items(detail.debts, key = { "d" + it.fromMemberId + it.toMemberId }) { debt -> DebtRow(debt, detail.members) }
+            if (detail.unsettledBills > 0) {
+                item {
+                    Text(
+                        pluralStringResource(R.plurals.group_unsettled, detail.unsettledBills, detail.unsettledBills),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DebtRow(debt: Debt, members: List<Member>) {
+    val unknown = stringResource(R.string.member_unknown)
+    val name = { id: String -> members.find { it.id == id }?.name ?: unknown }
+    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp).testTag(SplitSmartTestTags.DEBT_ITEM), verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(R.string.debt_row, name(debt.fromMemberId), name(debt.toMemberId)), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(Money.formatInr(debt.amountPaise), style = MaterialTheme.typography.titleMedium)
     }
 }
 

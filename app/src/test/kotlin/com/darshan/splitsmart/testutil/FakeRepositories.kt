@@ -71,7 +71,7 @@ open class FakeGroupRepository(private val clock: Clock = fixedClock) : GroupRep
     }
 }
 
-class FakeBillRepository : BillRepository {
+open class FakeBillRepository : BillRepository {
     val bills = MutableStateFlow<List<Bill>>(emptyList())
     var failWith: Throwable? = null
 

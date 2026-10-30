@@ -66,3 +66,26 @@ on the build machine (Robolectric SQLite on the JVM, JDK 17 toolchain, Gradle `-
 - Fix applied / recommendation:
   - Full-jitter backoff + Retry-After cap (applied). Injected dispatcher for stress (applied).
   - Recommendation: show the on-device result immediately and upgrade it when the AI answer arrives; add `thinkingConfig` to shorten model latency once a further real call is permitted.
+
+## Feature: Split calculator (apportionment, debt netting, Room v3 shares)
+- Scenario and scale:
+  - `SplitStressTest.1000 people x 10000 items`: 10,000 items with 1–5 random assignees each, 1,000 participants, 5 % tax, a tip and a 7-paisa round-off, split by item, then equally and by random shares.
+  - `SplitStressTest.10000 random splits`: 10,000 bills (1–24 people, 0–29 items, random tax/tip and a printed total off by up to ₹3) across all three modes.
+  - `SplitStressTest.debt simplification`: 1,000 equal-split bills over 1,000 members netted and simplified.
+  - Room scenarios re-run with the v3 schema (each bill now also loads its `bill_shares` relation).
+- Results (numbers):
+  - By-item split of **10,000 items over 1,000 members: 20 ms**, total 5,216,952.40 ₹ exact to the paisa, heap 110 → 127 MB; equal **1 ms**; by-share **3 ms**.
+  - **10,000 random splits in 785 ms** (79 µs each), every one summing exactly, item sums exact.
+  - 1,000 bills → 1,000 balances → **985 transfers in 11 ms** (n − 1 = 999 bound respected), heap flat.
+  - Room v3: 200k rows inserted at ~47k rows/s (2.1 s, slower run on a busy machine); 1k-bill history **118 ms** (was 86 ms in v2: the extra `bill_shares` relation adds one batched query); paged 7 ms; 1,000 concurrent members + bills 1.5 s.
+- What broke:
+  - Nothing failed. The by-item path allocates one `LargestRemainder` call per item (10,000 BigInteger divisions) and stays at 20 ms; BigInteger was kept because exactness beats the microseconds.
+  - History load grew ~35 % with the shares relation; still far below one frame per 100 bills.
+- Failure flow (step by step):
+  1. A group with thousands of bills opens the detail screen.
+  2. `observeByGroup` loads bills, items and shares (three queries, Room batches ids by 999).
+  3. `DebtSimplifier.balances` + `simplify` run on every emission on `Dispatchers.Default` (11 ms for 1,000 bills), never on the main thread.
+  4. Worst case is UI latency on huge histories, not incorrect money: every path is exact or throws before saving.
+- Fix applied / recommendation:
+  - Balances computed off the main thread inside the ViewModel's `flowOn(default)` chain (applied).
+  - Recommendation: a `bill_shares`-only query (`SELECT member_id, SUM(total_paise)`) for the balances section once groups exceed a few thousand bills.

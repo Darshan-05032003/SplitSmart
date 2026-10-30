@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.darshan.splitsmart.core.DispatcherProvider
 import com.darshan.splitsmart.domain.model.Bill
+import com.darshan.splitsmart.domain.model.Debt
+import com.darshan.splitsmart.domain.split.DebtSimplifier
 import com.darshan.splitsmart.domain.model.Group
 import com.darshan.splitsmart.domain.model.Member
 import com.darshan.splitsmart.domain.model.NameError
@@ -36,7 +38,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class GroupDetail(val group: Group, val members: List<Member>, val bills: List<Bill>)
+data class GroupDetail(val group: Group, val members: List<Member>, val bills: List<Bill>, val debts: List<Debt> = emptyList(), val unsettledBills: Int = 0)
 
 data class MemberDraft(
     val name: String = "",
@@ -100,7 +102,7 @@ class GroupDetailViewModel @Inject constructor(
 
     private val detail: Flow<LoadState<GroupDetail>> = reload.flatMapLatest {
         combine(groupRepository.observeGroup(groupId), groupRepository.observeMembers(groupId), billRepository.observeBills(groupId)) { g, m, b ->
-            if (g == null) LoadState.Error(ErrorReason.NOT_FOUND) else LoadState.Content(GroupDetail(g, m, b))
+            if (g == null) LoadState.Error(ErrorReason.NOT_FOUND) else LoadState.Content(GroupDetail(g, m, b, debts = debtsOf(b), unsettledBills = DebtSimplifier.unsettledCount(b)))
         }.onStart<LoadState<GroupDetail>> { emit(LoadState.Loading) }.catch { emit(LoadState.Error(it.toErrorReason())) }
     }.flowOn(dispatchers.default)
 
@@ -113,6 +115,9 @@ class GroupDetailViewModel @Inject constructor(
 
     val uiState: StateFlow<GroupDetailUiState> = combine(detail, memberDraft, billDraft) { d, m, b -> GroupDetailUiState(d, m, b) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GroupDetailUiState(memberDraft = initialMemberDraft(), billDraft = initialBillDraft()))
+
+    /** Balances are a pure function of the bills; a corrupt split must never take the whole screen down. */
+    private fun debtsOf(bills: List<Bill>): List<Debt> = runCatching { DebtSimplifier.simplify(DebtSimplifier.balances(bills)) }.getOrDefault(emptyList())
 
     private fun initialMemberDraft() = if (memberOpen.value) MemberDraft(memberName.value, memberVpa.value) else null
     private fun initialBillDraft() = if (billOpen.value) BillDraft(billTitle.value, billAmount.value, billPayer.value) else null

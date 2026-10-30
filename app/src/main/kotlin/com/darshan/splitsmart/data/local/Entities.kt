@@ -10,6 +10,10 @@ import androidx.room.Relation
 import com.darshan.splitsmart.domain.model.Bill
 import com.darshan.splitsmart.domain.model.BillItem
 import com.darshan.splitsmart.domain.model.BillSource
+import com.darshan.splitsmart.domain.model.BillSplit
+import com.darshan.splitsmart.domain.model.MemberShare
+import com.darshan.splitsmart.domain.model.SplitConfig
+import kotlinx.serialization.json.Json
 import com.darshan.splitsmart.domain.model.BillStatus
 import com.darshan.splitsmart.domain.model.Group
 import com.darshan.splitsmart.domain.model.GroupSummary
@@ -55,6 +59,27 @@ data class BillEntity(
     val source: String,
     val status: String,
     @ColumnInfo(name = "created_at") val createdAt: Long,
+    /** JSON of [com.darshan.splitsmart.domain.model.SplitConfig]; null until the bill is split. */
+    @ColumnInfo(name = "split_config") val splitConfig: String? = null,
+)
+
+@Entity(
+    tableName = "bill_shares",
+    primaryKeys = ["bill_id", "member_id"],
+    foreignKeys = [
+        ForeignKey(entity = BillEntity::class, parentColumns = ["id"], childColumns = ["bill_id"], onDelete = ForeignKey.CASCADE),
+        ForeignKey(entity = MemberEntity::class, parentColumns = ["id"], childColumns = ["member_id"], onDelete = ForeignKey.CASCADE),
+    ],
+    indices = [Index("member_id")],
+)
+data class BillShareEntity(
+    @ColumnInfo(name = "bill_id") val billId: String,
+    @ColumnInfo(name = "member_id") val memberId: String,
+    @ColumnInfo(name = "items_paise") val itemsPaise: Long,
+    @ColumnInfo(name = "tax_paise") val taxPaise: Long,
+    @ColumnInfo(name = "tip_paise") val tipPaise: Long,
+    @ColumnInfo(name = "adjustment_paise") val adjustmentPaise: Long,
+    @ColumnInfo(name = "total_paise") val totalPaise: Long,
 )
 
 @Entity(
@@ -75,6 +100,7 @@ data class BillItemEntity(
 data class BillWithItems(
     @Embedded val bill: BillEntity,
     @Relation(parentColumn = "id", entityColumn = "bill_id") val rawItems: List<BillItemEntity>,
+    @Relation(parentColumn = "id", entityColumn = "bill_id") val shares: List<BillShareEntity> = emptyList(),
 ) {
     /** Room cannot order a @Relation, so the receipt order is restored here. */
     val items: List<BillItemEntity> get() = rawItems.sortedBy { it.sortOrder }
@@ -98,10 +124,30 @@ fun MemberEntity.toDomain() = Member(id, groupId, name, vpa, Instant.ofEpochMill
 fun BillItem.toEntity() = BillItemEntity(id, billId, name, qty, unitPaise, totalPaise, sortOrder)
 fun BillItemEntity.toDomain() = BillItem(id, billId, name, qty, unitPaise, totalPaise, sortOrder)
 
+private val splitJson = Json { ignoreUnknownKeys = true }
+
 fun Bill.toEntity() = BillEntity(
     id = id, groupId = groupId, title = title, totalPaise = totalPaise, taxPaise = taxPaise, tipPaise = tipPaise,
     paidByMemberId = paidByMemberId, source = source.name, status = status.name, createdAt = createdAt.toEpochMilli(),
+    splitConfig = split?.let { splitJson.encodeToString(SplitConfig.serializer(), it.config) },
 )
+
+fun Bill.shareEntities(): List<BillShareEntity> = split?.shares.orEmpty().map {
+    BillShareEntity(id, it.memberId, it.itemsPaise, it.taxPaise, it.tipPaise, it.adjustmentPaise, it.totalPaise)
+}
+
+/**
+ * Rebuilds the split; null when there is none or when the stored shares no longer sum to the total (e.g. a member and
+ * their share row were deleted), so the bill shows as "not split" instead of failing the domain invariant.
+ */
+private fun BillWithItems.toSplit(): BillSplit? {
+    val config = bill.splitConfig?.let { runCatching { splitJson.decodeFromString(SplitConfig.serializer(), it) }.getOrNull() } ?: return null
+    if (shares.isEmpty()) return null
+    val order = config.participantIds.withIndex().associate { it.value to it.index }
+    val memberShares = shares.sortedBy { order[it.memberId] ?: Int.MAX_VALUE }.map { MemberShare(it.memberId, it.itemsPaise, it.taxPaise, it.tipPaise, it.adjustmentPaise) }
+    if (memberShares.sumOf { it.totalPaise } != bill.totalPaise) return null
+    return BillSplit(config, memberShares)
+}
 
 fun BillWithItems.toDomain() = Bill(
     id = bill.id, groupId = bill.groupId, title = bill.title, totalPaise = bill.totalPaise, taxPaise = bill.taxPaise,
@@ -110,4 +156,5 @@ fun BillWithItems.toDomain() = Bill(
     status = runCatching { BillStatus.valueOf(bill.status) }.getOrDefault(BillStatus.DRAFT),
     createdAt = Instant.ofEpochMilli(bill.createdAt),
     items = items.map { it.toDomain() },
+    split = toSplit(),
 )

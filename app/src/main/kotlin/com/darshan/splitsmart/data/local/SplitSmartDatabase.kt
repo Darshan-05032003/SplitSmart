@@ -5,10 +5,10 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [GroupEntity::class, MemberEntity::class, BillEntity::class, BillItemEntity::class, ReceiptDraftEntity::class],
-    version = 2,
+    entities = [GroupEntity::class, MemberEntity::class, BillEntity::class, BillItemEntity::class, ReceiptDraftEntity::class, BillShareEntity::class],
+    version = 3,
     exportSchema = true,
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
 )
 abstract class SplitSmartDatabase : RoomDatabase() {
     abstract fun groupDao(): GroupDao

@@ -2,9 +2,7 @@ package com.darshan.splitsmart.data.local
 
 import androidx.room.Room
 import android.content.Context
-import android.database.sqlite.SQLiteDatabase
-import org.json.JSONObject
-import java.io.File
+import com.darshan.splitsmart.testutil.createLegacyDatabase
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.darshan.splitsmart.data.repository.ReceiptDraftRepositoryImpl
@@ -66,29 +64,14 @@ class ReceiptDraftDaoTest {
     fun `auto migration from v1 keeps existing groups and adds receipt_drafts`() = runTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val name = "migration-test.db"
-        context.deleteDatabase(name)
-        val schema = JSONObject(File("schemas/com.darshan.splitsmart.data.local.SplitSmartDatabase/1.json").readText()).getJSONObject("database")
-        SQLiteDatabase.openOrCreateDatabase(context.getDatabasePath(name).apply { parentFile?.mkdirs() }, null).use { raw ->
-            val entities = schema.getJSONArray("entities")
-            for (i in 0 until entities.length()) {
-                val entity = entities.getJSONObject(i)
-                val table = entity.getString("tableName")
-                raw.execSQL(entity.getString("createSql").replace("\${TABLE_NAME}", table))
-                val indices = entity.optJSONArray("indices")
-                if (indices != null) for (j in 0 until indices.length()) raw.execSQL(indices.getJSONObject(j).getString("createSql").replace("\${TABLE_NAME}", table))
-            }
-            val setup = schema.getJSONArray("setupQueries")
-            for (i in 0 until setup.length()) raw.execSQL(setup.getString(i).replace("\${IDENTITY_HASH}", schema.getString("identityHash")))
-            raw.execSQL("INSERT INTO split_groups (id, name, created_at) VALUES ('g1', 'Trip', 1)")
-            raw.version = 1
-        }
+        createLegacyDatabase(context, name, 1) { raw -> raw.execSQL("INSERT INTO split_groups (id, name, created_at) VALUES ('g1', 'Trip', 1)") }
         val migrated = Room.databaseBuilder(context, SplitSmartDatabase::class.java, name).allowMainThreadQueries().build()
         try {
             assertThat(migrated.groupDao().getById("g1")!!.name).isEqualTo("Trip")
             migrated.groupDao().insert(testGroup("g2", "After").toEntity())
             migrated.receiptDraftDao().upsert(testDraft("d1", groupId = "g2").toEntity())
             assertThat(migrated.receiptDraftDao().getById("d1")!!.ocrText).contains("Paneer")
-            assertThat(migrated.openHelper.readableDatabase.version).isEqualTo(2)
+            assertThat(migrated.openHelper.readableDatabase.version).isAtLeast(2)
         } finally {
             migrated.close()
             context.deleteDatabase(name)

@@ -43,6 +43,8 @@ data class Bill(
     val status: BillStatus,
     val createdAt: Instant,
     val items: List<BillItem>,
+    /** Present once the bill has been split; shares always sum exactly to [totalPaise]. */
+    val split: BillSplit? = null,
 ) {
     init {
         require(title.isNotBlank()) { "title is blank" }
@@ -50,6 +52,11 @@ data class Bill(
         require(taxPaise in 0..Money.MAX_PAISE) { "tax out of range: $taxPaise" }
         require(tipPaise in 0..Money.MAX_PAISE) { "tip out of range: $tipPaise" }
         require(items.size <= MAX_ITEMS) { "too many items: ${items.size}" }
+        if (split != null) {
+            require(split.shares.isNotEmpty()) { "split without shares" }
+            require(split.shares.map { it.memberId }.toSet().size == split.shares.size) { "duplicate member in split" }
+            require(split.shares.sumOf { it.totalPaise } == totalPaise) { "shares ${split.shares.sumOf { it.totalPaise }} != total $totalPaise" }
+        }
     }
 
     val itemsSubtotalPaise: Long get() = items.sumOf { it.totalPaise }

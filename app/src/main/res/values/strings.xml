@@ -115,4 +115,35 @@
     <string name="llm_failure_client">request rejected</string>
     <string name="llm_failure_server">service error</string>
     <string name="llm_failure_malformed">unreadable answer</string>
+
+    <string name="member_unknown">Former member</string>
+    <string name="group_balances_title">Who owes whom</string>
+    <string name="group_all_settled">Everyone is settled up.</string>
+    <string name="debt_row">%1$s owes %2$s</string>
+    <plurals name="group_unsettled">
+        <item quantity="one">%d bill is not split yet (or has no payer).</item>
+        <item quantity="other">%d bills are not split yet (or have no payer).</item>
+    </plurals>
+    <string name="bill_split_button">Split this bill</string>
+    <string name="bill_split_edit_button">Edit split</string>
+    <string name="bill_shares_title">Shares</string>
+    <string name="bill_share_breakdown">Items %1$s · Tax %2$s · Tip %3$s</string>
+    <string name="bill_share_adjustment">Adjustment %1$s</string>
+    <string name="split_title">Split bill</string>
+    <string name="split_mode_label">How to split</string>
+    <string name="split_mode_equal">Equally</string>
+    <string name="split_mode_by_item">By item</string>
+    <string name="split_mode_by_share">By share</string>
+    <string name="split_participants">Who is in</string>
+    <string name="split_paid_by">Who paid</string>
+    <string name="split_items_title">Who had what</string>
+    <string name="split_assign_hint">Nobody selected = shared by everyone</string>
+    <string name="split_shares_label">Shares or percentages</string>
+    <string name="split_share_hint">Share</string>
+    <string name="split_preview_title">Each person pays</string>
+    <string name="split_save">Save split</string>
+    <string name="split_error_no_participants">Pick at least one person.</string>
+    <string name="split_error_no_shares">Give at least one person a share above zero.</string>
+    <string name="split_error_negative_share">Shares cannot be negative.</string>
+    <string name="split_error_duplicate">A person appears twice.</string>
 </resources>

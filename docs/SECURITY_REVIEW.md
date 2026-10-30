@@ -71,3 +71,22 @@ One entry per feature, written after attacking the feature as a pentester. Sever
   - The API key lives in the APK (`BuildConfig`); production should call Gemini through a backend or Firebase App Check-gated proxy.
   - Pin expiry: both roots expire 2028-01-28; schedule a pin refresh (and keep the regex fallback) before then.
   - Receipt text is sent to Google; a privacy notice in the UI/onboarding would be appropriate for a store release.
+
+## Feature: Split calculator (equal / by item / by share, proportional tax + tip, debt simplification)
+- Attacks tried:
+  - Money math: 2,000 random weight vectors (zeros, huge weights up to 10^5, totals to ₹1 lakh) and 1,000 random bills across all three modes must sum exactly to the paisa and never deviate from the ideal share by a full paisa (`LargestRemainderTest.property`, `SplitCalculatorTest.property`); totals up to ₹1 crore with 1,000 weights of 10^9 (BigInteger arithmetic, no overflow).
+  - Hostile configurations: no participants, duplicate participants, all-zero shares, negative shares, assignees who are not participants, empty assignment sets, items beyond the bill, a printed total smaller than the items (discount) or larger (rounding) (`SplitCalculatorTest`).
+  - Share text from the UI: letters, blanks, negatives, 6+ digits (`SplitViewModelTest`); only the ratio of parsed non-negative integers is used.
+  - Debt simplification: unbalanced balances (rejected), 1,000 random balance vectors always settle with ≤ n − 1 transfers (`DebtSimplifierTest.property`); 1,000 members × 1,000 bills (`SplitStressTest`).
+  - Persistence: shares row deleted behind the bill's back (member removed) → the bill reports "no split" instead of violating the invariant; a bill whose stored shares do not sum to its total can never be constructed (`Bill.init`, `BillSplitDaoTest`).
+  - Double tap on Save split; process death mid-edit (config, share texts and payer in SavedStateHandle).
+- What broke:
+  - **Low:** the first draft of the by-weights path derived item shares as "total − tax − tip", which could produce a −1 paisa item share for tiny bills; now items, tax and tip are each apportioned independently and the adjustment line absorbs rounding, so every component is ≥ 0 and the four component sums equal the bill's components exactly.
+  - **Low (test bug):** an expected value in the largest-remainder test was wrong (429/286/285 for 1000 over 3:2:2); the correct Hamilton result 428/286/286 is now asserted together with a second worked example.
+- Fixed now:
+  - Independent apportionment per component with `adjustmentPaise` carrying rounding and printed-total differences (`SplitCalculatorTest.a total that does not add up…`).
+  - `Bill` invariant: shares non-empty, unique members, sum == total; `BillWithItems.toSplit()` returns null for inconsistent rows (`BillSplitDaoTest.shares are cascade deleted…`).
+  - Group balances are computed inside `runCatching` so a corrupt split can never take the group screen down.
+- Scope for improvement:
+  - Shares that reference a deleted member fall back to "Former member" in the UI; a background cleanup could re-split such bills automatically.
+  - Percentages are not required to sum to 100 (only ratios matter); the UI could show the normalised percentage next to each share.
