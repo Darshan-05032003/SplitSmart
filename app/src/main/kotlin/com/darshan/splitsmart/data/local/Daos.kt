@@ -57,6 +57,9 @@ interface MemberDao {
     @Query("SELECT * FROM group_members WHERE group_id = :groupId ORDER BY created_at ASC, id ASC")
     suspend fun getByGroup(groupId: String): List<MemberEntity>
 
+    @Query("SELECT * FROM group_members ORDER BY created_at ASC, id ASC")
+    fun observeAll(): Flow<List<MemberEntity>>
+
     @Query("SELECT COUNT(*) FROM group_members WHERE group_id = :groupId")
     suspend fun countByGroup(groupId: String): Int
 }
@@ -111,6 +114,10 @@ interface BillDao {
     @Transaction
     @Query("SELECT * FROM bills WHERE group_id = :groupId ORDER BY created_at DESC, id DESC LIMIT :limit OFFSET :offset")
     suspend fun getPage(groupId: String, limit: Int, offset: Int): List<BillWithItems>
+
+    @Transaction
+    @Query("SELECT * FROM bills ORDER BY created_at DESC, id DESC")
+    fun observeAll(): Flow<List<BillWithItems>>
 
     @Transaction
     @Query("SELECT * FROM bills ORDER BY created_at DESC, id DESC LIMIT :limit")

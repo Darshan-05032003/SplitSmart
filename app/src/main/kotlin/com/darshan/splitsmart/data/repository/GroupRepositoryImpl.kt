@@ -45,6 +45,9 @@ class GroupRepositoryImpl @Inject constructor(
     override fun observeMembers(groupId: String): Flow<List<Member>> =
         memberDao.observeByGroup(groupId).map { list -> list.map { it.toDomain() } }.flowOn(dispatchers.io)
 
+    override fun observeAllMembers(): Flow<List<Member>> =
+        memberDao.observeAll().map { list -> list.map { it.toDomain() } }.flowOn(dispatchers.io)
+
     override suspend fun getMembers(groupId: String): List<Member> =
         withContext(dispatchers.io) { memberDao.getByGroup(groupId).map { it.toDomain() } }
 

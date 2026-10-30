@@ -5,6 +5,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.darshan.splitsmart.ui.bill.BillDetailRoute
 import com.darshan.splitsmart.ui.groupdetail.GroupDetailRoute
 import com.darshan.splitsmart.ui.groups.GroupsRoute
@@ -17,7 +18,7 @@ import kotlinx.serialization.Serializable
 @Serializable data object GroupsDestination
 @Serializable data class GroupDetailDestination(val groupId: String)
 @Serializable data class BillDetailDestination(val billId: String)
-@Serializable data class ScanDestination(val groupId: String)
+@Serializable data class ScanDestination(val groupId: String, val gallery: Boolean = false)
 @Serializable data class ReviewDestination(val draftId: String)
 @Serializable data class SplitDestination(val billId: String)
 @Serializable data class SettleUpDestination(val groupId: String)
@@ -26,7 +27,10 @@ import kotlinx.serialization.Serializable
 fun SplitSmartNavHost(navController: NavHostController = rememberNavController()) {
     NavHost(navController = navController, startDestination = GroupsDestination) {
         composable<GroupsDestination> {
-            GroupsRoute(onOpenGroup = { navController.navigate(GroupDetailDestination(it)) })
+            GroupsRoute(
+                onOpenGroup = { navController.navigate(GroupDetailDestination(it)) },
+                onScanReceipt = { navController.navigate(ScanDestination(it)) },
+            )
         }
         composable<GroupDetailDestination> {
             GroupDetailRoute(
@@ -34,6 +38,7 @@ fun SplitSmartNavHost(navController: NavHostController = rememberNavController()
                 onOpenBill = { navController.navigate(BillDetailDestination(it)) },
                 onScanReceipt = { navController.navigate(ScanDestination(it)) },
                 onSettleUp = { navController.navigate(SettleUpDestination(it)) },
+                onScanFromGallery = { navController.navigate(ScanDestination(it, gallery = true)) },
             )
         }
         composable<BillDetailDestination> {
@@ -45,8 +50,12 @@ fun SplitSmartNavHost(navController: NavHostController = rememberNavController()
         composable<SplitDestination> {
             SplitRoute(onBack = { navController.popBackStack() }, onSaved = { navController.popBackStack() })
         }
-        composable<ScanDestination> {
-            ScanRoute(onBack = { navController.popBackStack() }, onContinue = { navController.navigate(ReviewDestination(it)) })
+        composable<ScanDestination> { entry ->
+            ScanRoute(
+                onBack = { navController.popBackStack() },
+                onContinue = { navController.navigate(ReviewDestination(it)) },
+                startWithGallery = entry.toRoute<ScanDestination>().gallery,
+            )
         }
         composable<ReviewDestination> {
             ReviewRoute(

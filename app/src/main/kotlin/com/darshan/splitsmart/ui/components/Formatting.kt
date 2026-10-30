@@ -52,3 +52,23 @@ fun BillSource.label(): String = stringResource(
         BillSource.SCAN_REGEX -> R.string.bill_source_regex
     },
 )
+
+/** Whole calendar days between [instant] and [now] in [zone] (0 = same day). */
+fun daysAgo(instant: Instant, now: Instant, zone: ZoneId = ZoneId.systemDefault()): Long =
+    java.time.temporal.ChronoUnit.DAYS.between(instant.atZone(zone).toLocalDate(), now.atZone(zone).toLocalDate())
+
+/** "today", "yesterday", "3 days ago" or a date. */
+@Composable
+fun relativeDate(instant: Instant, now: Instant = Instant.now()): String {
+    val days = daysAgo(instant, now)
+    return when {
+        days <= 0L -> stringResource(R.string.date_today)
+        days == 1L -> stringResource(R.string.date_yesterday)
+        days < 7L -> androidx.compose.ui.res.pluralStringResource(R.plurals.date_days_ago, days.toInt(), days.toInt())
+        else -> formatDate(instant)
+    }
+}
+
+/** Short date for list rows, e.g. "28 Oct". */
+fun formatShortDate(instant: Instant, zone: ZoneId = ZoneId.systemDefault()): String =
+    DateTimeFormatter.ofPattern("d MMM").format(instant.atZone(zone))

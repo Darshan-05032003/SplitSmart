@@ -60,8 +60,6 @@
     <string name="bill_delete">Delete bill</string>
     <string name="bill_paid_by_value">Paid by %1$s</string>
     <string name="bill_payer_unknown">nobody yet</string>
-    <string name="bill_tax">Tax %1$s</string>
-    <string name="bill_tip">Tip %1$s</string>
     <string name="bill_items_title">Items</string>
     <string name="bill_no_items">No line items. Scan a receipt to add them.</string>
     <string name="bill_item_qty">%1$d × %2$s</string>
@@ -121,7 +119,6 @@
     <string name="review_tax">Tax (₹)</string>
     <string name="review_tip">Tip (₹)</string>
     <string name="review_total">Total (₹)</string>
-    <string name="review_subtotal">Items add up to %1$s</string>
     <string name="review_mismatch">Items + tax + tip differ from the total by %1$s</string>
     <string name="review_use_computed">Use computed total</string>
     <string name="review_save">Save bill</string>
@@ -172,8 +169,6 @@
     <string name="settle_empty">Nobody owes anything</string>
     <string name="settle_empty_subtitle">Split a bill with a payer and the debts show up here.</string>
     <string name="settle_pay">Pay via UPI</string>
-    <string name="settle_share">Share</string>
-    <string name="settle_qr">QR</string>
     <string name="settle_pay_with">Pay with</string>
     <string name="settle_share_with">Share via</string>
     <string name="settle_missing_vpa">%1$s has no UPI ID yet, so there is no payment link.</string>
@@ -185,4 +180,88 @@
     <string name="settle_qr_dismiss">Done</string>
     <string name="settle_no_upi_app">No UPI app found on this phone. Share the link instead.</string>
     <string name="settle_share_failed">No app available to share with.</string>
+
+    <!-- Brand / home -->
+    <string name="app_tagline">Split bills, not friendships</string>
+    <string name="action_save">Save</string>
+    <string name="badge_ai">AI</string>
+    <string name="badge_ai_read">Read by AI</string>
+    <string name="balance_you_are_owed">you\'re owed %1$s</string>
+    <string name="balance_you_owe">you owe %1$s</string>
+    <string name="balance_settled">settled up</string>
+    <string name="balance_to_settle">%1$s to settle</string>
+    <string name="balance_no_bills">no bills yet</string>
+    <string name="date_today">today</string>
+    <string name="date_yesterday">yesterday</string>
+    <plurals name="date_days_ago">
+        <item quantity="one">%d day ago</item>
+        <item quantity="other">%d days ago</item>
+    </plurals>
+    <string name="groups_new_group">New group</string>
+    <string name="groups_empty_action">Create your first group</string>
+    <string name="groups_your_groups">Your groups</string>
+    <string name="groups_name_placeholder">e.g. Goa trip, Flat 302</string>
+    <string name="groups_pick_for_scan">Which group is this receipt for?</string>
+    <string name="profile_title">Your name</string>
+    <string name="profile_body">Use the same name you have in your groups, so SplitSmart can show what you owe and what you are owed. Stored only on this phone.</string>
+    <plurals name="home_to_settle_across">
+        <item quantity="one">Still to settle in %d group</item>
+        <item quantity="other">Still to settle across %d groups</item>
+    </plurals>
+    <string name="home_set_name">Add your name to see what you owe →</string>
+    <string name="home_name_not_found">No member is called %1$s yet. Tap to change →</string>
+    <string name="home_your_balance">Hi %1$s, your balance</string>
+    <string name="home_you_are_owed">You are owed</string>
+    <string name="home_you_owe">You owe</string>
+    <string name="home_all_settled">You are all settled up</string>
+    <string name="home_nothing_to_settle">Nothing to settle yet</string>
+    <string name="group_card_meta">%1$s · %2$s · %3$s</string>
+
+    <!-- Group detail -->
+    <string name="group_summary_meta">%1$s · %2$s</string>
+    <string name="group_summary_spent">spent</string>
+    <plurals name="group_summary_outstanding">
+        <item quantity="one">%1$s to settle in %2$d payment</item>
+        <item quantity="other">%1$s to settle in %2$d payments</item>
+    </plurals>
+    <string name="group_summary_no_bills">No bills yet. Scan a receipt to get started.</string>
+    <string name="add_bill_gallery">From gallery</string>
+    <string name="add_bill_manual">Enter manually</string>
+    <string name="bill_row_meta">%1$s · %2$s</string>
+    <string name="bill_no_payer">no payer yet</string>
+
+    <!-- Scan / review -->
+    <string name="scan_frame_hint">Fit the whole receipt inside the frame</string>
+    <string name="scan_gallery_short">Gallery</string>
+    <plurals name="scan_result_lines">
+        <item quantity="one">%d line recognised on this device. Next, AI turns it into items.</item>
+        <item quantity="other">%d lines recognised on this device. Next, AI turns them into items.</item>
+    </plurals>
+    <plurals name="review_items_header">
+        <item quantity="one">%d item</item>
+        <item quantity="other">%d items</item>
+    </plurals>
+    <string name="review_edit_hint">Everything is editable</string>
+    <string name="review_totals">Totals</string>
+    <string name="review_items_subtotal">Items subtotal</string>
+    <string name="review_adds_up">Items + tax + tip match the total</string>
+    <string name="review_tax_label">Tax</string>
+    <string name="review_tip_label">Tip</string>
+
+    <!-- Split -->
+    <string name="split_bill_total">Total %1$s</string>
+    <string name="split_paid_badge">paid</string>
+    <string name="split_total_check_ok">Shares add up to %1$s, exactly the bill total (paise-exact).</string>
+    <string name="split_total_check_off">Shares add up to %1$s but the bill says %2$s.</string>
+
+    <!-- Settle up -->
+    <plurals name="settle_summary">
+        <item quantity="one">%1$d payment settles %2$s</item>
+        <item quantity="other">%1$d payments settle %2$s</item>
+    </plurals>
+    <string name="settle_summary_hint">The fewest payments that clear every balance in the group.</string>
+    <string name="settle_note">"Pay via UPI" opens your UPI app with the amount filled in. SplitSmart never sees your payment; balances update when bills change.</string>
+    <string name="settle_no_upi_id">No UPI ID yet</string>
+    <string name="settle_qr_action">Show QR to pay %1$s</string>
+    <string name="settle_share_action">Share the request with %1$s</string>
 </resources>

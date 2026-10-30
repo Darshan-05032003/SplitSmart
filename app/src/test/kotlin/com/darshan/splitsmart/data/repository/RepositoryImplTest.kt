@@ -67,4 +67,18 @@ class RepositoryImplTest {
         bills.deleteBill("b1")
         assertThat(bills.getBill("b1")).isNull()
     }
+
+    @Test
+    fun `all members and all bills across groups for the home screen`() = runTest {
+        val a = groups.createGroup("Goa")
+        val b = groups.createGroup("Flat")
+        val m1 = groups.addMember(a.id, "Asha", null)
+        val m2 = groups.addMember(b.id, "Ravi", null)
+        assertThat(groups.observeAllMembers().first()).containsExactly(m1, m2)
+        val older = testBill(id = "old", groupId = a.id, createdAt = java.time.Instant.EPOCH)
+        val newer = testBill(id = "new", groupId = b.id)
+        bills.saveBill(older)
+        bills.saveBill(newer)
+        assertThat(bills.observeAllBills().first().map { it.id }).containsExactly("new", "old").inOrder()
+    }
 }

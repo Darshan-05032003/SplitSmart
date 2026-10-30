@@ -51,6 +51,8 @@ open class FakeGroupRepository(private val clock: Clock = fixedClock) : GroupRep
     override fun observeMembers(groupId: String): Flow<List<Member>> =
         members.map { list -> list.filter { it.groupId == groupId }.sortedBy { it.createdAt } }
 
+    override fun observeAllMembers(): Flow<List<Member>> = members.map { list -> list.sortedBy { it.createdAt } }
+
     override suspend fun getMembers(groupId: String): List<Member> = members.value.filter { it.groupId == groupId }
 
     override suspend fun addMember(groupId: String, name: String, vpa: String?): Member {
@@ -82,6 +84,8 @@ open class FakeBillRepository : BillRepository {
 
     override fun observeRecentBills(limit: Int): Flow<List<Bill>> =
         bills.map { list -> list.sortedByDescending { it.createdAt }.take(limit) }
+
+    override fun observeAllBills(): Flow<List<Bill>> = bills.map { list -> list.sortedByDescending { it.createdAt } }
 
     override fun observeBill(billId: String): Flow<Bill?> = bills.map { list -> list.find { it.id == billId } }
 

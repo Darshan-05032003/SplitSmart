@@ -26,6 +26,9 @@ class BillRepositoryImpl @Inject constructor(
     override fun observeRecentBills(limit: Int): Flow<List<Bill>> =
         billDao.observeRecent(limit).map { list -> list.mapNotNull { it.toDomainOrNull() } }.flowOn(dispatchers.io)
 
+    override fun observeAllBills(): Flow<List<Bill>> =
+        billDao.observeAll().map { list -> list.mapNotNull { it.toDomainOrNull() } }.flowOn(dispatchers.io)
+
     override fun observeBill(billId: String): Flow<Bill?> =
         billDao.observeById(billId).map { it?.toDomainOrNull() }.flowOn(dispatchers.io)
 

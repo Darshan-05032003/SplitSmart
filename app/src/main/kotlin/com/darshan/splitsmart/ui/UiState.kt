@@ -80,4 +80,11 @@ object SplitSmartTestTags {
     const val SETTLE_QR = "settle_qr"
     const val SETTLE_ADD_VPA = "settle_add_vpa"
     const val QR_IMAGE = "qr_image"
+    const val YOUR_NAME_FIELD = "your_name_field"
+    const val PROFILE_BUTTON = "profile_button"
+    const val HOME_BALANCE = "home_balance"
+    const val HOME_SCAN = "home_scan"
+    const val SET_NAME_PROMPT = "set_name_prompt"
+    const val GALLERY_ADD_BUTTON = "gallery_add_button"
+    const val AI_BADGE = "ai_badge"
 }

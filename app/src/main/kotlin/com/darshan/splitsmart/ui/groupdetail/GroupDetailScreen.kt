@@ -1,27 +1,35 @@
 package com.darshan.splitsmart.ui.groupdetail
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,6 +38,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -39,25 +48,45 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.darshan.splitsmart.R
 import com.darshan.splitsmart.core.Money
 import com.darshan.splitsmart.domain.model.Bill
+import com.darshan.splitsmart.domain.model.BillSource
+import com.darshan.splitsmart.domain.model.BillStatus
 import com.darshan.splitsmart.domain.model.Debt
 import com.darshan.splitsmart.domain.model.Member
 import com.darshan.splitsmart.ui.LoadState
 import com.darshan.splitsmart.ui.SplitSmartTestTags
+import com.darshan.splitsmart.ui.components.AiBadge
+import com.darshan.splitsmart.ui.components.AppIcons
+import com.darshan.splitsmart.ui.components.BannerTone
+import com.darshan.splitsmart.ui.components.ContentCard
 import com.darshan.splitsmart.ui.components.EmptyView
 import com.darshan.splitsmart.ui.components.ErrorView
+import com.darshan.splitsmart.ui.components.GroupAvatar
+import com.darshan.splitsmart.ui.components.HeroCard
+import com.darshan.splitsmart.ui.components.IconBubble
+import com.darshan.splitsmart.ui.components.InfoBanner
+import com.darshan.splitsmart.ui.components.InitialAvatar
 import com.darshan.splitsmart.ui.components.LoadingView
-import com.darshan.splitsmart.ui.components.formatDate
+import com.darshan.splitsmart.ui.components.SectionHeader
+import com.darshan.splitsmart.ui.components.appIcon
+import com.darshan.splitsmart.ui.components.formatShortDate
 import com.darshan.splitsmart.ui.components.label
+import com.darshan.splitsmart.ui.theme.SplitSmartTheme
 
 @Composable
 fun GroupDetailRoute(
@@ -66,6 +95,7 @@ fun GroupDetailRoute(
     onOpenBill: (String) -> Unit,
     onScanReceipt: (String) -> Unit,
     onSettleUp: (String) -> Unit = {},
+    onScanFromGallery: (String) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
@@ -101,6 +131,7 @@ fun GroupDetailRoute(
             onBillAmount = viewModel::onBillAmountChange,
             onBillPayer = viewModel::onBillPayerChange,
             onSubmitBill = viewModel::submitBill,
+            onScanFromGallery = { onScanFromGallery(viewModel.groupId) },
         ),
     )
 }
@@ -124,6 +155,7 @@ data class GroupDetailCallbacks(
     val onBillAmount: (String) -> Unit,
     val onBillPayer: (String?) -> Unit,
     val onSubmitBill: () -> Unit,
+    val onScanFromGallery: () -> Unit = {},
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -133,7 +165,7 @@ fun GroupDetailScreen(state: GroupDetailUiState, snackbar: SnackbarHostState, ca
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(content?.data?.group?.name ?: stringResource(R.string.group_title)) },
+                title = { Text(content?.data?.group?.name ?: stringResource(R.string.group_title), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = {
                     IconButton(onClick = callbacks.onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back)) }
                 },
@@ -147,16 +179,6 @@ fun GroupDetailScreen(state: GroupDetailUiState, snackbar: SnackbarHostState, ca
             )
         },
         snackbarHost = { SnackbarHost(snackbar) },
-        floatingActionButton = {
-            if (content != null) {
-                ExtendedFloatingActionButton(
-                    onClick = callbacks.onScan,
-                    modifier = Modifier.testTag(SplitSmartTestTags.SCAN_BUTTON),
-                    text = { Text(stringResource(R.string.scan_receipt)) },
-                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                )
-            }
-        },
     ) { padding ->
         when (val detail = state.detail) {
             LoadState.Loading -> LoadingView(Modifier.padding(padding))
@@ -169,86 +191,216 @@ fun GroupDetailScreen(state: GroupDetailUiState, snackbar: SnackbarHostState, ca
     state.billDraft?.let { BillDialog(it, content?.data?.members.orEmpty(), callbacks) }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun GroupDetailContent(detail: GroupDetail, callbacks: GroupDetailCallbacks, modifier: Modifier) {
-    LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 8.dp, 16.dp, 96.dp)) {
-        item {
-            SectionHeader(stringResource(R.string.members_title), stringResource(R.string.members_add), SplitSmartTestTags.ADD_MEMBER_BUTTON, callbacks.onAddMember)
-        }
-        if (detail.members.isEmpty()) {
-            item { Text(stringResource(R.string.members_empty), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp)) }
-        }
-        items(detail.members, key = { "m" + it.id }) { member -> MemberRow(member, onRemove = { callbacks.onRemoveMember(member.id) }) }
-        item {
-            Spacer(Modifier.padding(top = 16.dp))
-            SectionHeader(stringResource(R.string.bills_title), stringResource(R.string.bills_add), SplitSmartTestTags.ADD_BILL_BUTTON, callbacks.onAddBill)
-        }
-        if (detail.bills.isEmpty()) {
-            item { Text(stringResource(R.string.bills_empty), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp)) }
-        }
-        items(detail.bills, key = { "b" + it.id }) { bill -> BillRow(bill, onClick = { callbacks.onOpenBill(bill.id) }) }
-        if (detail.bills.isNotEmpty()) {
-            item {
-                Spacer(Modifier.padding(top = 16.dp))
-                Text(stringResource(R.string.group_balances_title), style = MaterialTheme.typography.titleMedium)
-            }
-            if (detail.debts.isEmpty()) {
-                item { Text(stringResource(R.string.group_all_settled), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp)) }
-            }
-            items(detail.debts, key = { "d" + it.fromMemberId + it.toMemberId }) { debt -> DebtRow(debt, detail.members) }
-            if (detail.debts.isNotEmpty()) {
-                item {
-                    Button(onClick = callbacks.onSettleUp, modifier = Modifier.fillMaxWidth().padding(top = 8.dp).testTag(SplitSmartTestTags.SETTLE_UP_BUTTON)) { Text(stringResource(R.string.group_settle_up)) }
+    val unknown = stringResource(R.string.member_unknown)
+    val nameOf = { id: String? -> detail.members.find { it.id == id }?.name }
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item(key = "summary") { SummaryCard(detail, callbacks.onSettleUp) }
+        item(key = "members") {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SectionHeader(stringResource(R.string.members_title)) {
+                    TextButton(onClick = callbacks.onAddMember, modifier = Modifier.testTag(SplitSmartTestTags.ADD_MEMBER_BUTTON)) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.members_add))
+                    }
+                }
+                if (detail.members.isEmpty()) {
+                    Text(stringResource(R.string.members_empty), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                } else {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        detail.members.forEach { member -> MemberChip(member, onRemove = { callbacks.onRemoveMember(member.id) }) }
+                    }
                 }
             }
+        }
+        item(key = "add") { AddBillCard(callbacks) }
+        if (detail.bills.isNotEmpty()) {
+            item(key = "balances") {
+                SectionHeader(stringResource(R.string.group_balances_title))
+            }
+            if (detail.debts.isEmpty()) {
+                item(key = "settled") {
+                    InfoBanner(BannerTone.SUCCESS, icon = rememberVectorPainter(Icons.Default.CheckCircle)) {
+                        Text(stringResource(R.string.group_all_settled), style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+            items(detail.debts, key = { "d" + it.fromMemberId + it.toMemberId }) { debt ->
+                DebtRow(debt, nameOf(debt.fromMemberId) ?: unknown, nameOf(debt.toMemberId) ?: unknown)
+            }
             if (detail.unsettledBills > 0) {
-                item {
+                item(key = "unsettled") {
                     Text(
                         pluralStringResource(R.plurals.group_unsettled, detail.unsettledBills, detail.unsettledBills),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun DebtRow(debt: Debt, members: List<Member>) {
-    val unknown = stringResource(R.string.member_unknown)
-    val name = { id: String -> members.find { it.id == id }?.name ?: unknown }
-    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp).testTag(SplitSmartTestTags.DEBT_ITEM), verticalAlignment = Alignment.CenterVertically) {
-        Text(stringResource(R.string.debt_row, name(debt.fromMemberId), name(debt.toMemberId)), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Text(Money.formatInr(debt.amountPaise), style = MaterialTheme.typography.titleMedium)
-    }
-}
-
-@Composable
-private fun SectionHeader(title: String, action: String, tag: String, onAction: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(title, style = MaterialTheme.typography.titleMedium)
-        TextButton(onClick = onAction, modifier = Modifier.testTag(tag)) { Text(action) }
-    }
-}
-
-@Composable
-private fun MemberRow(member: Member, onRemove: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag(SplitSmartTestTags.MEMBER_ITEM), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text(member.name, style = MaterialTheme.typography.bodyLarge)
-            member.vpa?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        item(key = "billsHeader") { SectionHeader(stringResource(R.string.bills_title)) }
+        if (detail.bills.isEmpty()) {
+            item(key = "noBills") {
+                Text(stringResource(R.string.bills_empty), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+            }
         }
-        IconButton(onClick = onRemove) { Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.members_remove, member.name)) }
+        items(detail.bills, key = { "b" + it.id }) { bill ->
+            BillRow(bill, payerName = nameOf(bill.paidByMemberId), onClick = { callbacks.onOpenBill(bill.id) })
+        }
     }
 }
 
 @Composable
-fun BillRow(bill: Bill, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable(onClick = onClick).testTag(SplitSmartTestTags.BILL_ITEM)) {
+private fun SummaryCard(detail: GroupDetail, onSettleUp: () -> Unit) {
+    val onHero = SplitSmartTheme.colors.onHero
+    val spent = detail.bills.sumOf { it.totalPaise }
+    val outstanding = detail.debts.sumOf { it.amountPaise }
+    HeroCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            GroupAvatar(detail.group.name, size = 44.dp)
+            Spacer(Modifier.width(12.dp))
+            Text(
+                stringResource(
+                    R.string.group_summary_meta,
+                    pluralStringResource(R.plurals.member_count, detail.members.size, detail.members.size),
+                    pluralStringResource(R.plurals.bill_count, detail.bills.size, detail.bills.size),
+                ),
+                style = MaterialTheme.typography.labelLarge, color = onHero.copy(alpha = 0.9f),
+            )
+        }
+        Text(
+            buildAnnotatedString {
+                withStyle(MaterialTheme.typography.headlineLarge.toSpanStyle()) { append(Money.formatInr(spent)) }
+                withStyle(MaterialTheme.typography.titleMedium.toSpanStyle()) { append(" " + stringResource(R.string.group_summary_spent)) }
+            },
+            color = onHero,
+        )
+        Text(
+            if (outstanding > 0) {
+                pluralStringResource(R.plurals.group_summary_outstanding, detail.debts.size, Money.formatInr(outstanding), detail.debts.size)
+            } else {
+                stringResource(if (detail.bills.isEmpty()) R.string.group_summary_no_bills else R.string.group_all_settled)
+            },
+            style = MaterialTheme.typography.bodyMedium, color = onHero.copy(alpha = 0.9f),
+        )
+        if (detail.debts.isNotEmpty()) {
+            Button(
+                onClick = onSettleUp,
+                colors = ButtonDefaults.buttonColors(containerColor = onHero, contentColor = MaterialTheme.colorScheme.primary),
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp).testTag(SplitSmartTestTags.SETTLE_UP_BUTTON),
+            ) {
+                Icon(appIcon(AppIcons.Wallet), contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.group_settle_up))
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddBillCard(callbacks: GroupDetailCallbacks) {
+    ContentCard {
+        Text(stringResource(R.string.bills_add), style = MaterialTheme.typography.titleMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AddBillAction(appIcon(AppIcons.Camera), stringResource(R.string.scan_receipt), SplitSmartTestTags.SCAN_BUTTON, callbacks.onScan, primary = true)
+            AddBillAction(appIcon(AppIcons.Gallery), stringResource(R.string.add_bill_gallery), SplitSmartTestTags.GALLERY_ADD_BUTTON, callbacks.onScanFromGallery)
+            AddBillAction(appIcon(AppIcons.EditNote), stringResource(R.string.add_bill_manual), SplitSmartTestTags.ADD_BILL_BUTTON, callbacks.onAddBill)
+        }
+    }
+}
+
+@Composable
+private fun RowScope.AddBillAction(icon: Painter, label: String, tag: String, onClick: () -> Unit, primary: Boolean = false) {
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        onClick = onClick,
+        color = if (primary) scheme.primary else scheme.surfaceContainerHighest,
+        contentColor = if (primary) scheme.onPrimary else scheme.onSurface,
+        shape = MaterialTheme.shapes.small,
+        modifier = Modifier.weight(1f).testTag(tag),
+    ) {
+        Column(Modifier.padding(vertical = 14.dp, horizontal = 6.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
+            Text(label, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center, maxLines = 2)
+        }
+    }
+}
+
+@Composable
+private fun MemberChip(member: Member, onRemove: () -> Unit) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerLow, shape = CircleShape,
+        modifier = Modifier.testTag(SplitSmartTestTags.MEMBER_ITEM),
+    ) {
+        Row(Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            InitialAvatar(member.name, size = 32.dp)
+            Column(Modifier.padding(start = 8.dp)) {
+                Text(member.name, style = MaterialTheme.typography.labelLarge)
+                member.vpa?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
+            IconButton(onClick = onRemove, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.members_remove, member.name), modifier = Modifier.size(16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun DebtRow(debt: Debt, from: String, to: String) {
+    ContentCard(Modifier.testTag(SplitSmartTestTags.DEBT_ITEM), padding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            InitialAvatar(from, size = 32.dp)
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp).size(16.dp),
+            )
+            InitialAvatar(to, size = 32.dp)
+            Spacer(Modifier.width(12.dp))
+            Text(stringResource(R.string.debt_row, from, to), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Text(Money.formatInr(debt.amountPaise), style = MaterialTheme.typography.titleMedium, color = SplitSmartTheme.colors.owe.content)
+        }
+    }
+}
+
+/** One bill in a group's history: date, payer, amount and an AI badge when Gemini read the receipt. */
+@Composable
+fun BillRow(bill: Bill, payerName: String? = null, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Card(
+        onClick = onClick, shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = scheme.surfaceContainerLow),
+        modifier = Modifier.fillMaxWidth().testTag(SplitSmartTestTags.BILL_ITEM),
+    ) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(bill.title, style = MaterialTheme.typography.titleSmall)
-                Text("${formatDate(bill.createdAt)} · ${bill.status.label()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            val scanned = bill.source != BillSource.MANUAL
+            IconBubble(
+                appIcon(if (scanned) AppIcons.Receipt else AppIcons.EditNote),
+                container = if (bill.source == BillSource.SCAN_LLM) scheme.secondaryContainer else scheme.primaryContainer,
+                content = if (bill.source == BillSource.SCAN_LLM) scheme.onSecondaryContainer else scheme.onPrimaryContainer,
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(bill.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    if (bill.source == BillSource.SCAN_LLM) {
+                        Spacer(Modifier.width(6.dp))
+                        AiBadge(Modifier.testTag(SplitSmartTestTags.AI_BADGE))
+                    }
+                }
+                Text(
+                    stringResource(
+                        R.string.bill_row_meta, formatShortDate(bill.createdAt),
+                        payerName?.let { stringResource(R.string.bill_paid_by_value, it) } ?: stringResource(R.string.bill_no_payer),
+                    ),
+                    style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                Text(bill.status.label(), style = MaterialTheme.typography.labelSmall, color = if (bill.status == BillStatus.DRAFT) scheme.tertiary else scheme.primary)
             }
             Spacer(Modifier.width(8.dp))
             Text(Money.formatInr(bill.totalPaise), style = MaterialTheme.typography.titleMedium)
@@ -316,7 +468,7 @@ private fun BillDialog(draft: BillDraft, members: List<Member>, callbacks: Group
                 )
                 if (members.isNotEmpty()) {
                     Text(stringResource(R.string.bill_paid_by), style = MaterialTheme.typography.labelLarge)
-                    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         members.forEach { m ->
                             FilterChip(selected = draft.payerId == m.id, onClick = { callbacks.onBillPayer(if (draft.payerId == m.id) null else m.id) }, label = { Text(m.name) })
                         }

@@ -97,7 +97,7 @@ class SplitFlowIntegrationTest {
         }
         val vm = GroupDetailViewModel(SavedStateHandle(mapOf("groupId" to "g1")), groupRepo, billRepo, AddMemberUseCase(groupRepo), CreateManualBillUseCase(billRepo, fixedClock), dispatchers)
         compose.setContent { SplitSmartTheme { GroupDetailRoute(viewModel = vm, onBack = {}, onOpenBill = {}, onScanReceipt = {}) } }
-        compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.DEBT_ITEM) }
+        compose.waitUntilWithMainLooper { compose.scrollListTo(SplitSmartTestTags.DEBT_ITEM) } // below the summary and add-bill cards now
         compose.onNodeWithTag(SplitSmartTestTags.DEBT_ITEM).performScrollTo()
         compose.onNodeWithText("Ravi owes Asha").assertExists()
         compose.onNodeWithText("₹150.00").assertExists()

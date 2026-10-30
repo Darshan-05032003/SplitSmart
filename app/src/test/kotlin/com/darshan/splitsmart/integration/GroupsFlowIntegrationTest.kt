@@ -28,6 +28,7 @@ import com.darshan.splitsmart.ui.groups.GroupsViewModel
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
+import androidx.compose.ui.test.performScrollToNode
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -57,7 +58,7 @@ class GroupsFlowIntegrationTest {
 
     @Test
     fun `empty state then create a group from the dialog and open it`() {
-        val vm = GroupsViewModel(groups, CreateGroupUseCase(groups), dispatchers)
+        val vm = GroupsViewModel(groups, bills, com.darshan.splitsmart.data.settings.InMemoryProfileRepository(), CreateGroupUseCase(groups), dispatchers)
         var opened: String? = null
         compose.setContent { SplitSmartTheme { GroupsRoute(viewModel = vm, onOpenGroup = { opened = it }) } }
         compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.EMPTY) }
@@ -98,10 +99,17 @@ class GroupsFlowIntegrationTest {
         val saved = runOffMain { bills.getBill(openedBill!!) }!!
         assertThat(saved.totalPaise).isEqualTo(125_050)
         assertThat(saved.title).isEqualTo("Dinner")
-        compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.BILL_ITEM) }
+        // the bill list now sits below the summary, members and add-bill cards: scroll the lazy list to it
+        compose.waitUntilWithMainLooper { compose.scrollListTo(SplitSmartTestTags.BILL_ITEM) }
         compose.onNodeWithText("₹1,250.50").assertIsDisplayed()
     }
 }
 
 internal fun androidx.compose.ui.test.junit4.ComposeTestRule.onAllNodesWithTagExists(tag: String): Boolean =
     onAllNodes(androidx.compose.ui.test.hasTestTag(tag)).fetchSemanticsNodes().isNotEmpty()
+
+/** Scrolls the screen's lazy list until a node with [tag] is composed; false while it does not exist yet. */
+internal fun androidx.compose.ui.test.junit4.ComposeTestRule.scrollListTo(tag: String): Boolean = runCatching {
+    onNode(androidx.compose.ui.test.hasScrollToNodeAction()).performScrollToNode(androidx.compose.ui.test.hasTestTag(tag))
+    Unit
+}.isSuccess
