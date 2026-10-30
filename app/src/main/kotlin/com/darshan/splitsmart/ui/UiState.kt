@@ -69,4 +69,11 @@ object SplitSmartTestTags {
     const val SPLIT_SHARE_FIELD = "split_share_field"
     const val SPLIT_PREVIEW_ROW = "split_preview_row"
     const val SPLIT_SAVE = "split_save"
+    const val SETTLE_UP_BUTTON = "settle_up_button"
+    const val SETTLE_ITEM = "settle_item"
+    const val SETTLE_PAY = "settle_pay"
+    const val SETTLE_SHARE = "settle_share"
+    const val SETTLE_QR = "settle_qr"
+    const val SETTLE_ADD_VPA = "settle_add_vpa"
+    const val QR_IMAGE = "qr_image"
 }

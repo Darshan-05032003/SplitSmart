@@ -89,3 +89,23 @@ on the build machine (Robolectric SQLite on the JVM, JDK 17 toolchain, Gradle `-
 - Fix applied / recommendation:
   - Balances computed off the main thread inside the ViewModel's `flowOn(default)` chain (applied).
   - Recommendation: a `bill_shares`-only query (`SELECT member_id, SUM(total_paise)`) for the balances section once groups exceed a few thousand bills.
+
+## Feature: UPI settle-up links (builder / parser, fuzzing, QR rendering)
+- Scenario and scale:
+  - `UpiStressTest.10000 links built and parsed back`: 10,000 links with random amounts up to ₹10 lakh, names with `& ₹`, parsed back and compared field by field.
+  - `UpiStressTest.10000 hostile payee names and vpas`: 10,000 inputs; half with syntactically valid random VPAs, half random garbage; names/notes of 1–59 characters drawn from `abcXYZ019 @.&=?#%/\"'<>` plus NUL, bidi override, ₹, newline, tab, é and an emoji whose UTF-16 halves can be picked separately.
+  - `UpiStressTest.1000 qr renders`: 1,000 QR matrices for 1,000 distinct links.
+- Results (numbers):
+  - 10,000 build + parse round trips: **260–470 ms**, 10,000/10,000 exact.
+  - Fuzz: **10,000 inputs in 387 ms; 4,977 links built, 5,023 rejected** (5,000 invalid VPAs, 23 names that became blank after sanitising); every built link had only percent-encoded values and parsed back to the same object.
+  - 1,000 QR codes: **371–842 ms (0.4–0.8 ms each)**, 45×45 modules (2,025) on average, heap stable.
+- What broke:
+  - The first fuzz run rejected 100 % of inputs (random VPAs are almost never valid), so it never exercised the encoder; fixed by generating valid VPAs for half the inputs.
+  - The second run exposed the unpaired-surrogate round-trip mismatch (see SECURITY_REVIEW feature 5), fixed in `UpiLinkBuilder.clean`.
+- Failure flow (step by step):
+  1. A member's name is pasted with a broken emoji (lone surrogate).
+  2. Before the fix the link was built with the lone surrogate, encoded as `%3F`, and `AndroidUpiAppLauncher` re-parsed it into a different object (still valid, so it would have launched; the mismatch only affected equality and the share text).
+  3. After the fix the surrogate is dropped before validation and the link, its parse and the share text agree.
+- Fix applied / recommendation:
+  - Sanitiser drops unpaired surrogates (applied); fuzz asserts `built > 1,000` so it can never silently degrade to rejecting everything again.
+  - QR rendering is fast enough to do on the main thread, but it runs inside `remember` once per dialog; recommendation: pre-render on `Dispatchers.Default` if the link ever exceeds a few hundred characters.

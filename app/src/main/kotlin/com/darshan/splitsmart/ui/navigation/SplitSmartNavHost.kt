@@ -10,6 +10,7 @@ import com.darshan.splitsmart.ui.groupdetail.GroupDetailRoute
 import com.darshan.splitsmart.ui.groups.GroupsRoute
 import com.darshan.splitsmart.ui.review.ReviewRoute
 import com.darshan.splitsmart.ui.scan.ScanRoute
+import com.darshan.splitsmart.ui.settleup.SettleUpRoute
 import com.darshan.splitsmart.ui.split.SplitRoute
 import kotlinx.serialization.Serializable
 
@@ -19,6 +20,7 @@ import kotlinx.serialization.Serializable
 @Serializable data class ScanDestination(val groupId: String)
 @Serializable data class ReviewDestination(val draftId: String)
 @Serializable data class SplitDestination(val billId: String)
+@Serializable data class SettleUpDestination(val groupId: String)
 
 @Composable
 fun SplitSmartNavHost(navController: NavHostController = rememberNavController()) {
@@ -31,10 +33,14 @@ fun SplitSmartNavHost(navController: NavHostController = rememberNavController()
                 onBack = { navController.popBackStack() },
                 onOpenBill = { navController.navigate(BillDetailDestination(it)) },
                 onScanReceipt = { navController.navigate(ScanDestination(it)) },
+                onSettleUp = { navController.navigate(SettleUpDestination(it)) },
             )
         }
         composable<BillDetailDestination> {
             BillDetailRoute(onBack = { navController.popBackStack() }, onSplit = { navController.navigate(SplitDestination(it)) })
+        }
+        composable<SettleUpDestination> {
+            SettleUpRoute(onBack = { navController.popBackStack() })
         }
         composable<SplitDestination> {
             SplitRoute(onBack = { navController.popBackStack() }, onSaved = { navController.popBackStack() })

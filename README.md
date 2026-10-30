@@ -3,7 +3,7 @@
 Photograph a restaurant receipt, let on-device OCR and Gemini turn it into line items, split it paise-exactly between
 friends, and settle up with one-tap UPI links. Offline-first (Room), Kotlin, Jetpack Compose, Hilt.
 
-> Build status: feature 4 of 7 (split calculator). This README grows with every feature.
+> Build status: feature 5 of 7 (UPI settle-up). This README grows with every feature.
 
 ## Features
 | # | Feature | Status |
@@ -12,7 +12,7 @@ friends, and settle up with one-tap UPI links. Offline-first (Room), Kotlin, Jet
 | 2 | Receipt scanning: CameraX capture + gallery import → ML Kit on-device text recognition | done (device-only parts compile-only, see below) |
 | 3 | LLM extraction: Gemini over OkHttp with SSL pinning, strict JSON, validate + repair, editable review, regex fallback | done |
 | 4 | Split calculator: equal / by item / by share, proportional tax + tip, paise-exact remainders, who-owes-whom simplification | done |
-| 5 | One-tap UPI settle-up links (`upi://pay` per debt) + share as text / QR | planned |
+| 5 | One-tap UPI settle-up links (`upi://pay` per debt) + share as text / QR | done |
 | 6 | Firebase Crashlytics + Analytics: scan / parse success, splits created, settle-up taps, custom keys, non-fatals | planned |
 | 7 | Performance: Baseline Profile + Macrobenchmark modules, LeakCanary, StrictMode, work off the main thread | planned |
 
@@ -110,6 +110,11 @@ flowchart LR
 - Paise are apportioned with the **largest-remainder method** (`LargestRemainder`), so every split sums exactly to the bill and nobody is more than one paisa from their ideal share; property-tested on thousands of random bills and on 1,000 people × 10,000 items.
 - **Who owes whom:** every split bill with a known payer is netted per group and simplified greedily (largest debtor pays largest creditor, at most n − 1 transfers).
 
+## UPI settle-up
+- Every simplified debt gets a `upi://pay?pa=&pn=&am=&cu=INR&tn=` link (amount in rupees with two decimals from paise, all values RFC 3986 percent-encoded). **Pay via UPI** opens the system chooser of installed UPI apps, **Share** sends the text with the link, **QR** shows a zxing QR code the payer can scan from another phone; a payee without a UPI ID can get one added inline.
+- The app never marks a debt paid from the UPI app's return (a client cannot verify it); balances change when bills change.
+- **This opens real UPI apps and real money moves.** Test with tiny amounts to your own VPA.
+
 ## Tests
 ```bash
 ./gradlew testDebugUnitTest            # unit + integration (Robolectric, Compose, Room in-memory, Hilt)
@@ -120,11 +125,11 @@ flowchart LR
 ```
 | Suite | Count | Notes |
 |---|---|---|
-| Unit | 154 | money, validators, models, use cases, OCR normalizer, backoff, JSON repair / parser / validator, regex parser, split math (incl. property tests), debt simplifier, ViewModels |
-| Integration | 45 | Room DAO + repository + real AutoMigrations (v1→v2→v3), image store / FileProvider, Gemini client vs MockWebServer (success, 4xx, 401, 429 + Retry-After, 5xx, timeout, dropped socket, malformed), TLS pinning rejection, Room + ViewModel + Compose flows, Hilt `MainActivity` navigation |
-| Stress | 11 | 100k bills in Room; 1,000 concurrent writes; 10,000 OCR texts; adversarial OCR input; 1,000 concurrent image imports; 1,000 concurrent LLM calls with 429s; 10,000 receipts through the regex parser; 10,000 malformed JSON blobs; 1,000 people × 10,000 items split; 10,000 random splits; 1,000-member debt netting |
+| Unit | 177 | money, validators, models, use cases, OCR normalizer, backoff, JSON repair / parser / validator, regex parser, split math (incl. property tests), debt simplifier, UPI link builder/parser, QR generator, intent launcher (Robolectric), ViewModels |
+| Integration | 47 | Room DAO + repository + real AutoMigrations (v1→v2→v3), image store / FileProvider, Gemini client vs MockWebServer (success, 4xx, 401, 429 + Retry-After, 5xx, timeout, dropped socket, malformed), TLS pinning rejection, Room + ViewModel + Compose flows, Hilt `MainActivity` navigation |
+| Stress | 14 | 100k bills in Room; 1,000 concurrent writes; 10,000 OCR texts; adversarial OCR input; 1,000 concurrent image imports; 1,000 concurrent LLM calls with 429s; 10,000 receipts through the regex parser; 10,000 malformed JSON blobs; 1,000 people × 10,000 items split; 10,000 random splits; 1,000-member debt netting; 10,000 UPI link round trips; 10,000 hostile payee strings; 1,000 QR renders |
 | Real API | 1 | `realApiTest`: one real Gemini call through the pinned client (manual) |
-| Coverage (domain + data) | 93.8 % line (device-only CameraX / ML Kit classes included) | `koverVerify` fails the build below 80 % |
+| Coverage (domain + data) | 94.4 % line (device-only CameraX / ML Kit classes included) | `koverVerify` fails the build below 80 % |
 
 ### Not run: no device
 No phone or emulator was available while building, so these are implemented, compiled and lint-checked but not executed on hardware:
@@ -143,6 +148,7 @@ To try them: `./gradlew installDebug`, open a group, tap **Scan receipt**. The w
 - Receipt images live in a private `cache/receipts/` directory exposed only through a non-exported FileProvider; file names are app-generated UUIDs, path-traversal names are rejected (tested), gallery imports are capped at 20 MB and `file://` sources inside the app's private storage are refused.
 - OCR text is sanitised (zero-width / bidi / control characters removed, 20k-char cap) before it reaches any parser or the LLM.
 - Split math never uses floating point; `Bill` refuses a split whose shares do not sum to its total, and inconsistent stored shares read back as "not split" instead of crashing.
+- UPI links: VPA grammar enforced, amounts range-checked, names/notes sanitised and percent-encoded; the launcher re-parses every link and refuses anything that is not a well-formed INR `upi://pay` (tested with `javascript:`, `http://`, `upi://collect`, duplicate `pa`, negative `am`, foreign params).
 - Gemini: certificate pinning with primary + backup pins for both Google chains; key in a header, never a URL; receipt text wrapped as data in the prompt (prompt-injection mitigation); model output repaired, parsed and range-validated before use; 4xx and malformed answers are never retried.
 - Full log: [`docs/SECURITY_REVIEW.md`](docs/SECURITY_REVIEW.md).
 
@@ -153,6 +159,7 @@ To try them: `./gradlew installDebug`, open a group, tap **Scan receipt**. The w
 - 1,000 concurrent Gemini calls with 60 % 429s: 1,600 requests in 0.8 s, 0 failures, retries spread by full jitter (max 74 of 600 in any 20 ms slot).
 - 10,000 receipts through the regex parser in 1.15 s (115 µs each); 10,000 malformed JSON blobs through the repairer in 0.28 s, no escaping exceptions.
 - 1,000 people × 10,000 items split by item in 20 ms, exact to the paisa; 10,000 random splits verified exact in 0.8 s; 1,000-member debt netting in 11 ms.
+- 10,000 UPI links built and parsed back in 0.3 s; 10,000 hostile payee strings fuzzed (4,977 links built, all percent-encoded and round-tripped, the rest rejected cleanly); 1,000 QR codes in 0.4 s.
 - Full log: [`docs/LOAD_TEST_REPORT.md`](docs/LOAD_TEST_REPORT.md).
 
 ## Docs

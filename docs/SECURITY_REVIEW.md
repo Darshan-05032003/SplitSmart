@@ -90,3 +90,24 @@ One entry per feature, written after attacking the feature as a pentester. Sever
 - Scope for improvement:
   - Shares that reference a deleted member fall back to "Former member" in the UI; a background cleanup could re-split such bills automatically.
   - Percentages are not required to sum to 100 (only ratios matter); the UI could show the normalised percentage next to each share.
+
+## Feature: One-tap UPI settle-up links (`upi://pay` per debt, share as text / QR)
+- Attacks tried:
+  - **Tampered / hostile payee data into the link builder:** VPAs with spaces, `javascript:` scheme, `?am=1` and `&pa=evil@upi` smuggling; names and notes containing `& = ? # % ' " < >`, NUL, bidi override, newlines, 500-char notes; amounts of 0, negative, `Long.MIN/MAX`, above ₹1 crore (`UpiLinkBuilderTest`); 10,000 random hostile VPA/name strings (`UpiStressTest.hostile…`): every value that survives is RFC 3986 percent-encoded, so no raw reserved character can create a second `pa=` or `am=` parameter, and every rejection is a typed `IllegalArgumentException`.
+  - **Tampered links into the parser / launcher:** `http://`, `javascript:`, `upi://collect`, missing `am`, negative / exponent / >8-digit amounts, `cu=USD`, duplicate `pa`, unknown `url=` parameter, bad `tr`, malformed percent escapes (`parse rejects tampered or foreign links`); the Android launcher refuses to start any intent whose data does not parse as a well-formed INR `upi://pay` link (`AndroidUpiAppLauncherTest.only upi scheme links are ever launched`).
+  - **Intent handling:** no UPI app installed → `NoUpiApp` without starting anything; a chooser is always used (no silent default app); `FLAG_ACTIVITY_NEW_TASK` from the application context; share uses `ACTION_SEND text/plain` through a chooser.
+  - **QR payload:** the rendered QR decodes back to exactly the link (`QrCodeGeneratorTest`), quiet zone enforced, content capped at 2,000 chars; the QR is generated from the validated link only.
+  - **Inline UPI-ID entry:** validated with `VpaValidator` and lowercased before storage; invalid input never reaches the member row.
+  - **Response trust:** the app never marks a debt as paid because a UPI app returned — there is no PSP status check available to a client-only app, so settlement confirmation stays manual (see improvement).
+- What broke:
+  - **Medium (found by the fuzz):** a payee name containing an unpaired UTF-16 surrogate (a split emoji from a bad paste or OCR) passed validation, was UTF-8-encoded as `?` and therefore produced a link whose parse differed from the object that built it (the launcher would then have refused our own link). The sanitiser now drops unpaired surrogates and keeps valid pairs (`UpiLinkBuilderTest.unpaired surrogates are dropped so build and parse agree`).
+  - **Low:** the first fuzz generated only invalid VPAs (10,000 rejections, 0 links built), i.e. it tested nothing about encoding; it now builds valid VPAs with hostile names for half the inputs (4,977 links built, all round-tripped).
+  - **Low:** `VpaValidator` required at least two characters before `@`; single-character handles are legal and were rejected (found by the link tests; relaxed to one).
+  - **Low:** the first ViewModel tests advanced virtual time past the `WhileSubscribed` window and read stale state; test bug, fixed (no production change).
+- Fixed now:
+  - Validator minimum length (ValidatorsTest still rejects empty user parts and `@ybl`).
+  - Launcher validates with `UpiLinkBuilder.parse` before `startActivity` (`only upi scheme links are ever launched`).
+- Scope for improvement:
+  - Settlement is not recorded automatically (no PSP callback exists for a client-only app); a "mark as paid" that stores a settlement entry would let balances reach zero inside the app.
+  - A merchant-style `tr` (transaction reference) per debt would help reconcile payments if a PSP status API were added later.
+  - The share text includes names and the amount by design (the user chooses the recipient); nothing is sent anywhere by the app itself.

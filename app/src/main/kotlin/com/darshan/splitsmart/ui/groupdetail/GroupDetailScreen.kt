@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -64,6 +65,7 @@ fun GroupDetailRoute(
     onBack: () -> Unit,
     onOpenBill: (String) -> Unit,
     onScanReceipt: (String) -> Unit,
+    onSettleUp: (String) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
@@ -85,6 +87,7 @@ fun GroupDetailRoute(
             onRetry = viewModel::retry,
             onOpenBill = onOpenBill,
             onScan = { onScanReceipt(viewModel.groupId) },
+            onSettleUp = { onSettleUp(viewModel.groupId) },
             onDeleteGroup = viewModel::deleteGroup,
             onAddMember = viewModel::openAddMember,
             onDismissMember = viewModel::dismissMember,
@@ -107,6 +110,7 @@ data class GroupDetailCallbacks(
     val onRetry: () -> Unit,
     val onOpenBill: (String) -> Unit,
     val onScan: () -> Unit,
+    val onSettleUp: () -> Unit,
     val onDeleteGroup: () -> Unit,
     val onAddMember: () -> Unit,
     val onDismissMember: () -> Unit,
@@ -192,6 +196,11 @@ private fun GroupDetailContent(detail: GroupDetail, callbacks: GroupDetailCallba
                 item { Text(stringResource(R.string.group_all_settled), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp)) }
             }
             items(detail.debts, key = { "d" + it.fromMemberId + it.toMemberId }) { debt -> DebtRow(debt, detail.members) }
+            if (detail.debts.isNotEmpty()) {
+                item {
+                    Button(onClick = callbacks.onSettleUp, modifier = Modifier.fillMaxWidth().padding(top = 8.dp).testTag(SplitSmartTestTags.SETTLE_UP_BUTTON)) { Text(stringResource(R.string.group_settle_up)) }
+                }
+            }
             if (detail.unsettledBills > 0) {
                 item {
                     Text(

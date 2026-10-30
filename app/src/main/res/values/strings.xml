@@ -146,4 +146,23 @@
     <string name="split_error_no_shares">Give at least one person a share above zero.</string>
     <string name="split_error_negative_share">Shares cannot be negative.</string>
     <string name="split_error_duplicate">A person appears twice.</string>
+
+    <string name="group_settle_up">Settle up</string>
+    <string name="settle_title">Settle up</string>
+    <string name="settle_empty">Nobody owes anything</string>
+    <string name="settle_empty_subtitle">Split a bill with a payer and the debts show up here.</string>
+    <string name="settle_pay">Pay via UPI</string>
+    <string name="settle_share">Share</string>
+    <string name="settle_qr">QR</string>
+    <string name="settle_pay_with">Pay with</string>
+    <string name="settle_share_with">Share via</string>
+    <string name="settle_missing_vpa">%1$s has no UPI ID yet, so there is no payment link.</string>
+    <string name="settle_add_vpa">Add UPI ID</string>
+    <string name="settle_share_text">Hi %1$s, you owe %2$s %3$s for %4$s. Pay with UPI: %5$s (sent from SplitSmart)</string>
+    <string name="settle_share_text_no_link">Hi %1$s, you owe %2$s %3$s for %4$s. (sent from SplitSmart)</string>
+    <string name="settle_qr_title">Scan to pay %1$s</string>
+    <string name="settle_qr_description">UPI QR code to pay %1$s %2$s</string>
+    <string name="settle_qr_dismiss">Done</string>
+    <string name="settle_no_upi_app">No UPI app found on this phone. Share the link instead.</string>
+    <string name="settle_share_failed">No app available to share with.</string>
 </resources>

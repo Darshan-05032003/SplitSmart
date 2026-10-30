@@ -47,5 +47,13 @@ Decisions taken during the build, with the reasoning, so nothing is a surprise l
 - **Storage:** DB v3 adds `bills.split_config` (JSON `SplitConfig`) and the `bill_shares` table (PK bill+member, cascades on both). Shares are denormalised so group balances are a simple read; the config is kept so the split can be edited. Inconsistent rows (shares no longer summing to the total) are read as "not split".
 - **Balances need a payer:** bills without a recorded payer are counted as "not settled yet" and shown as such rather than guessed.
 
+## Feature 5: UPI settle-up
+- **Link shape:** `upi://pay?pa=&pn=&am=&cu=INR&tn=` (+ optional `tr`), amount as rupees with exactly two decimals from paise, values RFC 3986 percent-encoded (`%20`, never `+`, which some UPI apps mishandle). Built and parsed by one pure object (`UpiLinkBuilder`) so the parser doubles as the hostile-input gate for anything we launch.
+- **Payee note:** `"<group name> via SplitSmart"` as `tn`; it is a payment memo shown in the payer's UPI app, kept as a constant in the ViewModel rather than a localisable string.
+- **No automatic "paid" state:** without a PSP status API a UPI app's return cannot be trusted (see PayFlow's design); settlement stays a visible debt until bills change. Logged as scope for improvement.
+- **QR codes with zxing core** rendered from a platform-free `QrMatrix` (tests decode it with zxing's reader on the JVM); the Android `Bitmap` is only created in the Compose dialog.
+- **Launcher through an interface** (`UpiAppLauncher`) with `queryIntentActivities` for "no UPI app" detection and a chooser for every launch; Robolectric tests register a fake UPI activity.
+- **Inline UPI-ID entry** on the settle-up screen (members can be created without a VPA) reuses `GroupRepository.updateMember`.
+
 ## Compromises
 - **No device or emulator:** CameraX capture and ML Kit recognition are implemented and compile/lint clean but were not executed on hardware. The scan flow is proven on the JVM with `FakeReceiptCamera` + `FakeTextRecognizer`. Manual check: `./gradlew installDebug`, open a group → Scan receipt.

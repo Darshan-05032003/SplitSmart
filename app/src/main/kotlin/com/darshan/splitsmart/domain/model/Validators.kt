@@ -36,7 +36,7 @@ sealed interface VpaValidation {
  * Everything is ASCII, so no query/URL meta characters can ever be smuggled into a `upi://pay` link.
  */
 object VpaValidator {
-    private val USER = Regex("^[A-Za-z0-9._-]{2,256}$")
+    private val USER = Regex("^[A-Za-z0-9._-]{1,256}$")
     private val HANDLE = Regex("^[A-Za-z]{2,64}$")
 
     fun validate(raw: String): VpaValidation {
