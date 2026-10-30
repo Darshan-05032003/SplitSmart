@@ -34,6 +34,8 @@ import com.darshan.splitsmart.ui.SplitSmartTestTags
 import com.darshan.splitsmart.ui.review.ReviewRoute
 import com.darshan.splitsmart.ui.review.ReviewViewModel
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
+import com.darshan.splitsmart.testutil.RecordingAnalyticsTracker
+import com.darshan.splitsmart.testutil.RecordingCrashReporter
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
 import org.junit.After
@@ -66,7 +68,7 @@ class ReviewFlowIntegrationTest {
 
     private fun vm() = ReviewViewModel(
         SavedStateHandle(mapOf("draftId" to "d1")), ReceiptDraftRepositoryImpl(db.receiptDraftDao(), dispatchers),
-        ExtractReceiptUseCase(llm, dispatchers), BillRepositoryImpl(db.billDao(), dispatchers),
+        ExtractReceiptUseCase(llm, dispatchers, RecordingAnalyticsTracker(), RecordingCrashReporter()), BillRepositoryImpl(db.billDao(), dispatchers),
         GroupRepositoryImpl(db.groupDao(), db.memberDao(), fixedClock, dispatchers), FakeReceiptImageStore(), fixedClock, dispatchers,
     )
 

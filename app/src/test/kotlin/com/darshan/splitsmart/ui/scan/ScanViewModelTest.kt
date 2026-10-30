@@ -13,6 +13,8 @@ import com.darshan.splitsmart.testutil.MainDispatcherRule
 import com.darshan.splitsmart.testutil.TestDispatcherProvider
 import com.darshan.splitsmart.testutil.fixedClock
 import com.darshan.splitsmart.testutil.testDraft
+import com.darshan.splitsmart.testutil.RecordingAnalyticsTracker
+import com.darshan.splitsmart.testutil.RecordingCrashReporter
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -33,7 +35,7 @@ class ScanViewModelTest {
 
     private fun vm(handle: SavedStateHandle = SavedStateHandle(mapOf("groupId" to "g1"))) = ScanViewModel(
         savedStateHandle = handle,
-        scanReceipt = ScanReceiptUseCase(recognizer, store, drafts, fixedClock, dispatchers),
+        scanReceipt = ScanReceiptUseCase(recognizer, store, drafts, fixedClock, dispatchers, RecordingAnalyticsTracker(), RecordingCrashReporter()),
         imageStore = store,
         camera = camera,
         cameraPermission = permission,

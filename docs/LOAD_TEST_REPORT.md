@@ -109,3 +109,19 @@ on the build machine (Robolectric SQLite on the JVM, JDK 17 toolchain, Gradle `-
 - Fix applied / recommendation:
   - Sanitiser drops unpaired surrogates (applied); fuzz asserts `built > 1,000` so it can never silently degrade to rejecting everything again.
   - QR rendering is fast enough to do on the main thread, but it runs inside `remember` once per dialog; recommendation: pre-render on `Dispatchers.Default` if the link ever exceeds a few hundred characters.
+
+## Feature: Firebase Crashlytics + Analytics (telemetry policy)
+- Scenario and scale:
+  - `AnalyticsStressTest.10000 concurrent events`: 10,000 random typed events across all six event types, tracked from 100 concurrent coroutines through the recording tracker (which runs the same `AnalyticsPolicy` as the Firebase adapter).
+  - `AnalyticsStressTest.1000 non-fatals`: 1,000 non-fatal exceptions with sanitised custom keys through the recording reporter.
+- Results (numbers):
+  - **10,000 events sanitised and recorded in 81 ms** (8 µs each), none containing `@` or a 7+ digit run.
+  - **1,000 non-fatals in 8 ms.**
+- What broke:
+  - Nothing. The policy is regex + map work per event; the Firebase SDK's own batching/upload is not exercised on the JVM.
+- Failure flow (step by step):
+  1. A burst of scans (e.g. a 50-person dinner) produces hundreds of events in seconds.
+  2. Each event is validated synchronously on the calling coroutine (`Dispatchers.Default` in the use cases) and handed to Firebase, which queues locally and uploads in batches; no network wait on the caller.
+  3. If Firebase is not configured the no-op implementations make every call free.
+- Fix applied / recommendation:
+  - None needed. Recommendation: cap `text_length`-style parameters (already numbers) and keep the event set small (six) so Analytics' 500-distinct-events quota is never a concern.

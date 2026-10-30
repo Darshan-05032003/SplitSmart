@@ -84,7 +84,7 @@ fun SettleUpRoute(viewModel: SettleUpViewModel = hiltViewModel(), onBack: () -> 
                 val amount = Money.formatInr(item.debt.amountPaise)
                 val text = item.link?.let { String.format(withLink, item.payer.name, item.payee.name, amount, group, it.uri) }
                     ?: String.format(withoutLink, item.payer.name, item.payee.name, amount, group)
-                viewModel.share(text)
+                viewModel.share(text, item)
             },
             onShowQr = viewModel::showQr, onDismissQr = viewModel::dismissQr,
             onAddVpa = viewModel::editVpa, onVpaChange = viewModel::onVpaChange, onSaveVpa = viewModel::saveVpa, onDismissVpa = viewModel::dismissVpa,

@@ -7,6 +7,8 @@ import com.darshan.splitsmart.testutil.FakeReceiptImageStore
 import com.darshan.splitsmart.testutil.FakeTextRecognizer
 import com.darshan.splitsmart.testutil.TestDispatcherProvider
 import com.darshan.splitsmart.testutil.fixedClock
+import com.darshan.splitsmart.testutil.RecordingAnalyticsTracker
+import com.darshan.splitsmart.testutil.RecordingCrashReporter
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
@@ -18,7 +20,7 @@ class ScanReceiptUseCaseTest {
     private val recognizer = FakeTextRecognizer()
     private val store = FakeReceiptImageStore()
     private val drafts = FakeReceiptDraftRepository()
-    private val useCase = ScanReceiptUseCase(recognizer, store, drafts, fixedClock, TestDispatcherProvider(Dispatchers.Unconfined))
+    private val useCase = ScanReceiptUseCase(recognizer, store, drafts, fixedClock, TestDispatcherProvider(Dispatchers.Unconfined), RecordingAnalyticsTracker(), RecordingCrashReporter())
 
     private fun imageFile(): File = store.newCaptureFile().also { it.writeBytes(byteArrayOf(1)) }
 

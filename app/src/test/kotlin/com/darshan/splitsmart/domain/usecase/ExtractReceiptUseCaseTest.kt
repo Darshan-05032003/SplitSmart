@@ -7,6 +7,8 @@ import com.darshan.splitsmart.domain.model.LlmFailure
 import com.darshan.splitsmart.testutil.FakeLlmExtractor
 import com.darshan.splitsmart.testutil.SAMPLE_OCR_TEXT
 import com.darshan.splitsmart.testutil.TestDispatcherProvider
+import com.darshan.splitsmart.testutil.RecordingAnalyticsTracker
+import com.darshan.splitsmart.testutil.RecordingCrashReporter
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
@@ -14,7 +16,7 @@ import org.junit.Test
 
 class ExtractReceiptUseCaseTest {
     private val llm = FakeLlmExtractor()
-    private val useCase = ExtractReceiptUseCase(llm, TestDispatcherProvider(Dispatchers.Unconfined))
+    private val useCase = ExtractReceiptUseCase(llm, TestDispatcherProvider(Dispatchers.Unconfined), RecordingAnalyticsTracker(), RecordingCrashReporter())
 
     @Test
     fun `uses the LLM result when it is valid`() = runTest {
@@ -91,7 +93,7 @@ class ExtractReceiptUseCaseTest {
         val crashing = object : com.darshan.splitsmart.data.llm.LlmExtractor {
             override suspend fun extract(ocrText: String): String = throw IllegalStateException("boom")
         }
-        val r = ExtractReceiptUseCase(crashing, TestDispatcherProvider(Dispatchers.Unconfined)).extract(SAMPLE_OCR_TEXT)
+        val r = ExtractReceiptUseCase(crashing, TestDispatcherProvider(Dispatchers.Unconfined), RecordingAnalyticsTracker(), RecordingCrashReporter()).extract(SAMPLE_OCR_TEXT)
         assertThat(r.source).isEqualTo(ExtractionSource.REGEX)
         assertThat(r.llmFailure).isEqualTo(LlmFailure.NETWORK)
     }

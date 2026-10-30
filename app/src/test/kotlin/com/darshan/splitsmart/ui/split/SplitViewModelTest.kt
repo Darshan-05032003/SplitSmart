@@ -14,6 +14,8 @@ import com.darshan.splitsmart.testutil.testItem
 import com.darshan.splitsmart.testutil.testMember
 import com.darshan.splitsmart.ui.ErrorReason
 import com.darshan.splitsmart.ui.LoadState
+import com.darshan.splitsmart.testutil.RecordingAnalyticsTracker
+import com.darshan.splitsmart.testutil.RecordingCrashReporter
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -36,7 +38,7 @@ class SplitViewModelTest {
     }
 
     private fun vm(handle: SavedStateHandle = SavedStateHandle(mapOf("billId" to "b1"))) =
-        SplitViewModel(handle, bills, groups, SaveSplitUseCase(bills), TestDispatcherProvider(dispatcher))
+        SplitViewModel(handle, bills, groups, SaveSplitUseCase(bills, RecordingAnalyticsTracker(), RecordingCrashReporter()), TestDispatcherProvider(dispatcher))
 
     private suspend fun SplitViewModel.editor(): SplitEditor {
         uiState.test { while (awaitItem().editor !is LoadState.Content) { }; cancelAndIgnoreRemainingEvents() }
@@ -141,7 +143,7 @@ class SplitViewModelTest {
             override suspend fun saveBill(bill: com.darshan.splitsmart.domain.model.Bill) = super.saveBill(bill).also { writes++ }
         }
         counting.bills.value = bills.bills.value
-        val vm = SplitViewModel(SavedStateHandle(mapOf("billId" to "b1")), counting, groups, SaveSplitUseCase(counting), TestDispatcherProvider(dispatcher))
+        val vm = SplitViewModel(SavedStateHandle(mapOf("billId" to "b1")), counting, groups, SaveSplitUseCase(counting, RecordingAnalyticsTracker(), RecordingCrashReporter()), TestDispatcherProvider(dispatcher))
         vm.editor()
         vm.save(); vm.save()
         dispatcher.scheduler.advanceUntilIdle()

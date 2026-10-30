@@ -6,13 +6,15 @@ import com.darshan.splitsmart.domain.model.SplitError
 import com.darshan.splitsmart.domain.model.SplitMode
 import com.darshan.splitsmart.testutil.FakeBillRepository
 import com.darshan.splitsmart.testutil.testBill
+import com.darshan.splitsmart.testutil.RecordingAnalyticsTracker
+import com.darshan.splitsmart.testutil.RecordingCrashReporter
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 class SaveSplitUseCaseTest {
     private val repo = FakeBillRepository()
-    private val useCase = SaveSplitUseCase(repo)
+    private val useCase = SaveSplitUseCase(repo, RecordingAnalyticsTracker(), RecordingCrashReporter())
 
     @Test
     fun `computes, marks the bill SPLIT, records the payer and saves`() = runTest {

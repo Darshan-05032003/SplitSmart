@@ -18,6 +18,7 @@ import com.darshan.splitsmart.testutil.testGroup
 import com.darshan.splitsmart.testutil.testMember
 import com.darshan.splitsmart.ui.ErrorReason
 import com.darshan.splitsmart.ui.LoadState
+import com.darshan.splitsmart.testutil.RecordingAnalyticsTracker
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -33,6 +34,7 @@ class SettleUpViewModelTest {
     private val groups = FakeGroupRepository()
     private val bills = FakeBillRepository()
     private val launcher = FakeUpiAppLauncher()
+    private val analytics = RecordingAnalyticsTracker()
 
     @Before
     fun seed() {
@@ -44,7 +46,7 @@ class SettleUpViewModelTest {
         // a paid 900, each owes 300 → b owes a 300, c owes a 300
     }
 
-    private fun vm(groupId: String = "g1") = SettleUpViewModel(SavedStateHandle(mapOf("groupId" to groupId)), groups, bills, launcher, TestDispatcherProvider(dispatcher))
+    private fun vm(groupId: String = "g1") = SettleUpViewModel(SavedStateHandle(mapOf("groupId" to groupId)), groups, bills, launcher, analytics, TestDispatcherProvider(dispatcher))
 
     private suspend fun SettleUpViewModel.content(): SettleUpContent {
         uiState.test { while (awaitItem().content !is LoadState.Content) { }; cancelAndIgnoreRemainingEvents() }
@@ -82,6 +84,7 @@ class SettleUpViewModelTest {
         val item = vm.content().items.first()
         vm.pay(item)
         assertThat(launcher.opened).containsExactly(item.link!!.uri)
+        assertThat(analytics.last("settle_up_tap")).containsExactly("method", "upi", "payee_has_id", 1)
         launcher.result = UpiLaunchResult.NoUpiApp
         vm.events.test {
             vm.pay(item)
@@ -95,6 +98,8 @@ class SettleUpViewModelTest {
         vm.content()
         vm.share("Hi Ravi, you owe Asha ₹300.00")
         assertThat(launcher.shared).containsExactly("Hi Ravi, you owe Asha ₹300.00")
+        assertThat(analytics.last("settle_up_tap")["method"]).isEqualTo("share")
+        analytics.events.forEach { (_, p) -> p.values.forEach { assertThat(it.toString()).doesNotContain("Asha") } }
         launcher.shareSucceeds = false
         vm.events.test {
             vm.share("x")
@@ -111,6 +116,7 @@ class SettleUpViewModelTest {
             val item = (state.content as LoadState.Content).data.items.first()
             vm.showQr(item)
             assertThat(awaitItem().qrItem).isEqualTo(item)
+            assertThat(analytics.last("settle_up_tap")["method"]).isEqualTo("qr")
             vm.dismissQr()
             assertThat(awaitItem().qrItem).isNull()
         }

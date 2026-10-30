@@ -27,6 +27,8 @@ import com.darshan.splitsmart.ui.SplitSmartTestTags
 import com.darshan.splitsmart.ui.scan.ScanRoute
 import com.darshan.splitsmart.ui.scan.ScanViewModel
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
+import com.darshan.splitsmart.testutil.RecordingAnalyticsTracker
+import com.darshan.splitsmart.testutil.RecordingCrashReporter
 import com.google.common.truth.Truth.assertThat
 import org.junit.After
 import org.junit.Before
@@ -59,7 +61,7 @@ class ScanFlowIntegrationTest {
     private fun vm(): ScanViewModel {
         val drafts = ReceiptDraftRepositoryImpl(db.receiptDraftDao(), dispatchers)
         return ScanViewModel(
-            SavedStateHandle(mapOf("groupId" to "g1")), ScanReceiptUseCase(recognizer, store, drafts, fixedClock, dispatchers),
+            SavedStateHandle(mapOf("groupId" to "g1")), ScanReceiptUseCase(recognizer, store, drafts, fixedClock, dispatchers, RecordingAnalyticsTracker(), RecordingCrashReporter()),
             store, camera, permission, drafts, dispatchers,
         )
     }

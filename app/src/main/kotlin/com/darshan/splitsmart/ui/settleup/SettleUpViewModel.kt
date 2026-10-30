@@ -4,6 +4,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.darshan.splitsmart.core.DispatcherProvider
+import com.darshan.splitsmart.domain.analytics.AnalyticsEvent
+import com.darshan.splitsmart.domain.analytics.AnalyticsTracker
+import com.darshan.splitsmart.domain.analytics.SettleUpMethod
 import com.darshan.splitsmart.data.upi.UpiAppLauncher
 import com.darshan.splitsmart.data.upi.UpiLaunchResult
 import com.darshan.splitsmart.data.upi.UpiLinkBuilder
@@ -64,6 +67,7 @@ class SettleUpViewModel @Inject constructor(
     private val groupRepository: GroupRepository,
     billRepository: BillRepository,
     private val launcher: UpiAppLauncher,
+    private val analytics: AnalyticsTracker,
     dispatchers: DispatcherProvider,
 ) : ViewModel() {
     val groupId: String = checkNotNull(savedStateHandle[ARG_GROUP_ID]) { "groupId missing" }
@@ -96,6 +100,7 @@ class SettleUpViewModel @Inject constructor(
 
     fun pay(item: SettleUpItem) {
         val link = item.link ?: return
+        analytics.track(AnalyticsEvent.SettleUpTap(SettleUpMethod.UPI, payeeHasVpa = true))
         when (launcher.openUpiLink(link.uri)) {
             UpiLaunchResult.Opened -> Unit
             UpiLaunchResult.NoUpiApp -> _events.trySend(SettleUpEvent.NoUpiApp)
@@ -103,11 +108,15 @@ class SettleUpViewModel @Inject constructor(
         }
     }
 
-    fun share(text: String) {
+    fun share(text: String, item: SettleUpItem? = null) {
+        analytics.track(AnalyticsEvent.SettleUpTap(SettleUpMethod.SHARE, payeeHasVpa = item?.link != null))
         if (!launcher.shareText(text)) _events.trySend(SettleUpEvent.ShareFailed)
     }
 
-    fun showQr(item: SettleUpItem) = dialogs.update { it.copy(qrItem = item) }
+    fun showQr(item: SettleUpItem) {
+        analytics.track(AnalyticsEvent.SettleUpTap(SettleUpMethod.QR, payeeHasVpa = true))
+        dialogs.update { it.copy(qrItem = item) }
+    }
     fun dismissQr() = dialogs.update { it.copy(qrItem = null) }
 
     fun editVpa(memberId: String) = dialogs.update { it.copy(vpaDraft = VpaDraft(memberId, text = members.find { m -> m.id == memberId }?.vpa ?: "")) }

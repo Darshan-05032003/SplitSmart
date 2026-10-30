@@ -34,6 +34,8 @@ import com.darshan.splitsmart.ui.groupdetail.GroupDetailViewModel
 import com.darshan.splitsmart.ui.split.SplitRoute
 import com.darshan.splitsmart.ui.split.SplitViewModel
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
+import com.darshan.splitsmart.testutil.RecordingAnalyticsTracker
+import com.darshan.splitsmart.testutil.RecordingCrashReporter
 import com.google.common.truth.Truth.assertThat
 import org.junit.After
 import org.junit.Before
@@ -70,7 +72,7 @@ class SplitFlowIntegrationTest {
     @Test
     fun `split by share with a payer, then the group shows who owes whom`() {
         var saved: String? = null
-        val vm = SplitViewModel(SavedStateHandle(mapOf("billId" to "b1")), billRepo, groupRepo, SaveSplitUseCase(billRepo), dispatchers)
+        val vm = SplitViewModel(SavedStateHandle(mapOf("billId" to "b1")), billRepo, groupRepo, SaveSplitUseCase(billRepo, RecordingAnalyticsTracker(), RecordingCrashReporter()), dispatchers)
         compose.setContent { SplitSmartTheme { SplitRoute(viewModel = vm, onBack = {}, onSaved = { saved = it }) } }
         compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.SPLIT_SAVE) }
         compose.onNodeWithTag(SplitSmartTestTags.SPLIT_MODE_BY_SHARE).performClick()
@@ -91,7 +93,7 @@ class SplitFlowIntegrationTest {
     fun `group detail lists simplified debts for split bills`() {
         runOffMain {
             val bill = billRepo.getBill("b1")!!
-            SaveSplitUseCase(billRepo)(bill, com.darshan.splitsmart.domain.model.SplitConfig(com.darshan.splitsmart.domain.model.SplitMode.EQUAL, listOf("a", "b")), payerId = "a")
+            SaveSplitUseCase(billRepo, RecordingAnalyticsTracker(), RecordingCrashReporter())(bill, com.darshan.splitsmart.domain.model.SplitConfig(com.darshan.splitsmart.domain.model.SplitMode.EQUAL, listOf("a", "b")), payerId = "a")
         }
         val vm = GroupDetailViewModel(SavedStateHandle(mapOf("groupId" to "g1")), groupRepo, billRepo, AddMemberUseCase(groupRepo), CreateManualBillUseCase(billRepo, fixedClock), dispatchers)
         compose.setContent { SplitSmartTheme { GroupDetailRoute(viewModel = vm, onBack = {}, onOpenBill = {}, onScanReceipt = {}) } }

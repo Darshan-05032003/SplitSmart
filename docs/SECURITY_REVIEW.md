@@ -111,3 +111,20 @@ One entry per feature, written after attacking the feature as a pentester. Sever
   - Settlement is not recorded automatically (no PSP callback exists for a client-only app); a "mark as paid" that stores a settlement entry would let balances reach zero inside the app.
   - A merchant-style `tr` (transaction reference) per debt would help reconcile payments if a PSP status API were added later.
   - The share text includes names and the amount by design (the user chooses the recipient); nothing is sent anywhere by the app itself.
+
+## Feature: Firebase Crashlytics + Analytics (success metrics, custom keys, non-fatals)
+- Attacks tried:
+  - **PII leakage through telemetry:** every event parameter and custom key goes through `AnalyticsPolicy`: keys must be snake_case and must not contain `name`, `vpa`, `upi`, `email`, `phone`, `mobile`, `amount`, `total`, `paise`, `address`; string values are capped at 100 chars and rejected when they contain `@` or ten or more digits (phone numbers). Tried `asha@okicici`, `someone@example.com`, `9876543210`, `+91 98765 43210`, 101-char strings, keys `member_name`, `payee_vpa`, `amount_paise` (`AnalyticsPolicyTest`). 10,000 random events: none carries `@` or a 7+ digit run (`AnalyticsStressTest`).
+  - **Receipt text in crash logs:** `FirebaseCrashReporter.log` scrubs `\S+@\S+` and digit runs ≥ 7 and caps at 1,000 chars; the hooks never log OCR text or item names (`AnalyticsHooksTest` asserts no "Paneer" anywhere; `FirebaseAdaptersTest.a pii-looking custom key never reaches crashlytics`).
+  - **Amounts tied to names:** events carry counts (`item_count`, `member_count`, `line_count`, `text_length`), enums and booleans only; no amount parameter exists at all.
+  - **Clean clone without Firebase:** `google-services.json` absent → plugins not applied, `BuildConfig.FIREBASE_CONFIGURED=false`, no-op tracker/reporter bound; nothing touches `FirebaseApp` (Hilt tests replace the module with recording fakes, so the Robolectric graph never initialises Firebase).
+  - **Hostile event volume:** 10,000 concurrent events through the policy (synchronized recording list in tests; the Firebase SDK batches on its own).
+- What broke:
+  - **Medium (caught by the policy itself):** my first `settle_up_tap` parameter was named `payee_has_vpa`; the PII gate rejected the word `vpa` and five tests failed. Renamed to `payee_has_id`. This is exactly the failure mode the gate exists for: a boolean about a UPI ID is fine, a key that *looks* like it could carry one is not.
+- Fixed now:
+  - Key rename (`SettleUpViewModelTest` asserts `payee_has_id`).
+  - Non-fatals are recorded only for unexpected failures (recogniser/database crash, LLM transport or malformed answers) and never for expected outcomes (no text, no API key), so Crashlytics is not flooded with user conditions (`AnalyticsHooksTest`).
+- Scope for improvement:
+  - Analytics collection is enabled in debug builds too (useful to verify the console); gate it with `setAnalyticsCollectionEnabled(!BuildConfig.DEBUG)` for a store release.
+  - Firebase receives device identifiers by design; a consent screen would be needed in some jurisdictions.
+  - Custom keys are process-wide in Crashlytics; `group_size`/`item_count` reflect the last operation, not the crashing one, if several run concurrently.

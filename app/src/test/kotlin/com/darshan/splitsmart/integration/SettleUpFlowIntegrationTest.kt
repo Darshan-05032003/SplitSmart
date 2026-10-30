@@ -30,6 +30,8 @@ import com.darshan.splitsmart.ui.SplitSmartTestTags
 import com.darshan.splitsmart.ui.settleup.SettleUpRoute
 import com.darshan.splitsmart.ui.settleup.SettleUpViewModel
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
+import com.darshan.splitsmart.testutil.RecordingAnalyticsTracker
+import com.darshan.splitsmart.testutil.RecordingCrashReporter
 import com.google.common.truth.Truth.assertThat
 import org.junit.After
 import org.junit.Before
@@ -59,14 +61,14 @@ class SettleUpFlowIntegrationTest {
             db.memberDao().insert(testMember("b", name = "Ravi").toEntity())
             val bill = testBill(totalPaise = 30_000, items = emptyList())
             billRepo.saveBill(bill)
-            SaveSplitUseCase(billRepo)(bill, SplitConfig(SplitMode.EQUAL, listOf("a", "b")), payerId = "a")
+            SaveSplitUseCase(billRepo, RecordingAnalyticsTracker(), RecordingCrashReporter())(bill, SplitConfig(SplitMode.EQUAL, listOf("a", "b")), payerId = "a")
         }
     }
 
     @After
     fun tearDown() = db.close()
 
-    private fun vm() = SettleUpViewModel(SavedStateHandle(mapOf("groupId" to "g1")), groupRepo, billRepo, launcher, dispatchers)
+    private fun vm() = SettleUpViewModel(SavedStateHandle(mapOf("groupId" to "g1")), groupRepo, billRepo, launcher, RecordingAnalyticsTracker(), dispatchers)
 
     @Test
     fun `pay opens the upi link and share sends text with the link`() {
@@ -88,7 +90,7 @@ class SettleUpFlowIntegrationTest {
         runOffMain {
             // flip: Ravi (no VPA) paid
             val bill = billRepo.getBill("b1")!!
-            SaveSplitUseCase(billRepo)(bill, SplitConfig(SplitMode.EQUAL, listOf("a", "b")), payerId = "b")
+            SaveSplitUseCase(billRepo, RecordingAnalyticsTracker(), RecordingCrashReporter())(bill, SplitConfig(SplitMode.EQUAL, listOf("a", "b")), payerId = "b")
         }
         compose.setContent { SplitSmartTheme { SettleUpRoute(viewModel = vm(), onBack = {}) } }
         compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.SETTLE_ADD_VPA) }

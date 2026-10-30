@@ -55,5 +55,12 @@ Decisions taken during the build, with the reasoning, so nothing is a surprise l
 - **Launcher through an interface** (`UpiAppLauncher`) with `queryIntentActivities` for "no UPI app" detection and a chooser for every launch; Robolectric tests register a fake UPI activity.
 - **Inline UPI-ID entry** on the settle-up screen (members can be created without a VPA) reuses `GroupRepository.updateMember`.
 
+## Feature 6: Firebase Crashlytics + Analytics
+- **Interfaces in `domain/analytics`** (`AnalyticsTracker`, `CrashReporter`, typed `AnalyticsEvent`), Firebase adapters in `data/analytics`, bindings in `di/AnalyticsModule`. Real implementations only when `BuildConfig.FIREBASE_CONFIGURED` (i.e. `app/google-services.json` existed at build time), otherwise no-ops; Hilt tests replace the module with recording fakes.
+- **Typed events, not free-form `logEvent(name, bundle)` calls:** `scan_success`, `scan_failure`, `llm_parse_success`, `llm_parse_failure` (with `fallback_used`), `split_created`, `settle_up_tap`. Parameters are enums, counts and booleans; `AnalyticsPolicy` rejects anything PII-shaped at the sink.
+- **Non-fatal policy:** record a non-fatal (with custom keys `scan_error`, `llm_failure`, `text_length`, `group_size`, `item_count`) only for defects — recogniser/database exceptions, LLM transport failures, unrepairable model output. Expected outcomes (no text in the photo, no API key configured, invalid split config) are metrics only.
+- **Collection enabled in debug** so the Firebase console can be checked with a debug install; flip `setAnalyticsCollectionEnabled`/`setCrashlyticsCollectionEnabled` on `BuildConfig.DEBUG` before a store release.
+- **Crashlytics Gradle plugin** is applied with the google-services plugin; release builds upload mapping files (needs network at release build time).
+
 ## Compromises
 - **No device or emulator:** CameraX capture and ML Kit recognition are implemented and compile/lint clean but were not executed on hardware. The scan flow is proven on the JVM with `FakeReceiptCamera` + `FakeTextRecognizer`. Manual check: `./gradlew installDebug`, open a group → Scan receipt.

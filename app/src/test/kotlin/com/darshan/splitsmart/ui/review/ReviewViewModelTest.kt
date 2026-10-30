@@ -20,6 +20,8 @@ import com.darshan.splitsmart.testutil.fixedClock
 import com.darshan.splitsmart.testutil.testDraft
 import com.darshan.splitsmart.testutil.testMember
 import com.darshan.splitsmart.ui.ErrorReason
+import com.darshan.splitsmart.testutil.RecordingAnalyticsTracker
+import com.darshan.splitsmart.testutil.RecordingCrashReporter
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -46,7 +48,7 @@ class ReviewViewModelTest {
     }
 
     private fun vm(handle: SavedStateHandle = SavedStateHandle(mapOf("draftId" to "d1"))) = ReviewViewModel(
-        savedStateHandle = handle, drafts = drafts, extractReceipt = ExtractReceiptUseCase(llm, dispatchers), billRepository = bills,
+        savedStateHandle = handle, drafts = drafts, extractReceipt = ExtractReceiptUseCase(llm, dispatchers, RecordingAnalyticsTracker(), RecordingCrashReporter()), billRepository = bills,
         groupRepository = groups, imageStore = images, clock = fixedClock, dispatchers = dispatchers,
     )
 
