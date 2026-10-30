@@ -23,3 +23,23 @@ on the build machine (Robolectric SQLite on the JVM, JDK 17 toolchain, Gradle `-
 - Fix applied / recommendation:
   - `BillDao.getPage(groupId, limit, offset)` exists and is covered by the stress test for a future Paging 3 adoption.
   - Bulk insert path (`insertBillsAndItems`) stays transactional so a mid-import crash leaves no half-written bill.
+
+## Feature: Receipt scanning (OCR normalizer, image store)
+- Scenario and scale:
+  - `OcrStressTest.10000 synthetic OCR receipts`: 10,000 deterministic receipts (2–15 items, ₹/Rs markers, O-for-0 noise, GST lines, noise lines; 3.0 M chars in total) through `OcrTextNormalizer`.
+  - `OcrStressTest.pathological inputs`: 50k `O`s, 20k `1,` pairs, 20k ` .` pairs, 50k zero-width spaces, 30k `₹`, a 5,000-line receipt.
+  - `OcrStressTest.1000 concurrent image imports`: 1,000 coroutines importing into the image store at once.
+  - Room scenarios re-run with the v2 schema (`receipt_drafts` added).
+- Results (numbers):
+  - 10,000 receipts normalised in **897 ms (89 µs / receipt)**, 3,036 k chars → 2,667 k chars, heap 57 → 54 MB (no growth).
+  - 6 adversarial inputs: **214 ms** total, every output ≤ 20,000 chars.
+  - 1,000 concurrent imports: **59 ms**, 1,000 files present, none lost.
+  - Room v2: 200k rows in 1,390 ms (≈72k rows/s); 1k-bill history 86 ms; page 4 ms; recent 3 ms; 1,000 concurrent members + bills 629 ms.
+- What broke:
+  - Nothing failed. The first normaliser draft ran the regexes over the whole text at once; on the 5,000-line receipt the look-behind patterns were measurably slower, so normalisation is now per line (bounded work per regex call).
+- Failure flow (step by step):
+  1. A receipt photo of a long itemised bill (or a hostile image producing 100k+ chars of OCR text).
+  2. `OcrTextNormalizer` processes at most `2 × MAX_CHARS` input characters and emits ≤ 20k, so the LLM prompt and the regex parser get a bounded payload.
+  3. Beyond that the text is truncated: the last lines (often totals) can be lost. The review screen lets the user fix totals by hand.
+- Fix applied / recommendation:
+  - Per-line normalisation and an input cap (applied). Recommendation: when truncation happens, keep the first and last N lines (headers + totals) instead of a plain prefix; tracked as scope for improvement for feature 3.

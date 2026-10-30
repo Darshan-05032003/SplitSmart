@@ -36,4 +36,11 @@ object SplitSmartTestTags {
     const val DELETE_GROUP_BUTTON = "delete_group_button"
     const val DELETE_BILL_BUTTON = "delete_bill_button"
     const val SCAN_BUTTON = "scan_button"
+    const val CAPTURE_BUTTON = "capture_button"
+    const val GALLERY_BUTTON = "gallery_button"
+    const val GRANT_PERMISSION_BUTTON = "grant_permission_button"
+    const val OPEN_SETTINGS_BUTTON = "open_settings_button"
+    const val OCR_TEXT = "ocr_text"
+    const val CONTINUE_BUTTON = "continue_button"
+    const val RESCAN_BUTTON = "rescan_button"
 }

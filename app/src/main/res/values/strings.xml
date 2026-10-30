@@ -67,4 +67,23 @@
     <string name="bill_source_manual">Manual</string>
     <string name="bill_source_llm">Scanned (AI)</string>
     <string name="bill_source_regex">Scanned (on-device)</string>
+
+    <string name="scan_title">Scan receipt</string>
+    <string name="scan_preview_description">Camera preview</string>
+    <string name="scan_permission_title">Camera access needed</string>
+    <string name="scan_permission_body">SplitSmart uses the camera to photograph receipts. Nothing is uploaded; text is recognised on this device.</string>
+    <string name="scan_permission_denied_body">Camera access was turned off. Enable it in Settings, or pick a photo from the gallery instead.</string>
+    <string name="scan_grant_permission">Allow camera</string>
+    <string name="scan_open_settings">Open settings</string>
+    <string name="scan_pick_gallery">Pick from gallery</string>
+    <string name="scan_capture">Take photo</string>
+    <string name="scan_capturing">Taking photo…</string>
+    <string name="scan_recognizing">Reading the receipt…</string>
+    <string name="scan_result_title">Recognised text</string>
+    <string name="scan_continue">Continue</string>
+    <string name="scan_rescan">Scan again</string>
+    <string name="scan_error_no_text">No text found. Try better light or move closer.</string>
+    <string name="scan_error_recognition">Text recognition failed. Try again.</string>
+    <string name="scan_error_image">That image could not be read.</string>
+    <string name="scan_error_capture">The camera could not take a photo.</string>
 </resources>

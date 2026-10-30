@@ -19,5 +19,13 @@ Decisions taken during the build, with the reasoning, so nothing is a surprise l
 - **Build script:** `LLM_API_KEY` read from `local.properties` (or the environment), quotes and whitespace stripped, into `BuildConfig.LLM_API_KEY` (empty when absent). Firebase plugins are applied only when `app/google-services.json` exists so a clean clone builds. `stressTest` and `realApiTest` are filtered `Test` tasks excluded from `testDebugUnitTest`.
 - **SSL pins (prepared for feature 3):** `generativelanguage.googleapis.com` serves two chains depending on the negotiated signature algorithm: ECDSA (leaf → `WE2` → `GTS Root R4`) and RSA (leaf → `WR2` → `GTS Root R1`). Leaf certs rotate every few weeks, so the app pins the intermediates (primary) and the roots (backup) of both chains; roots were cross-checked against `https://pki.goog/repo/certs/`.
 
+## Feature 2: receipt scanning
+- **Draft table instead of nav args:** OCR text (up to 20k chars) is saved to Room (`receipt_drafts`, DB v2 via `AutoMigration(1, 2)`) and only the draft id travels through navigation / `SavedStateHandle`. Survives process death and keeps Bundles small.
+- **Feature 2 ends at the saved draft:** "Continue" pops back to the group until feature 3 adds the editable review screen.
+- **Camera through `LifecycleCameraController`:** `CameraXReceiptCamera` is `@ViewModelScoped`, created lazily on first preview, so constructing the ViewModel (e.g. in tests) never touches hardware. Preview is a `@Composable` parameter so Robolectric tests inject a plain `Box`.
+- **Permission launchers live in the production `ScanRoute` overload** and are passed as lambdas to the testable overload.
+- **Migration test without `MigrationTestHelper`:** Robolectric could not see the exported schema through the test source set's assets, so the test builds the v1 database from `app/schemas/.../1.json` (`createSql` + `setupQueries`) and lets Room run the real AutoMigration on open. Same production code path, no asset plumbing.
+- **ML Kit model:** `com.google.mlkit:text-recognition` bundles the Latin model in the APK (fully offline, ~4 MB) instead of the Play-services-downloaded variant, so the first scan works without a network.
+
 ## Compromises
-_None yet._
+- **No device or emulator:** CameraX capture and ML Kit recognition are implemented and compile/lint clean but were not executed on hardware. The scan flow is proven on the JVM with `FakeReceiptCamera` + `FakeTextRecognizer`. Manual check: `./gradlew installDebug`, open a group → Scan receipt.

@@ -3,13 +3,13 @@
 Photograph a restaurant receipt, let on-device OCR and Gemini turn it into line items, split it paise-exactly between
 friends, and settle up with one-tap UPI links. Offline-first (Room), Kotlin, Jetpack Compose, Hilt.
 
-> Build status: feature 1 of 7 (groups, members, bill history). This README grows with every feature.
+> Build status: feature 2 of 7 (receipt scanning). This README grows with every feature.
 
 ## Features
 | # | Feature | Status |
 |---|---|---|
 | 1 | Groups and members (Room), offline-first, bill history | done |
-| 2 | Receipt scanning: CameraX capture + gallery import → ML Kit on-device text recognition | planned |
+| 2 | Receipt scanning: CameraX capture + gallery import → ML Kit on-device text recognition | done (device-only parts compile-only, see below) |
 | 3 | LLM extraction: Gemini over OkHttp with SSL pinning, strict JSON, validate + repair, editable review, regex fallback | planned |
 | 4 | Split calculator: equal / by item / by share, proportional tax + tip, paise-exact remainders, who-owes-whom simplification | planned |
 | 5 | One-tap UPI settle-up links (`upi://pay` per debt) + share as text / QR | planned |
@@ -77,10 +77,17 @@ flowchart LR
 ```
 | Suite | Count | Notes |
 |---|---|---|
-| Unit | 38 | money, validators, models, use cases, ViewModels |
-| Integration | 11 | Room DAO + repository, Room + ViewModel + Compose flows, Hilt `MainActivity` navigation |
-| Stress | 2 | 100k bills in Room; 1,000 concurrent writes |
-| Coverage (domain + data) | 96.9 % line | `koverVerify` fails the build below 80 % |
+| Unit | 63 | money, validators, models, use cases, OCR normalizer, ViewModels |
+| Integration | 22 | Room DAO + repository + real AutoMigration, image store / FileProvider, Room + ViewModel + Compose flows, Hilt `MainActivity` navigation |
+| Stress | 5 | 100k bills in Room; 1,000 concurrent writes; 10,000 OCR texts; adversarial OCR input; 1,000 concurrent image imports |
+| Coverage (domain + data) | 89.0 % line (device-only CameraX / ML Kit classes included) | `koverVerify` fails the build below 80 % |
+
+### Not run: no device
+No phone or emulator was available while building, so these are implemented, compiled and lint-checked but not executed on hardware:
+- CameraX capture (`CameraXReceiptCamera`) and the live preview (`CameraPreview`).
+- ML Kit text recognition (`MlKitTextRecognizer`, bundled Latin model).
+- `connectedAndroidTest`.
+To try them: `./gradlew installDebug`, open a group, tap **Scan receipt**. The whole scan flow is proven on the JVM with `FakeReceiptCamera` + `FakeTextRecognizer` (`ScanFlowIntegrationTest`).
 
 ## Security highlights
 - Strict validators for names (no control / bidi-override characters, 60 chars) and UPI IDs (ASCII `user@handle` only,
@@ -89,11 +96,14 @@ flowchart LR
 - Domain models enforce invariants in `init` (quantities, non-negative amounts, `qty × unit == total`, ≤ 200 items).
 - Double-tap guards on every create action; dialog drafts survive process death via `SavedStateHandle`.
 - `allowBackup=false`, data extraction rules exclude everything, no cleartext traffic, only the launcher activity is exported.
+- Receipt images live in a private `cache/receipts/` directory exposed only through a non-exported FileProvider; file names are app-generated UUIDs, path-traversal names are rejected (tested), gallery imports are capped at 20 MB and `file://` sources inside the app's private storage are refused.
+- OCR text is sanitised (zero-width / bidi / control characters removed, 20k-char cap) before it reaches any parser or the LLM.
 - Full log: [`docs/SECURITY_REVIEW.md`](docs/SECURITY_REVIEW.md).
 
 ## Load-test highlights
 - 100,000 bills + 100,000 items inserted in 1.4 s (~72k rows/s); a 1,000-bill group history loads in 73 ms; paged query 5 ms.
 - 1,000 concurrent member + bill writes complete in 0.7 s with no lost rows.
+- 10,000 OCR receipt texts normalised in 0.9 s (89 µs each) with flat heap; 1,000 concurrent image imports in 59 ms.
 - Full log: [`docs/LOAD_TEST_REPORT.md`](docs/LOAD_TEST_REPORT.md).
 
 ## Docs

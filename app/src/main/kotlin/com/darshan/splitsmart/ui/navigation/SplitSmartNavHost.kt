@@ -8,11 +8,13 @@ import androidx.navigation.compose.rememberNavController
 import com.darshan.splitsmart.ui.bill.BillDetailRoute
 import com.darshan.splitsmart.ui.groupdetail.GroupDetailRoute
 import com.darshan.splitsmart.ui.groups.GroupsRoute
+import com.darshan.splitsmart.ui.scan.ScanRoute
 import kotlinx.serialization.Serializable
 
 @Serializable data object GroupsDestination
 @Serializable data class GroupDetailDestination(val groupId: String)
 @Serializable data class BillDetailDestination(val billId: String)
+@Serializable data class ScanDestination(val groupId: String)
 
 @Composable
 fun SplitSmartNavHost(navController: NavHostController = rememberNavController()) {
@@ -24,11 +26,15 @@ fun SplitSmartNavHost(navController: NavHostController = rememberNavController()
             GroupDetailRoute(
                 onBack = { navController.popBackStack() },
                 onOpenBill = { navController.navigate(BillDetailDestination(it)) },
-                onScanReceipt = { /* feature 2 */ },
+                onScanReceipt = { navController.navigate(ScanDestination(it)) },
             )
         }
         composable<BillDetailDestination> {
             BillDetailRoute(onBack = { navController.popBackStack() })
+        }
+        composable<ScanDestination> {
+            // Feature 3 replaces the pop with the editable review screen for the saved draft.
+            ScanRoute(onBack = { navController.popBackStack() }, onContinue = { navController.popBackStack() })
         }
     }
 }
