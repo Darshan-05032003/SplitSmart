@@ -128,3 +128,19 @@ One entry per feature, written after attacking the feature as a pentester. Sever
   - Analytics collection is enabled in debug builds too (useful to verify the console); gate it with `setAnalyticsCollectionEnabled(!BuildConfig.DEBUG)` for a store release.
   - Firebase receives device identifiers by design; a consent screen would be needed in some jurisdictions.
   - Custom keys are process-wide in Crashlytics; `group_size`/`item_count` reflect the last operation, not the crashing one, if several run concurrently.
+
+## Feature: Performance (Baseline Profile + Macrobenchmark modules, LeakCanary, StrictMode, work off the main thread)
+- Attacks tried:
+  - **Debug tooling leaking into release:** LeakCanary is `debugImplementation` only; StrictMode is installed only when `BuildConfig.DEBUG` (`PerformanceSetupTest.strict mode is installed only for debuggable builds`); the `benchmark` build type is non-debuggable, R8-minified and signed with the debug key — it must never be shipped (documented).
+  - **ANR / main-thread abuse:** OCR, LLM and persistence paths proven to run on `Dispatchers.Default`/`IO`, never on the caller (`MainThreadGuardTest`), and 1,000 concurrent extractions never touch the calling thread (`OffMainStressTest`).
+  - **StrictMode policies:** disk reads/writes, network and custom slow calls on the main thread; activity leaks, leaked closables and leaked registrations; `detectFileUriExposure` (would flag any `file://` URI handed to another app; the app only shares `content://` FileProvider URIs).
+  - **R8 keep rules:** building the `benchmark` variant (R8 on) with the Firebase, OkHttp and kotlinx-serialization rules checks that nothing needed at runtime is stripped at compile time; runtime verification needs a device.
+  - **Benchmark modules as attack surface:** `com.android.test` modules are separate APKs that only exist in developer builds; they are not part of the app APK.
+- What broke:
+  - Nothing at the JVM level. `StrictMode` penalties are `penaltyLog`, deliberately not `penaltyDeath`, so a tester's debug build never crashes on a violation.
+- Fixed now:
+  - n/a (no Critical/High).
+- Scope for improvement:
+  - Run the generator and benchmarks on a device and commit `baseline-prof.txt`; until then cold start has no profile.
+  - Consider `penaltyDeath` for disk-on-main in CI-driven instrumented runs once a device is available.
+  - LeakCanary heap dumps live in the debug app's files dir; nothing to do for release.

@@ -17,3 +17,5 @@ dependencyResolutionManagement {
 rootProject.name = "SplitSmart"
 
 include(":app")
+include(":baselineprofile")
+include(":macrobenchmark")

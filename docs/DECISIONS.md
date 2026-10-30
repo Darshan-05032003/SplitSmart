@@ -62,5 +62,12 @@ Decisions taken during the build, with the reasoning, so nothing is a surprise l
 - **Collection enabled in debug** so the Firebase console can be checked with a debug install; flip `setAnalyticsCollectionEnabled`/`setCrashlyticsCollectionEnabled` on `BuildConfig.DEBUG` before a store release.
 - **Crashlytics Gradle plugin** is applied with the google-services plugin; release builds upload mapping files (needs network at release build time).
 
+## Feature 7: performance
+- **Two `com.android.test` modules:** `:baselineprofile` (AndroidX Baseline Profile Gradle plugin 1.5.0, `BaselineProfileRule`, uiautomator journey: start → create group → open → scan rationale) and `:macrobenchmark` (`MacrobenchmarkRule`: cold startup in None / Partial(baseline) / Full compilation modes, frame timing while flinging the group screen). Both target the app's non-debuggable, debug-signed `benchmark` build type (R8 on) so numbers reflect release code.
+- **`profileinstaller`** in the app so a committed profile is installed on devices without Play; `baselineProfile(project(":baselineprofile"))` wires generation into `:app:generateBaselineProfile`.
+- **LeakCanary 2.14** as `debugImplementation` only; **StrictMode** installed in `SplitSmartApp.onCreate` before `super` when `BuildConfig.DEBUG`, `penaltyLog` (never death) so testers are not crashed.
+- **ANR safety is tested, not assumed:** `MainThreadGuardTest` records the thread each heavy path runs on; `OffMainStressTest` does it for 1,000 concurrent extractions.
+- **Compile-only verification of the device modules:** `./gradlew :baselineprofile:assemble :macrobenchmark:assemble` builds both test APKs and the app's `benchmark` variant (exercising the R8 keep rules).
+
 ## Compromises
-- **No device or emulator:** CameraX capture and ML Kit recognition are implemented and compile/lint clean but were not executed on hardware. The scan flow is proven on the JVM with `FakeReceiptCamera` + `FakeTextRecognizer`. Manual check: `./gradlew installDebug`, open a group → Scan receipt.
+- **No device or emulator:** CameraX capture and ML Kit recognition are implemented and compile/lint clean but were not executed on hardware; the Baseline Profile was not generated and the macrobenchmarks were not run (commands in README: `./gradlew :app:generateBaselineProfile`, `./gradlew :macrobenchmark:connectedBenchmarkAndroidTest`). The scan flow is proven on the JVM with `FakeReceiptCamera` + `FakeTextRecognizer`. Manual check: `./gradlew installDebug`, open a group → Scan receipt.

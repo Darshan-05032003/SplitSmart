@@ -125,3 +125,21 @@ on the build machine (Robolectric SQLite on the JVM, JDK 17 toolchain, Gradle `-
   3. If Firebase is not configured the no-op implementations make every call free.
 - Fix applied / recommendation:
   - None needed. Recommendation: cap `text_length`-style parameters (already numbers) and keep the event set small (six) so Analytics' 500-distinct-events quota is never a concern.
+
+## Feature: Performance (off-main work, perf modules)
+- Scenario and scale:
+  - `OffMainStressTest`: 1,000 concurrent `ExtractReceiptUseCase.extract` calls (fake LLM with 1–10 ms latency, synthetic receipts) launched from one caller coroutine; records every thread the LLM call ran on.
+  - Compile-only: `./gradlew :baselineprofile:assemble :macrobenchmark:assemble` (both test APKs) and `./gradlew :app:assembleBenchmark` (release-like app variant with R8 and the keep rules).
+- Results (numbers):
+  - **1,000 concurrent extractions in 182 ms on 16 worker threads (16 cores); caller thread never used.**
+  - Perf test modules compile in **38 s**; the R8 `benchmark` app variant builds in **2 m 34 s** with no missing-class warnings; `app-benchmark.apk` is **46 MB** (bundled ML Kit Latin model, CameraX, Firebase, Compose).
+  - Baseline Profile generation and macrobenchmarks: **not run (no device)**. Commands: `./gradlew :app:generateBaselineProfile`, `./gradlew :macrobenchmark:connectedBenchmarkAndroidTest`.
+- What broke:
+  - Nothing. The first version of the stress print reported "1,000 worker threads" because kotlinx-coroutines debug mode suffixes thread names with the coroutine id; the print now strips the suffix (16 real threads).
+- Failure flow (step by step):
+  1. The user taps "Continue" after a scan; the review screen starts extraction.
+  2. OCR text normalisation, the Gemini call (up to 90 s), JSON repair and validation all run under `withContext(dispatchers.default)`; the main thread only renders the progress state.
+  3. If the main thread were blocked for 5 s the system would raise an ANR; the StrictMode thread policy in debug builds logs any disk/network access that slips onto the main thread before that can happen.
+- Fix applied / recommendation:
+  - Thread-name parsing in the stress print (applied).
+  - Recommendation: once a device is available, commit the generated `baseline-prof.txt` and record startup/scroll medians in the README's Performance section; consider `R8 fullMode` size tuning if the 46 MB APK matters (the ML Kit unbundled variant downloads the model via Play services instead).

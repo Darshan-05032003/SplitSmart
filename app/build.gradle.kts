@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.room)
     alias(libs.plugins.kover)
+    alias(libs.plugins.baselineprofile)
 }
 
 // Firebase (Analytics + Crashlytics) is wired only when the gitignored google-services.json is present,
@@ -47,6 +48,13 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+        // Release-like, debug-signed build the :baselineprofile and :macrobenchmark modules run against.
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            isDebuggable = false
         }
     }
 
@@ -96,6 +104,9 @@ dependencies {
     implementation(libs.mlkit.text.recognition)
     implementation(libs.okhttp)
     implementation(libs.zxing.core)
+    implementation(libs.androidx.profileinstaller)
+    debugImplementation(libs.leakcanary)
+    baselineProfile(project(":baselineprofile"))
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.crashlytics)

@@ -3,7 +3,7 @@
 Photograph a restaurant receipt, let on-device OCR and Gemini turn it into line items, split it paise-exactly between
 friends, and settle up with one-tap UPI links. Offline-first (Room), Kotlin, Jetpack Compose, Hilt.
 
-> Build status: feature 6 of 7 (Firebase). This README grows with every feature.
+> Build status: all 7 features built. Device-only steps (camera, OCR, Baseline Profile, benchmarks) are marked "not run: no device".
 
 ## Features
 | # | Feature | Status |
@@ -14,7 +14,7 @@ friends, and settle up with one-tap UPI links. Offline-first (Room), Kotlin, Jet
 | 4 | Split calculator: equal / by item / by share, proportional tax + tip, paise-exact remainders, who-owes-whom simplification | done |
 | 5 | One-tap UPI settle-up links (`upi://pay` per debt) + share as text / QR | done |
 | 6 | Firebase Crashlytics + Analytics: scan / parse success, splits created, settle-up taps, custom keys, non-fatals | done |
-| 7 | Performance: Baseline Profile + Macrobenchmark modules, LeakCanary, StrictMode, work off the main thread | planned |
+| 7 | Performance: Baseline Profile + Macrobenchmark modules, LeakCanary, StrictMode, work off the main thread | done (device runs not executed: no device) |
 
 ## Screenshots
 _Placeholder: screenshots will be added after a run on a device (groups list, group detail, bill detail)._
@@ -122,6 +122,19 @@ flowchart LR
 - Privacy: `AnalyticsPolicy` rejects keys containing name/vpa/amount/phone-like words and values with `@` or long digit runs; crash log lines are scrubbed. Nothing with a person's name or an amount ever leaves the device as telemetry.
 - Verify on a device: `adb shell setprop debug.firebase.analytics.app com.darshan.splitsmart`, then watch DebugView in the Firebase console (not run here: no device).
 
+## Performance
+| Item | Where | Status |
+|---|---|---|
+| Baseline Profile generator | `baselineprofile/` (`BaselineProfileGenerator`: start → create group → open → scan rationale), `profileinstaller` in the app | **not run: no device.** Generate with `./gradlew :app:generateBaselineProfile`; the profile lands in `app/src/main/generated/baselineProfiles/baseline-prof.txt` |
+| Macrobenchmark: startup | `macrobenchmark/StartupBenchmark` — cold start, `CompilationMode.None` / `Partial(baseline)` / `Full`, 10 iterations | **not run: no device.** `./gradlew :macrobenchmark:connectedBenchmarkAndroidTest` |
+| Macrobenchmark: scroll | `macrobenchmark/ScrollBenchmark` — `FrameTimingMetric` while flinging the group screen | **not run: no device** (same command) |
+| Compile check of both modules + the R8 `benchmark` app variant | `./gradlew :baselineprofile:assemble :macrobenchmark:assemble` | run, green |
+| LeakCanary 2.14 | `debugImplementation` | debug builds only |
+| StrictMode | `core/perf/PerformanceSetup`, installed in `SplitSmartApp.onCreate` when `BuildConfig.DEBUG` (disk / network / slow calls on main, activity & closable leaks, file-URI exposure; `penaltyLog`) | debug builds only |
+| Work off the main thread | OCR, Gemini and persistence run under injected `Dispatchers.Default` / `IO`; `MainThreadGuardTest` records the thread each path runs on; `OffMainStressTest` does it for 1,000 concurrent extractions | tested on the JVM |
+
+Numbers to record after a device run (replace this line): startup `timeToInitialDisplayMs` median for None / Partial / Full; scroll `frameDurationCpuMs` P50/P90/P99.
+
 ## Tests
 ```bash
 ./gradlew testDebugUnitTest            # unit + integration (Robolectric, Compose, Room in-memory, Hilt)
@@ -132,9 +145,9 @@ flowchart LR
 ```
 | Suite | Count | Notes |
 |---|---|---|
-| Unit | 187 | money, validators, models, use cases, OCR normalizer, backoff, JSON repair / parser / validator, regex parser, split math (incl. property tests), debt simplifier, UPI link builder/parser, QR generator, intent launcher (Robolectric), ViewModels |
+| Unit | 192 | money, validators, models, use cases, OCR normalizer, backoff, JSON repair / parser / validator, regex parser, split math (incl. property tests), debt simplifier, UPI link builder/parser, QR generator, intent launcher (Robolectric), ViewModels |
 | Integration | 47 | Room DAO + repository + real AutoMigrations (v1→v2→v3), image store / FileProvider, Gemini client vs MockWebServer (success, 4xx, 401, 429 + Retry-After, 5xx, timeout, dropped socket, malformed), TLS pinning rejection, Room + ViewModel + Compose flows, Hilt `MainActivity` navigation |
-| Stress | 16 | 100k bills in Room; 1,000 concurrent writes; 10,000 OCR texts; adversarial OCR input; 1,000 concurrent image imports; 1,000 concurrent LLM calls with 429s; 10,000 receipts through the regex parser; 10,000 malformed JSON blobs; 1,000 people × 10,000 items split; 10,000 random splits; 1,000-member debt netting; 10,000 UPI link round trips; 10,000 hostile payee strings; 1,000 QR renders; 10,000 concurrent analytics events through the PII policy; 1,000 non-fatals |
+| Stress | 17 | 100k bills in Room; 1,000 concurrent writes; 10,000 OCR texts; adversarial OCR input; 1,000 concurrent image imports; 1,000 concurrent LLM calls with 429s; 10,000 receipts through the regex parser; 10,000 malformed JSON blobs; 1,000 people × 10,000 items split; 10,000 random splits; 1,000-member debt netting; 10,000 UPI link round trips; 10,000 hostile payee strings; 1,000 QR renders; 10,000 concurrent analytics events through the PII policy; 1,000 non-fatals; 1,000 concurrent extractions off the main thread |
 | Real API | 1 | `realApiTest`: one real Gemini call through the pinned client (manual) |
 | Coverage (domain + data) | 94.8 % line (device-only CameraX / ML Kit classes included) | `koverVerify` fails the build below 80 % |
 
@@ -142,6 +155,7 @@ flowchart LR
 No phone or emulator was available while building, so these are implemented, compiled and lint-checked but not executed on hardware:
 - CameraX capture (`CameraXReceiptCamera`) and the live preview (`CameraPreview`).
 - ML Kit text recognition (`MlKitTextRecognizer`, bundled Latin model).
+- Baseline Profile generation and the Macrobenchmark runs (see Performance).
 - `connectedAndroidTest`.
 To try them: `./gradlew installDebug`, open a group, tap **Scan receipt**. The whole scan flow is proven on the JVM with `FakeReceiptCamera` + `FakeTextRecognizer` (`ScanFlowIntegrationTest`).
 
@@ -168,6 +182,7 @@ To try them: `./gradlew installDebug`, open a group, tap **Scan receipt**. The w
 - 10,000 receipts through the regex parser in 1.15 s (115 µs each); 10,000 malformed JSON blobs through the repairer in 0.28 s, no escaping exceptions.
 - 1,000 people × 10,000 items split by item in 20 ms, exact to the paisa; 10,000 random splits verified exact in 0.8 s; 1,000-member debt netting in 11 ms.
 - 10,000 analytics events pass the PII policy in 81 ms; 1,000 non-fatals in 8 ms.
+- 1,000 concurrent receipt extractions complete in 182 ms on 16 worker threads without ever touching the calling (main) thread.
 - 10,000 UPI links built and parsed back in 0.3 s; 10,000 hostile payee strings fuzzed (4,977 links built, all percent-encoded and round-tripped, the rest rejected cleanly); 1,000 QR codes in 0.4 s.
 - Full log: [`docs/LOAD_TEST_REPORT.md`](docs/LOAD_TEST_REPORT.md).
 
