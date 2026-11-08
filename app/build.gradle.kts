@@ -50,11 +50,13 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
         // Release-like, debug-signed build the :baselineprofile and :macrobenchmark modules run against.
+        // Its source set (src/benchmark) adds the seed-data receiver; none of it reaches the release APK.
         create("benchmark") {
             initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
             isDebuggable = false
+            isProfileable = true
         }
     }
 

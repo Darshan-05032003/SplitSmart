@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Benchmark build type only: never merged into debug or release. The receiver is exported so the shell can reach it,
+  and protected by DUMP, which the shell holds and normal apps cannot get. Firebase stays initialised, so startup work
+  matches release, but benchmark runs send nothing to the real project.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <meta-data android:name="firebase_analytics_collection_deactivated" android:value="true" />
+        <meta-data android:name="firebase_crashlytics_collection_enabled" android:value="false" />
+        <receiver
+            android:name=".benchmark.SeedDataReceiver"
+            android:exported="true"
+            android:permission="android.permission.DUMP" />
+    </application>
+</manifest>
