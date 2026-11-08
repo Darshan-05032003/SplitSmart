@@ -96,3 +96,20 @@ Decisions taken during the build, with the reasoning, so nothing is a surprise l
 - **Adaptive launcher icon** (receipt splitting into two arrows on coral, with a monochrome layer for themed icons). It stays in `mipmap-anydpi-v26` although minSdk is 26: aapt2 failed to link `@mipmap/ic_launcher` from an unqualified `mipmap-anydpi` folder, so lint's `ObsoleteSdkInt` warning is accepted.
 - **Add bill = Scan / From gallery / Enter manually** on the group screen; "From gallery" navigates to the scan route with `gallery = true`, which opens the photo picker once (saved across rotation). The home "Scan receipt" goes straight to the only group, asks which group when there are several, and opens "New group" when there is none.
 - **Compose tests and the taller layouts:** the group screen's bills and balances moved below the summary and add-bill cards, so two integration tests now scroll the lazy list to them (`scrollListTo`) instead of expecting them composed on first frame; assertions unchanged. Visible text that tests match exactly (`"Ravi owes Asha"`, `"₹150.00"`) stays unique per screen: summary figures use combined strings ("₹1,118.70 to settle in 2 payments").
+
+## UI overhaul: library decisions (2026-11-09)
+| Library | Latest stable checked 2026-11-09 | Decision |
+|---|---|---|
+| Compose BOM | 2026.09.00 (Compose 1.12.1, Material3 1.4.0) | **Keep.** Already on the latest. |
+| Material 3 Expressive | Expressive APIs are still graduating inside `material3` 1.5.0-rc01 (Nov 2026), not in stable 1.4.0 | **Do not adopt.** Both apps use a custom design system on top of plain Material 3 slots, so nothing depends on it. Revisit when 1.5.0 is stable. |
+| `SharedTransitionLayout`, shared elements | Compose Animation 1.12.1 | **Adopt** for container transforms. |
+| Predictive back | Navigation Compose 2.10.2 | **Adopt** with `android:enableOnBackInvokedCallback`. |
+| `core-splashscreen` | 1.2.0 | **Adopt** for the icon → home hand-off. |
+| Lottie Compose | 6.7.1 | **Do not adopt by default.** Every animation is code-drawn (Canvas/AGSL), which keeps the APK small and gives full control. Only added if you supply Lottie files. |
+| Haze | 2.1.0 (Compose 1.12) | **Adopt only where glass adds depth** (bottom bar, sheets), API 31+, with a dim scrim below. |
+| Roborazzi | 1.78.0 (`roborazzi`, `roborazzi-compose`, `roborazzi-junit-rule`, `roborazzi-gradle-plugin`) | **Adopt** for screenshot tests. It runs on the existing Robolectric 4.17 setup. Fallback: Paparazzi 1.3.5. |
+| Macrobenchmark, Baseline Profile plugin | 1.5.0 | **Adopt** (SplitSmart already has both modules; PayFlow gets them in Wave 2). |
+| CRED `neopop` | Apache-2.0, View/XML based, repo last active July 2024, no `club.cred:neopop` artifact on Maven Central | **Reject.** Not Compose, unmaintained, and the brief rules out a NeoPOP look. |
+
+- **Baseline before the overhaul:** `testDebugUnitTest` 284 tests, 17 stress tests, `assembleDebug` and `lintDebug` with no errors, all green at `578ae11`.
+- **Order and worktrees:** this machine has 15 GB of RAM, and only one Gradle build runs safely at a time. PayFlow is done first, then SplitSmart. Feature work is integrated one at a time.
