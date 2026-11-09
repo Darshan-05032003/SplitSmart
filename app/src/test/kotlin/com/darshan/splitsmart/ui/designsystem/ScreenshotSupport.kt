@@ -1,0 +1,27 @@
+package com.darshan.splitsmart.ui.designsystem
+
+import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.junit4.ComposeTestRule
+import androidx.compose.ui.test.onRoot
+import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
+import com.github.takahirom.roborazzi.RoborazziOptions
+import com.github.takahirom.roborazzi.captureRoboImage
+
+/** Folder of the committed baselines, relative to the app module (Gradle runs tests from there). */
+const val SCREENSHOT_DIR = "src/test/screenshots"
+
+/** A tiny tolerance absorbs anti-aliasing noise between runs without hiding a real visual change. */
+@OptIn(ExperimentalRoborazziApi::class)
+private val DsOptions = RoborazziOptions(
+    compareOptions = RoborazziOptions.CompareOptions(changeThreshold = 0.002f),
+)
+
+/** Captures one node as `<name>.png`. A no-op outside the Roborazzi record/verify tasks. */
+fun SemanticsNodeInteraction.captureNode(name: String) {
+    captureRoboImage("$SCREENSHOT_DIR/$name.png", roborazziOptions = DsOptions)
+}
+
+/** Captures the composition root. */
+fun ComposeTestRule.captureScreenshot(name: String) {
+    onRoot().captureRoboImage("$SCREENSHOT_DIR/$name.png", roborazziOptions = DsOptions)
+}

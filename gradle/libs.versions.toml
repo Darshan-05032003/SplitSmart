@@ -35,6 +35,7 @@ profileinstaller = "1.4.1"
 uiautomator = "2.4.0"
 androidxTestRunner = "1.7.0"
 exifinterface = "1.4.2"
+roborazzi = "1.78.0"
 
 [libraries]
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
@@ -87,6 +88,9 @@ turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxJunit" }
+roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = "roborazzi" }
+roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }
+roborazzi-junit-rule = { module = "io.github.takahirom.roborazzi:roborazzi-junit-rule", version.ref = "roborazzi" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -101,3 +105,4 @@ kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
 firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "crashlyticsPlugin" }
 baselineprofile = { id = "androidx.baselineprofile", version.ref = "baselineprofile" }
+roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }

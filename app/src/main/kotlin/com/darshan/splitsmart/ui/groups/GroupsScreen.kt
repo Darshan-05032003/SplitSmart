@@ -262,7 +262,7 @@ private fun BrandHeader(onEditName: () -> Unit) {
 
 @Composable
 private fun BalanceHero(overview: HomeOverview, onScan: () -> Unit, onEditName: () -> Unit) {
-    val onHero = SplitSmartTheme.colors.onHero
+    val onHero = SplitSmartTheme.legacy.onHero
     HeroCard(Modifier.testTag(SplitSmartTestTags.HOME_BALANCE)) {
         val name = overview.yourName
         when {
@@ -306,7 +306,7 @@ private fun BalanceHero(overview: HomeOverview, onScan: () -> Unit, onEditName: 
         Spacer(Modifier.size(6.dp))
         Button(
             onClick = onScan,
-            colors = ButtonDefaults.buttonColors(containerColor = onHero, contentColor = SplitSmartTheme.colors.heroAction),
+            colors = ButtonDefaults.buttonColors(containerColor = onHero, contentColor = SplitSmartTheme.legacy.heroAction),
             modifier = Modifier.fillMaxWidth().testTag(SplitSmartTestTags.HOME_SCAN),
         ) {
             Icon(appIcon(AppIcons.Camera), contentDescription = null, modifier = Modifier.size(20.dp))
@@ -318,7 +318,7 @@ private fun BalanceHero(overview: HomeOverview, onScan: () -> Unit, onEditName: 
 
 @Composable
 private fun HeroFigure(label: String, paise: Long, big: Boolean = false) {
-    val onHero = SplitSmartTheme.colors.onHero
+    val onHero = SplitSmartTheme.legacy.onHero
     Column {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = onHero.copy(alpha = 0.9f))
         if (paise > 0 || big) {

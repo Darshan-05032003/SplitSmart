@@ -258,7 +258,7 @@ private fun GroupDetailContent(detail: GroupDetail, callbacks: GroupDetailCallba
 
 @Composable
 private fun SummaryCard(detail: GroupDetail, onSettleUp: () -> Unit) {
-    val onHero = SplitSmartTheme.colors.onHero
+    val onHero = SplitSmartTheme.legacy.onHero
     val spent = detail.bills.sumOf { it.totalPaise }
     val outstanding = detail.debts.sumOf { it.amountPaise }
     HeroCard {
@@ -292,7 +292,7 @@ private fun SummaryCard(detail: GroupDetail, onSettleUp: () -> Unit) {
         if (detail.debts.isNotEmpty()) {
             Button(
                 onClick = onSettleUp,
-                colors = ButtonDefaults.buttonColors(containerColor = onHero, contentColor = SplitSmartTheme.colors.heroAction),
+                colors = ButtonDefaults.buttonColors(containerColor = onHero, contentColor = SplitSmartTheme.legacy.heroAction),
                 modifier = Modifier.fillMaxWidth().padding(top = 6.dp).testTag(SplitSmartTestTags.SETTLE_UP_BUTTON),
             ) {
                 Icon(appIcon(AppIcons.Wallet), contentDescription = null, modifier = Modifier.size(20.dp))
@@ -363,7 +363,7 @@ private fun DebtRow(debt: Debt, from: String, to: String) {
             InitialAvatar(to, size = 32.dp)
             Spacer(Modifier.width(12.dp))
             Text(stringResource(R.string.debt_row, from, to), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            Text(Money.formatInr(debt.amountPaise), style = MaterialTheme.typography.titleMedium, color = SplitSmartTheme.colors.owe.content)
+            Text(Money.formatInr(debt.amountPaise), style = MaterialTheme.typography.titleMedium, color = SplitSmartTheme.legacy.owe.content)
         }
     }
 }

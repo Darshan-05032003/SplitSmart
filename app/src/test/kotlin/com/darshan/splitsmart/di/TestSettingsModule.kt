@@ -4,6 +4,8 @@ import com.darshan.splitsmart.data.llm.InMemoryModelCache
 import com.darshan.splitsmart.data.llm.ModelCache
 import com.darshan.splitsmart.data.settings.InMemoryProfileRepository
 import com.darshan.splitsmart.domain.repository.ProfileRepository
+import com.darshan.splitsmart.ui.designsystem.effects.InMemoryUiPreferences
+import com.darshan.splitsmart.ui.designsystem.effects.UiPreferences
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.components.SingletonComponent
@@ -16,4 +18,5 @@ import javax.inject.Singleton
 object TestSettingsModule {
     @Provides @Singleton fun modelCache(): ModelCache = InMemoryModelCache()
     @Provides @Singleton fun profileRepository(): ProfileRepository = InMemoryProfileRepository()
+    @Provides @Singleton fun uiPreferences(): UiPreferences = InMemoryUiPreferences()
 }

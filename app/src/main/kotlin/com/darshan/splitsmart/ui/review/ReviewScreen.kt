@@ -261,9 +261,9 @@ private fun TotalsCard(state: ReviewUiState, form: ReviewForm, callbacks: Review
             }
         } else if (mismatch == 0L) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = SplitSmartTheme.colors.owed.content, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = SplitSmartTheme.legacy.owed.content, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text(stringResource(R.string.review_adds_up), style = MaterialTheme.typography.bodyMedium, color = SplitSmartTheme.colors.owed.content)
+                Text(stringResource(R.string.review_adds_up), style = MaterialTheme.typography.bodyMedium, color = SplitSmartTheme.legacy.owed.content)
             }
         }
     }

@@ -1,0 +1,117 @@
+package com.darshan.splitsmart.ui.designsystem.tokens
+
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.dp
+
+/** Spacing on the 4/8 grid. Screens use these instead of literal dp. */
+object Spacing {
+    val xxs = 4.dp
+    val xs = 8.dp
+    val sm = 12.dp
+    val md = 16.dp
+    val lg = 20.dp
+    val xl = 24.dp
+    val xxl = 32.dp
+    val xxxl = 40.dp
+    val huge = 48.dp
+    val giant = 64.dp
+
+    /** Horizontal gutter of every screen. */
+    val screen = 16.dp
+}
+
+/**
+ * Marigold Mela's three radii plus a full pill. Chunky and friendly: nothing tappable has a corner under 16dp.
+ * Small: fields, chips' containers, snackbars. Medium: buttons, cards, rows. Large: sheets, hero cards, the bottom bar.
+ */
+object Radii {
+    val small = 16.dp
+    val medium = 24.dp
+    val large = 32.dp
+
+    val smallShape = RoundedCornerShape(small)
+    val mediumShape = RoundedCornerShape(medium)
+    val largeShape = RoundedCornerShape(large)
+    val topLargeShape = RoundedCornerShape(topStart = large, topEnd = large)
+    val pillShape = RoundedCornerShape(percent = 50)
+    val circleShape = CircleShape
+}
+
+/**
+ * Depth is a soft solid offset shadow, not a blur: things sit on the page like stickers and press down into it.
+ * Each value is how far the shadow sits below its element at rest; pressing closes the gap.
+ */
+object Depth {
+    val none = 0.dp
+    val chip = 2.dp
+    val card = 3.dp
+    val button = 4.dp
+    val fab = 5.dp
+}
+
+/** Stroke widths. */
+object Strokes {
+    val hairline = 1.dp
+    val outline = 1.5.dp
+    val focus = 2.dp
+
+    /** The soft glow around a focused field. */
+    val focusGlow = 4.dp
+}
+
+/** Fixed component sizes. */
+object Sizes {
+    /** Minimum touch target of anything tappable. */
+    val touchTarget = 48.dp
+    val buttonHeight = 56.dp
+    val buttonHeightCompact = 48.dp
+    val fieldHeight = 56.dp
+    val iconSmall = 16.dp
+    val icon = 24.dp
+    val iconLarge = 32.dp
+    val avatarSmall = 32.dp
+    val avatar = 40.dp
+    val avatarLarge = 56.dp
+    val avatarHero = 72.dp
+
+    /** Gap between avatars once a stack has fanned out. */
+    val avatarFanGap = 6.dp
+
+    /** The ring that separates overlapping avatars. */
+    val avatarRing = 2.dp
+    val chipHeight = 36.dp
+    val pillHeight = 28.dp
+    val counterBadge = 22.dp
+    val statusDot = 8.dp
+    val fab = 64.dp
+    val topBarHeight = 64.dp
+    val listRowHeight = 72.dp
+    val listRowCompact = 56.dp
+    val bottomBarHeight = 68.dp
+    val bottomBarBlobHeight = 40.dp
+    val bottomBarInset = 12.dp
+    val sheetHandleWidth = 44.dp
+    val sheetHandleHeight = 5.dp
+    val snackbarMinHeight = 56.dp
+    val snackbarTimerHeight = 3.dp
+    val skeletonLine = 14.dp
+    val skeletonTitle = 18.dp
+    val illustration = 148.dp
+    val illustrationSmall = 96.dp
+    val loader = 48.dp
+    val loaderSmall = 24.dp
+    val loadingDot = 6.dp
+}
+
+/**
+ * Discovery point for the static tokens. `SplitSmartTokens.spacing.md` and `Spacing.md` are the same value; colours, type and
+ * motion depend on the theme and are read through `SplitSmartTheme.colors`, `.type` and `.motion`.
+ */
+object SplitSmartTokens {
+    val spacing = Spacing
+    val radii = Radii
+    val depth = Depth
+    val strokes = Strokes
+    val sizes = Sizes
+}

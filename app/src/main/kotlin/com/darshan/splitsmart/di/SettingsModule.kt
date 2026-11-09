@@ -9,12 +9,17 @@ import com.darshan.splitsmart.data.llm.DataStoreModelCache
 import com.darshan.splitsmart.data.llm.ModelCache
 import com.darshan.splitsmart.data.settings.DataStoreProfileRepository
 import com.darshan.splitsmart.domain.repository.ProfileRepository
+import com.darshan.splitsmart.ui.designsystem.effects.DataStoreUiPreferences
+import com.darshan.splitsmart.ui.designsystem.effects.UiPreferences
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 /** One preferences DataStore (`splitsmart_settings`) for small app settings. Replaced by in-memory fakes in Hilt tests. */
 @Module
@@ -27,4 +32,10 @@ object SettingsModule {
 
     @Provides @Singleton fun modelCache(dataStore: DataStore<Preferences>): ModelCache = DataStoreModelCache(dataStore)
     @Provides @Singleton fun profileRepository(dataStore: DataStore<Preferences>): ProfileRepository = DataStoreProfileRepository(dataStore)
+
+    /** Look-and-feel settings (haptics, sound, reduce motion, theme) under `ui_*` keys in the same store. */
+    @Provides
+    @Singleton
+    fun uiPreferences(dataStore: DataStore<Preferences>): UiPreferences =
+        DataStoreUiPreferences(dataStore, CoroutineScope(SupervisorJob() + Dispatchers.Default))
 }

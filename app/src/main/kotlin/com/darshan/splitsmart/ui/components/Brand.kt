@@ -148,7 +148,7 @@ enum class BalanceTone { OWED, OWE, NEUTRAL }
 /** Rounded chip for a money state: green when you are owed, red when you owe, neutral otherwise. */
 @Composable
 fun BalanceChip(text: String, tone: BalanceTone, modifier: Modifier = Modifier) {
-    val colors = SplitSmartTheme.colors
+    val colors = SplitSmartTheme.legacy
     val (bg, fg) = when (tone) {
         BalanceTone.OWED -> colors.owed.container to colors.owed.content
         BalanceTone.OWE -> colors.owe.container to colors.owe.content
@@ -194,7 +194,7 @@ fun IconBubble(vector: ImageVector, modifier: Modifier = Modifier, size: Dp = 40
 /** The coral gradient card used for headline numbers. */
 @Composable
 fun HeroCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Box(modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(SplitSmartTheme.colors.heroGradient)) {
+    Box(modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(SplitSmartTheme.legacy.heroGradient)) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp), content = content)
     }
 }
@@ -215,7 +215,7 @@ fun InfoBanner(
         BannerTone.AI -> scheme.secondaryContainer to scheme.onSecondaryContainer
         BannerTone.WARNING -> scheme.tertiaryContainer to scheme.onTertiaryContainer
         BannerTone.ERROR -> scheme.errorContainer to scheme.onErrorContainer
-        BannerTone.SUCCESS -> SplitSmartTheme.colors.owed.container to SplitSmartTheme.colors.owed.content
+        BannerTone.SUCCESS -> SplitSmartTheme.legacy.owed.container to SplitSmartTheme.legacy.owed.content
     }
     Card(colors = CardDefaults.cardColors(containerColor = bg, contentColor = fg), shape = MaterialTheme.shapes.medium, modifier = modifier.fillMaxWidth()) {
         Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {

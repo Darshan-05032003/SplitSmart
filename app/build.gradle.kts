@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.room)
     alias(libs.plugins.kover)
     alias(libs.plugins.baselineprofile)
+    alias(libs.plugins.roborazzi)
 }
 
 // Firebase (Analytics + Crashlytics) is wired only when the gitignored google-services.json is present,
@@ -133,7 +134,16 @@ dependencies {
     kspTest(libs.hilt.compiler)
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.compose.ui.test.junit4)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.roborazzi.junit.rule)
     debugImplementation(libs.compose.ui.test.manifest)
+}
+
+// Screenshot tests: `recordRoborazziDebug` writes baselines, `verifyRoborazziDebug` compares against them.
+// Baselines are committed; a plain `testDebugUnitTest` runs the same tests without touching images.
+roborazzi {
+    outputDir.set(file("src/test/screenshots"))
 }
 
 // Stress / load simulations live in the `stress` package and the single real-Gemini smoke test in `realapi`.

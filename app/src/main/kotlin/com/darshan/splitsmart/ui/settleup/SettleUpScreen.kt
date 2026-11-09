@@ -159,7 +159,7 @@ fun SettleUpScreen(state: SettleUpUiState, snackbar: SnackbarHostState, callback
 
 @Composable
 private fun SettleSummary(content: SettleUpContent) {
-    val onHero = SplitSmartTheme.colors.onHero
+    val onHero = SplitSmartTheme.legacy.onHero
     val total = content.items.sumOf { it.debt.amountPaise }
     HeroCard {
         Text(content.group.name, style = MaterialTheme.typography.labelLarge, color = onHero.copy(alpha = 0.9f))
@@ -188,7 +188,7 @@ private fun SettleUpCard(item: SettleUpItem, callbacks: SettleUpCallbacks) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
             }
-            Text(Money.formatInr(item.debt.amountPaise), style = MaterialTheme.typography.titleLarge, color = SplitSmartTheme.colors.owe.content)
+            Text(Money.formatInr(item.debt.amountPaise), style = MaterialTheme.typography.titleLarge, color = SplitSmartTheme.legacy.owe.content)
         }
         if (item.missingVpa) {
             InfoBanner(BannerTone.WARNING, icon = rememberVectorPainter(Icons.Default.Info)) {

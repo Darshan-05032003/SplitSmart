@@ -108,7 +108,7 @@ fun BillDetailScreen(state: BillDetailUiState, snackbar: SnackbarHostState, onBa
 @Composable
 private fun BillDetailContent(detail: BillDetail, onSplit: () -> Unit, modifier: Modifier) {
     val bill = detail.bill
-    val onHero = SplitSmartTheme.colors.onHero
+    val onHero = SplitSmartTheme.legacy.onHero
     LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item(key = "hero") {
             HeroCard {
@@ -126,7 +126,7 @@ private fun BillDetailContent(detail: BillDetail, onSplit: () -> Unit, modifier:
                 )
                 Button(
                     onClick = onSplit,
-                    colors = ButtonDefaults.buttonColors(containerColor = onHero, contentColor = SplitSmartTheme.colors.heroAction),
+                    colors = ButtonDefaults.buttonColors(containerColor = onHero, contentColor = SplitSmartTheme.legacy.heroAction),
                     modifier = Modifier.fillMaxWidth().padding(top = 6.dp).testTag(SplitSmartTestTags.SPLIT_BUTTON),
                 ) {
                     Icon(appIcon(AppIcons.Split), contentDescription = null, modifier = Modifier.size(20.dp))
