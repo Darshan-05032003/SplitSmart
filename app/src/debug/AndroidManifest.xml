@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-only additions. Merged into debug builds only: release and benchmark builds have no such component
+  (checked by DesignCatalogReleaseTest and the merged-manifest check in docs/SECURITY_REVIEW.md).
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Design catalog: every design-system token and component in every state. Sample values only. -->
+        <activity
+            android:name=".ui.designsystem.catalog.DesignCatalogActivity"
+            android:exported="true"
+            android:label="Design catalog"
+            android:theme="@style/Theme.SplitSmart" />
+    </application>
+</manifest>
