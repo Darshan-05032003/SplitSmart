@@ -164,3 +164,47 @@ on the build machine (Robolectric SQLite on the JVM, JDK 17 toolchain, Gradle `-
   5. On any final failure the draft stays, the banner names the reason and "Try AI again" re-runs the extraction (except for key problems).
 - Fix applied / recommendation:
   - Timeouts lowered from 60/90 s to 30/45 s (~10x the measured latency). Recommendation: watch `llm_parse_failure` by `failure` in Analytics; if `timeout` rises, consider `gemini-flash-lite-latest` first.
+
+## UI overhaul baseline (before)
+**Emulator, software rendering, not a mid-range phone.** These numbers are only for comparing before and after on this setup. They say nothing about real-device speed.
+
+- Commit: `db9f704` (the current UI, before any overhaul screen work).
+- Device: `Pixel_7` AVD, API 37, x86_64 (`sdk_gphone16k_x86_64`), 4 vCPUs, `-gpu swiftshader_indirect`. Guest RAM is 4 GB: the emulator raises `-memory 2048` to 4096 MB. Animation scales 1.
+- Host: 15 GB RAM with other applications open, so runs are noisy. Treat small differences as no change.
+- Build type: `benchmark` (`initWith(release)`: R8 and resource shrinking on, non-debuggable, debug-signed, profileable). No Baseline Profile is in the APK yet.
+- Method: Macrobenchmark 1.5.0 with `androidx.benchmark.suppressErrors=EMULATOR`. `StartupTimingMetric` over 10 cold starts; `FrameTimingMetric` over 5 iterations of 3 flings down and 3 up, with a new process each iteration.
+- Data: 200 groups with 4 members each, the newest being "Benchmark trip" with 200 bills (half split equally), inserted through `GroupRepository` and `BillRepository`.
+- Scenarios: `homeScroll*` flings the groups home; `billsScroll*` opens "Benchmark trip" and flings its list.
+- Reading the tables: CPU is `frameDurationCpuMs`. Overrun is `frameOverrunMs`, how far a frame missed its deadline (negative means early). Jank % is the share of frames with an overrun above 0. Software rendering pushes nearly every frame over budget here, so compare the frame times rather than expecting low jank.
+- `NoCompilation` is the fair before/after comparison. `Partial` compiles from a 3-iteration warm-up and will also use a Baseline Profile once one ships.
+- **Not run yet (`billsScrollNoCompilation` pending):** `startupPartial`, `startupFullCompilation`, `homeScrollPartial`, `billsScrollNoCompilation`, `billsScrollPartial`. Sessions on this machine were restarting every 10 to 60 minutes, so the `NoCompilation` tests came first. Compare only tests that exist on both sides.
+
+| Cold start (time to initial display, ms) | min | median | max | iterations |
+|---|---|---|---|---|
+| startupNoCompilation | 767 | 789 | 822 | 10 |
+
+| Scroll | CPU P50 ms | CPU P90 ms | CPU P99 ms | Overrun P50 ms | Overrun P90 ms | Overrun P99 ms | Jank % | frames |
+|---|---|---|---|---|---|---|---|---|
+| homeScrollNoCompilation | 21.9 | 26.3 | 38.4 | 5.9 | 10.8 | 29.5 | 86.1 | 3696 |
+
+Release APK size: 46,386,407 bytes (44.2 MiB), from `./gradlew assembleRelease` (unsigned).
+
+Seed data is benchmark-only. `aapt2 dump xmltree` shows `SeedDataReceiver` in the `benchmark` manifest and not in the debug or release manifests, and the release dex has no reference to it.
+
+Reproduce (run on an emulator, and set the serial explicitly so no other connected device is used):
+
+    ./gradlew --stop
+    emulator -avd Pixel_7 -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot-load -memory 2048
+    ANDROID_SERIAL=emulator-5554 scripts/run_benchmarks.sh /path/to/results
+    ./gradlew assembleRelease
+
+The script installs a fresh copy per test and skips tests that already have a result in that directory, so it can be re-run after an interruption. `BENCHMARK_TESTS="ScrollBenchmark#homeScrollNoCompilation"` limits it to named tests.
+
+To keep these benchmarks working as the UI changes:
+
+- The group card keeps the group name in its text or content description, and it stays on the first screen for the newest group.
+- The group screen shows the group name as an exact text once open (the benchmark waits on it).
+- Groups home and group detail stay vertically scrollable: the benchmark picks the tallest scrollable node, whichever component draws it.
+- No new first-launch screen may block a fresh install. The planned onboarding must be marked done by `SeedDataReceiver`, or the benchmarks will time out.
+- `SeedDataReceiver` keeps writing through the repositories; update it if the models or Room schema change.
+
