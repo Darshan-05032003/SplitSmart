@@ -164,3 +164,25 @@ One entry per feature, written after attacking the feature as a pentester. Sever
   - Move the Gemini call behind a small backend (key off the device, server-side quota per user).
   - `gemini-flash-lite-latest` is an alias whose target can change; it is only the second fallback.
   - The "your name" match is by display name; a member id picked once would be sturdier.
+
+## UI Feature: Design system + catalog
+- Attacks tried:
+  - 10 and 1,000 rapid taps on a `ChunkyButton`; a button whose action sets `loading`; a disabled button (`ButtonsUiTest`, `DesignSystemStressTest`). One million same-instant taps through `ClickGuard`.
+  - Double tap on Undo; a second message arriving while an undo is on screen; the caller cancelled mid-undo (`SnackbarStateTest`, `OverlaysUiTest`).
+  - A locked bottom sheet: scrim tap, back press and drag while `dismissible = false` (`OverlaysUiTest`).
+  - Names with bidi overrides and isolates (`U+202E`, `U+2066`), control characters, newlines, a 10,000-character name and emoji-only names in the top bar, list rows, avatars and avatar-stack descriptions (`DesignSystemAttackTest`, `DisplayTextTest`, `AvatarLogicTest`).
+  - Reduced motion: does any path skip a step? Undo window and Undo action under reduced motion (`DesignSystemAttackTest`).
+  - Debug catalog reachable in release: merged release manifest and release dex searched for the catalog; `CatalogReleaseIsolationTest` keeps `src/main` and `src/benchmark` free of it.
+  - Screenshot baselines and catalog samples checked for real-looking keys, names or UPI IDs (`catalog_samples_hold_no_real_looking_secrets`; sample people are invented, the sample UPI handle is fictional).
+  - Bottom sheet as a separate window: it is drawn in the screen's own window, so it cannot outlive the screen or carry different window flags.
+- What broke:
+  - Nothing Critical or High.
+  - **Low (fixed):** a member with an empty name produced "Asha, Ravi and " for TalkBack; blank names now read as "Someone".
+  - **Low (by design, noted):** the catalog activity is `exported` in debug builds so it can be opened with `adb`; it shows sample data only and does not exist in release.
+- Fixed now:
+  - `ClickGuard` (one action per 500 ms) in every button and clickable card; `loading` ignores taps; result: 1,000 injected taps on a settle button = 1 settlement, 1 haptic.
+  - `DisplayText.safe` strips bidi controls, zero-width space, BOM and control characters, collapses whitespace and cuts at 120 code points on a code-point boundary; used by rows, the top bar, avatars and stack descriptions.
+  - Snackbar results resolve exactly once; the undo window stretches to the system's recommended timeout when TalkBack is on, and reduced motion never shortens it.
+- Scope for improvement:
+  - Settle and Pay actions in later rows should also refuse touches while the window is obscured (`filterTouchesWhenObscured` on the root view); the design system does not set it globally because most taps are harmless.
+  - `DisplayText` keeps zero-width joiners for emoji sequences, so a name can still contain invisible joiners between letters; harmless for layout, noted for search.

@@ -208,3 +208,29 @@ To keep these benchmarks working as the UI changes:
 - No new first-launch screen may block a fresh install. The planned onboarding must be marked done by `SeedDataReceiver`, or the benchmarks will time out.
 - `SeedDataReceiver` keeps writing through the repositories; update it if the models or Room schema change.
 
+
+## UI Feature: Design system + catalog
+- Scenario and scale (JVM, Robolectric with native graphics, `./gradlew stressTest`, `DesignSystemStressTest`; not a device):
+  - 1,000 injected taps on a settle button whose action sets `loading`; 1,000,000 same-instant taps through `ClickGuard`.
+  - A 200-member `AvatarStack`; 10,000 group stacks laid out and described.
+  - A 10,000-row `LazyColumn` of `SsListRow` (avatar + amount pill, keys and content types), 300 scroll jumps.
+  - 200 interrupted rolls of `RollingAmount` up to ₹99,99,99,999.99 at 1.3× font in a 300dp card; 100,000 amounts to glyphs.
+  - 1,000 counter bumps, one per frame; 1,000 undo snackbars with a double-tapped Undo; 1,000 confetti bursts × 96 frames × 48 pieces; animator scales 0, 0.5, 1, 3, 10.
+- Results (numbers):
+  - Taps: 1 settlement and 1 haptic from 1,000 taps (671 ms); guard: 1 accepted from 1,000,000 (4 ms).
+  - 200 members compose 5 faces and one TalkBack sentence; 10,000 stacks in 38 ms.
+  - 10,000 rows: 300 jumps in 3,702 ms to item 9,867, 0 recomposer change cycles from scrolling, heap 113 → 108 MB.
+  - Maximum amount: still inside the card at 1.3× after 200 interrupted rolls (454 ms, 402 recomposer cycles = about 2 per value change, none per frame); 100,000 amounts to glyphs in 71 ms.
+  - Counter: 1,000 bumps in 540 ms, settles on "99+", then on 7.
+  - Undo: 1,000 restores from 2,000 Undo taps (24 ms), nothing left on screen, heap 116 → 118 MB.
+  - Confetti: 4,608,000 particle placements in 56 ms (12 ns each), into one reused array.
+  - Animator scale: only 0 gives reduced motion.
+  - Per-frame recomposition, from the Compose tests: rolling amount < 8 recomposer cycles over 40 frames, bottom bar blob < 4 over 30 frames (animated values are read in layout, draw or layer only).
+  - Release APK: 46,555,887 bytes, +169,480 bytes (+0.37 %) over the 46,386,407-byte baseline, of which 257,584 bytes are the two subset fonts before compression.
+- What broke:
+  - Nothing at these scales.
+  - During design QA the full-width pressed button grew 19dp wider and showed its base above the face; the squash is now capped at 8dp of growth and the base closes as the face sinks.
+  - Letting the bottom bar grow with `heightIn` made its full-height tabs fill the screen; caught by the screenshot verify, reverted to a fixed height (1.3× labels fit, see `ds_bottom_bar_light_large_font`).
+- Failure flow (step by step): not reached. The breaking point for the stack is the description, which names at most four people, so it stays constant; the list is bounded by Compose's lazy layout, not by the row.
+- Fix applied / recommendation:
+  - Frame timing on a device (Macrobenchmark) waits for the screens to use the design system (rows 9-13) and the QA row; numbers above are JVM only.

@@ -118,3 +118,14 @@ Decisions taken during the build, with the reasoning, so nothing is a surprise l
 - **Marigold Mela** (see `DESIGN_DIRECTION.md`), no tweaks. No Lottie: all motion is code-drawn.
 - Features are built one at a time on `main`, because this machine runs one Gradle build safely at a time; no parallel worktrees are needed.
 - Performance numbers come from the Pixel 7 emulator with software rendering and are labelled as such. They show before/after differences, not what a real mid-range phone would measure.
+
+## UI overhaul row 8: design system (2026-11-10)
+- **Fonts:** Bricolage Grotesque and Figtree variable fonts from `google/fonts`, subset to Latin, Latin-1, Latin Extended-A, punctuation, arrows, ×, ₹ and − (same range as PayFlow), Bricolage's width axis pinned to 100. 408 KB + 63 KB → 206 KB + 52 KB. Weight and optical size stay variable and are set through `FontVariation`: display styles at optical size 48, amounts at 20. No Reserved Font Name is declared, so the subset keeps its names. Details in `CREDITS.md`.
+- **Theme entry:** `SplitSmartTheme` provides the Marigold tokens, the motion level and haptics at the app root now (`MainActivity` feeds it the stored `UiPreferences`). The Material slots stay on the pre-overhaul coral look (`MaterialLook.Legacy`) so screens not rebuilt yet look exactly as before; their old colours moved from `SplitSmartTheme.colors` to `SplitSmartTheme.legacy` (a rename, no visual change). Row 9 switches the root to `MaterialLook.Marigold`; rows 9-13 remove `legacy`.
+- **Bottom bar on aubergine in both themes:** marigold on white is only 1.9:1, too weak for the only sign of the selected tab. On aubergine it is 9.6:1.
+- **Depth without blur:** a solid offset base under buttons, chips and cards that closes as the element is pressed. Rounded radii and a tinted (not black) base keep it away from the hard-edged NeoPOP look.
+- **Squash and stretch from one spring:** press = Snappy spring to 1, release = Bouncy spring to 0; its overshoot below 0 is the stretch, amplified 2.5× so it reads. Wide elements grow at most 8dp in total.
+- **Avatar stacks show four faces and "+N"**, except when only one would hide (five members show five faces, not "+1"). The first name is drawn on top; "+N" above all.
+- **Undo snackbar timing on the frame clock** (`withFrameMillis`), so tests control it and it pauses with the app; with TalkBack on it uses the system's recommended timeout.
+- **Token audit with a ratchet:** the ten pre-overhaul screen files keep their current raw-value counts in `scripts/token_audit_legacy.txt`; a count may only go down, new files must be clean.
+- **Compromise:** a `heightIn` bottom bar (to grow past 2× font) filled the screen because its tabs fill the height; kept the fixed 68dp height, which fits 1.3×.
