@@ -48,9 +48,6 @@ object MotionDurations {
     /** One glint across the Pay buttons and the pause before the next (decorative). */
     const val Shine = 3200
 
-    /** The insights bars growing to their values. */
-    const val Bars = 620
-
     /** Two accepted taps on the same button are at least this far apart. */
     const val TapDebounce = 500
 }

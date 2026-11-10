@@ -282,3 +282,29 @@ One entry per feature, written after attacking the feature as a pentester. Sever
 - Scope for improvement:
   - A bill delete could offer Undo like archive does; today it cannot be undone (as for groups, a soft delete would be a second archive).
   - Settle-up (row 13) should check that a bill's split still matches its members before offering payments, as people can be removed after a split.
+
+## UI Feature: Settle up, history and insights
+- Attacks tried:
+  - A forged or optimistic reply from a UPI app: the link is started without asking for a result (application context, chooser, `FLAG_ACTIVITY_NEW_TASK`, `AndroidUpiAppLauncherTest`), and coming back to the screen only asks the question; nothing is recorded until "Yes" (`SettleUpViewModelTest`: resuming records nothing; confirming while still away does nothing).
+  - Tapjacking: real `MotionEvent`s with `FLAG_WINDOW_IS_OBSCURED` and `FLAG_WINDOW_IS_PARTIALLY_OBSCURED` dispatched at Pay, Paid another way and Yes; the window filter is on only while settle-up shows and restored after; the action modifier alone drops a fully covered touch (`SettleUpScreenTest`). Remove this payment in the history carries the same modifier.
+  - Rapid taps: 1,000 taps on Pay through the real view model and screen → 1 UPI link (`SettleUpTapStressTest`); 1,000 `pay()` calls → 1; 1,000 `confirmPaid()` → 1 record; 1,000 taps on Yes while recording → 1; 1,000 taps on Remove → 1 (`HistoryScreenTest`, `HistoryViewModelTest`).
+  - Process death while the UPI app is open: the question is restored from the SavedStateHandle and records the amount that was opened, once (`SettleUpViewModelTest`).
+  - A member removed while the question was open: no payment is recorded between people who are no longer both in the group, the question closes with a reject haptic.
+  - Removed members and stale splits: bills whose share rows were dropped, a stranger's share, a payer who left; each is named and left out of the payments (`SplitCheckTest`, `SettleUpFlowIntegrationTest` through Room). A payment whose member left stops counting but stays in the history.
+  - Money integrity: settlements keep every group's balances summing to zero (10,000 bills + 10,000 payments over 200 people), overpaying turns the debt around, a corrupt row (negative amount, unknown method) is skipped or read as "another way" (`SettlementDaoTest`).
+  - Amounts: ₹99,99,99,999.99 in the hero and a card at 1.3× in a 316dp column; a debt over the UPI link's ₹1 crore cap offers no Pay and says why.
+  - Hostile names: a right-to-left override and emoji in a payee name are cleaned by `DisplayText.safe` everywhere they are drawn (`SettleUpStressTest`).
+  - Telemetry: `settlement_marked` carries the method and whether the group is square, nothing else; the policy test covers it.
+  - Screenshots and fixtures: every UPI ID is a made-up handle (`asha@okfake`, `meera@fakebank`); the old settle-up tests and the UPI ID hint used a real bank's handle and were changed.
+- What broke:
+  - **Medium (fixed):** bills whose split lost a member (or whose payer left) silently dropped out of settle-up, so the payments shown could be wrong without a word. They are now named with the reason and a way to fix them.
+  - **Medium (fixed):** no tapjacking protection on settle actions (row 10's open item). An overlay could have driven "Paid another way" → "Yes" and recorded a payment nobody made. Fixed at window and action level.
+  - **Low (fixed):** a payee with a UPI ID and a debt over ₹1 crore showed "Add UPI ID" (the link could not be built, and the old card took that for a missing ID).
+  - **Low (fixed):** the UPI ID hint suggested a real bank's handle; now `name@yourbank`.
+  - Nothing Critical or High.
+- Fixed now:
+  - `SettleUpViewModel` (question in SavedStateHandle, single-flight record, fresh member check), `SplitCheck`, `Modifier.filterTouchesWhenObscured()` + `FilterObscuredTouches()`, `SettleUpItem.tooLargeForUpi`, history removal behind its sheet.
+- Scope for improvement:
+  - A real status check would need a payment service provider; without one, the person's word is the only source, and the UI says so.
+  - Settle-up could show only the payments that involve "you" once "you" is a member id rather than a name match.
+  - Removing a payment from the history has no undo (it can be marked again).

@@ -67,6 +67,7 @@ Bricolage Grotesque for headlines and numbers, Figtree for everything else and f
 - Touch targets are at least 48dp everywhere.
 - The camera has its own sizes: a 76dp shutter (58dp disc), 36dp viewfinder corners drawn with a 5dp stroke, a 3dp scan line, 6dp corners on the outlines around live text.
 - The split donut is 148dp with a 22dp ring (96dp with 12dp on a bill); the simplify-debts graph is 300dp tall with 2dp arrows for IOUs and 4dp for payments.
+- Settle-up and history: a 232dp UPI QR code (always dark on light), a 3dp border on the SETTLED stamp, 12dp insight bars, a 2dp timeline rail.
 
 ## Motion
 | Spring | Stiffness / damping | Use |
@@ -75,7 +76,7 @@ Bricolage Grotesque for headlines and numbers, Figtree for everything else and f
 | Bouncy | 600 / 0.55 | release, arrivals, bumps, the blob |
 | Gentle | 260 / 0.8 | big things coming to rest |
 
-Durations: press 90, micro 120, small 220, screen 380 (fast 340, slow 460) ms; stagger 35 ms per item, capped at 280; digit ripple 18 ms per column. Easing curves are emphasized, emphasized decelerate/accelerate and standard; there is no linear curve.
+Durations: press 90, micro 120, small 220, screen 380 (fast 340, slow 460) ms; stagger 35 ms per item, capped at 280; digit ripple 18 ms per column; the Pay buttons' glint repeats every 3.2 s (decorative). Easing curves are emphasized, emphasized decelerate/accelerate and standard; there is no linear curve.
 
 Components name a `MotionToken` and `SplitSmartMotion` decides how it plays:
 
@@ -120,6 +121,7 @@ Rules for screens:
 | Overlays | `SsBottomSheet(visible, onDismissRequest, dismissible)`, `SsSnackbarHost(state)` | sheet is in-window and last in a full-screen `Box`; on a tab screen call `HideShellBarWhile(open)` so the floating bar steps aside; snackbar `show()` suspends and returns `Undo`/`TimedOut`/`Dismissed`/`Replaced` |
 | Navigation | `SsBottomBar(items, selectedIndex, onSelect, onReselect)` | marigold blob stretches as it travels; tick haptic |
 | Delight | `ConfettiBurst(playKey)` | achievements only; off under reduced motion |
+| Money actions | `Modifier.filterTouchesWhenObscured()`, `FilterObscuredTouches()` | on anything that opens or records a payment: drops touches that come through another app's window, fully or partly; the screen-level one sets the view flag while the screen shows |
 
 ## Testing
 - Pure logic (formatting, odometer glyphs, stack layout, sheet physics, blob shape, confetti physics, click guard, snackbar state) has JVM unit tests.

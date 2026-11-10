@@ -150,9 +150,6 @@ object Sizes {
 
     /** Height of one bar on the insights card. */
     val insightBar = 12.dp
-
-    /** The dot on the history timeline's rail. */
-    val railDot = 12.dp
 }
 
 /**

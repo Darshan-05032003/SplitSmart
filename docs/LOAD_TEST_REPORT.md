@@ -328,3 +328,26 @@ To keep these benchmarks working as the UI changes:
 - Fix applied / recommendation:
   - The drag's feel (hover growth, gulp, haptic), the donut morph and the graph's two phases at 60/120 Hz need a device; they are on the batched device list after row 14.
   - A bill holds at most 200 lines, so a 500-line receipt arrives here as 200 lines (row 11 shows the note).
+
+## UI Feature: Settle up, history and insights
+- Scenario and scale (JVM, Robolectric, `./gradlew stressTest` → `SettleUpStressTest`, `SettleUpTapStressTest`, plus the screen, view-model and DAO tests; not a device):
+  - 200 people and 2,000 random bills: every payment settled one by one through the view model (Pay or Paid another way, back, Yes) until all square; the same screen with its real view model, 300 jumps through the list and 1,000 taps on Pay.
+  - 1,000 mark-and-undo cycles on one payment.
+  - Balances and the split check for 10,000 bills and 10,000 payments over 200 people.
+  - History for 10,000 bills and 10,000 payments (20,000 rows over 14 months); insights over 100,000 bills.
+  - ₹99,99,99,999.99 at 1.3× text in a 316dp column, with a right-to-left override and emoji in a name.
+- Results (numbers, two runs):
+  - Settle everything: 198 payments in 435 to 657 ms, 198 records and 198 UPI links, all square at the end, no work left on the virtual clock afterwards.
+  - Settle-up list, 198 payments with the real view model: first frame 65 to 109 ms, 300 jumps 2,157 to 2,854 ms with 0 recomposer cycles from scrolling (the glint and amounts are drawn, not recomposed); 1,000 taps on Pay → 1 UPI link opened.
+  - 1,000 mark + undo cycles: 293 to 417 ms, 1,000 records, 0 left behind.
+  - Balances with 10,000 bills + 10,000 payments: 199 payments, 3 to 5 ms per pass, balances sum to exactly 0; split check 0 to 2 ms per pass.
+  - History: timeline of 20,000 rows built in 7 to 11 ms; first frame 27 to 838 ms (Robolectric warm-up dominates the high one); 300 jumps 1,238 to 4,235 ms with 0 recomposer cycles; insights over 100,000 bills 27 to 44 ms.
+  - Largest amount: inside the hero and the card at 1.3× in 316dp; the bidi override is stripped.
+  - Release APK: 46,664,670 bytes, −32,936 bytes (−0.07 %) against row 12's 46,697,606 (two new screens, minus the legacy components and four drawables).
+- What broke:
+  - Nothing in the app at these scales.
+  - Test environment: the button's 500 ms guard alone lets about one tap through per 500 ms of injected time (84 of 1,000 taps over ~30 s of test clock); the one-action guarantee comes from the view model refusing a second payment while a question is open, so the tap run uses the real view model.
+- Failure flow (step by step): tap Pay → the guard accepts → the view model opens the UPI link and turns the card into the question → the next accepted tap lands on the next card's Pay → the view model refuses (one question at a time). Without the view model in the loop the count would be the guard's rate, not one.
+- Fix applied / recommendation:
+  - The glint at 60/120 Hz, the stamp's slam, the bars growing, confetti over a long list and the haptics need a device; they are on the batched device list after row 14.
+  - History holds the whole group in memory (as the group screen does); paging is the next step past tens of thousands of rows per group.
