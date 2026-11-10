@@ -264,4 +264,16 @@
     <string name="settle_no_upi_id">No UPI ID yet</string>
     <string name="settle_qr_action">Show QR to pay %1$s</string>
     <string name="settle_share_action">Share the request with %1$s</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next page</string>
+    <string name="onboarding_start">Let\'s split a bill</string>
+    <string name="onboarding_page">Page %1$d of %2$d</string>
+    <string name="onboarding_1_title">Snap the bill</string>
+    <string name="onboarding_1_body">Point the camera at a receipt and the text is read on your phone. With a Gemini API key in this build, AI turns it into items; without one, a built-in parser does. You check everything before it is saved.</string>
+    <string name="onboarding_2_title">Split it your way</string>
+    <string name="onboarding_2_body">Equally, by item or by share. Tax and tip are shared fairly, and the shares always add up to the bill, to the paisa.</string>
+    <string name="onboarding_3_title">Settle up over UPI</string>
+    <string name="onboarding_3_body">Tap Pay and your UPI app opens with the amount filled in. SplitSmart never touches your money and never marks a debt paid by itself.</string>
 </resources>

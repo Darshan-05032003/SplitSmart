@@ -7,7 +7,9 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import com.darshan.splitsmart.data.llm.DataStoreModelCache
 import com.darshan.splitsmart.data.llm.ModelCache
+import com.darshan.splitsmart.data.settings.DataStoreOnboardingRepository
 import com.darshan.splitsmart.data.settings.DataStoreProfileRepository
+import com.darshan.splitsmart.domain.repository.OnboardingRepository
 import com.darshan.splitsmart.domain.repository.ProfileRepository
 import com.darshan.splitsmart.ui.designsystem.effects.DataStoreUiPreferences
 import com.darshan.splitsmart.ui.designsystem.effects.UiPreferences
@@ -32,6 +34,7 @@ object SettingsModule {
 
     @Provides @Singleton fun modelCache(dataStore: DataStore<Preferences>): ModelCache = DataStoreModelCache(dataStore)
     @Provides @Singleton fun profileRepository(dataStore: DataStore<Preferences>): ProfileRepository = DataStoreProfileRepository(dataStore)
+    @Provides @Singleton fun onboardingRepository(dataStore: DataStore<Preferences>): OnboardingRepository = DataStoreOnboardingRepository(dataStore)
 
     /** Look-and-feel settings (haptics, sound, reduce motion, theme) under `ui_*` keys in the same store. */
     @Provides

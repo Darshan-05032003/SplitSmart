@@ -71,6 +71,10 @@ android {
         unitTests.isReturnDefaultValues = true
     }
 
+    // The benchmark build's seed receiver must keep marking the intro done, or every macrobenchmark waits on the intro and times
+    // out. Its code is compiled into the debug unit tests too, so `testDebugUnitTest` checks that on every gate.
+    sourceSets.getByName("testDebug").kotlin.srcDir("src/benchmark/kotlin")
+
     lint {
         abortOnError = true
         warningsAsErrors = false

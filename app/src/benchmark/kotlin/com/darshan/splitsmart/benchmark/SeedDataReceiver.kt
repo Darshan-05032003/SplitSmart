@@ -14,6 +14,7 @@ import com.darshan.splitsmart.domain.model.SplitConfig
 import com.darshan.splitsmart.domain.model.SplitMode
 import com.darshan.splitsmart.domain.repository.BillRepository
 import com.darshan.splitsmart.domain.repository.GroupRepository
+import com.darshan.splitsmart.domain.repository.OnboardingRepository
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -28,7 +29,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
- * Inserts [GROUPS] groups through the repositories, the newest being "[MAIN_GROUP]" with [MAIN_BILLS] bills, so the scroll
+ * Marks the intro as done (a fresh install would otherwise open on it, and every benchmark waits for the groups list), then
+ * inserts [GROUPS] groups through the repositories, the newest being "[MAIN_GROUP]" with [MAIN_BILLS] bills, so the scroll
  * benchmarks have lists to scroll. Safe to send repeatedly.
  *
  * `adb shell am broadcast -n com.darshan.splitsmart/.benchmark.SeedDataReceiver` replies `seeded=<groups>`.
@@ -39,6 +41,7 @@ class SeedDataReceiver : BroadcastReceiver() {
     interface Dependencies {
         fun groupRepository(): GroupRepository
         fun billRepository(): BillRepository
+        fun onboardingRepository(): OnboardingRepository
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -46,9 +49,9 @@ class SeedDataReceiver : BroadcastReceiver() {
         val dependencies = EntryPointAccessors.fromApplication(context.applicationContext, Dependencies::class.java)
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                seed(dependencies.groupRepository(), dependencies.billRepository())
+                BenchmarkSeed.run(dependencies.groupRepository(), dependencies.billRepository(), dependencies.onboardingRepository())
                 pending.resultCode = Activity.RESULT_OK
-                pending.resultData = "seeded=$GROUPS"
+                pending.resultData = "seeded=${BenchmarkSeed.GROUPS}"
             } catch (e: Exception) {
                 pending.resultCode = Activity.RESULT_CANCELED
                 pending.resultData = "failed=${e.javaClass.simpleName}"
@@ -56,6 +59,15 @@ class SeedDataReceiver : BroadcastReceiver() {
                 pending.finish()
             }
         }
+    }
+}
+
+/** The seeding itself, apart from the receiver so the debug unit tests can run it (see `app/build.gradle.kts`). */
+internal object BenchmarkSeed {
+    suspend fun run(groups: GroupRepository, bills: BillRepository, onboarding: OnboardingRepository) {
+        // First, and on every run: the intro must never stand between a benchmark and the screen it measures.
+        onboarding.setCompleted(true)
+        seed(groups, bills)
     }
 
     private suspend fun seed(groups: GroupRepository, bills: BillRepository) {
@@ -107,12 +119,10 @@ class SeedDataReceiver : BroadcastReceiver() {
         )
     }
 
-    private companion object {
-        const val GROUPS = 200
-        const val MAIN_BILLS = 200
-        const val MAIN_GROUP = "Benchmark trip"
-        const val NEWEST_GAP_MS = 5L
-        val MEMBERS = listOf("Asha Rao", "Vikram Shah", "Neha Menon", "Rahul Verma")
-        val TITLES = listOf("Dinner", "Taxi", "Groceries", "Hotel", "Coffee", "Museum tickets", "Lunch", "Fuel")
-    }
+    const val GROUPS = 200
+    const val MAIN_BILLS = 200
+    const val MAIN_GROUP = "Benchmark trip"
+    private const val NEWEST_GAP_MS = 5L
+    private val MEMBERS = listOf("Asha Rao", "Vikram Shah", "Neha Menon", "Rahul Verma")
+    private val TITLES = listOf("Dinner", "Taxi", "Groceries", "Hotel", "Coffee", "Museum tickets", "Lunch", "Fuel")
 }

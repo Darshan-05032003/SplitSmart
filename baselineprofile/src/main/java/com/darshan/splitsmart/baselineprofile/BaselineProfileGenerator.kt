@@ -10,7 +10,7 @@ import org.junit.runner.RunWith
 
 /**
  * Generates `app/src/main/generated/baselineProfiles/baseline-prof.txt` by driving the critical user journey:
- * cold start → groups list → create a group → open it → open the scan screen (permission rationale) → back.
+ * cold start → (skip the intro) → groups list → create a group → open it → open the scan screen (permission rationale) → back.
  *
  * Run on a device / emulator: `./gradlew :app:generateBaselineProfile`
  * Status in this build: not run (no device); compiles and lints.
@@ -29,6 +29,12 @@ class BaselineProfileGenerator {
         pressHome()
         startActivityAndWait()
         device.wait(Until.hasObject(By.pkg(PACKAGE).depth(0)), 5_000)
+
+        // A fresh install opens on the three-page intro (nothing seeds this run): skip it, like a returning user.
+        device.findObject(By.text("Skip"))?.let { skip ->
+            skip.click()
+            device.waitForIdle()
+        }
 
         // Create a group if the list is empty, then open the first group.
         device.findObject(By.desc("Create group"))?.let { fab ->
