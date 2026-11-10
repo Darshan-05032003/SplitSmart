@@ -308,3 +308,9 @@ One entry per feature, written after attacking the feature as a pentester. Sever
   - A real status check would need a payment service provider; without one, the person's word is the only source, and the UI says so.
   - Settle-up could show only the payments that involve "you" once "you" is a member id rather than a name match.
   - Removing a payment from the history has no undo (it can be marked again).
+
+## UI Feature: Whole-app design QA (row 14)
+- Attacks tried: build and configuration details in user-facing copy (the review card named `LLM_API_KEY`, `local.properties` and HTTP status codes); error pages that offered an action that could not work (Try again on a deleted bill) or none (settle-up and history after a failed read); the new retry on settle-up re-subscribing while a "Did it go through?" question is open; money emoji in screenshots implying another currency; real business names left in docs and test receipts.
+- What broke: Low: the review card showed developer setup details and HTTP codes to every user of a build without a key. Low: two real chain names and a real mall name remained in docs and a parser fixture.
+- Fixed now: the review card speaks in user words for no key, a rejected key and a pin mismatch (tests assert that `LLM_API_KEY` and `local.properties` do not appear there); the setup hint is shown only in Me, only when AI is off. Errors offer Try again only when reading again can help and Back when the item is gone. Settle-up's retry re-reads the group only; the open question lives in `SavedStateHandle` and is untouched (`SettleUpViewModelTest`). Names replaced with invented ones.
+- Scope for improvement: the Me hint still names the build property; a store build would hide it behind `BuildConfig.DEBUG`.
