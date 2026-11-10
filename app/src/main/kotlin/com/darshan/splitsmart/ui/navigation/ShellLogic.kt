@@ -21,7 +21,7 @@ enum class ScreenTransition {
     /** The camera is a mode rather than a page: it rises over the app and sinks back. */
     Rise,
 
-    /** A group card growing into the group screen. */
+    /** A card or row growing into its screen: a group card into the group, a bill row into the bill. */
     ContainerTransform,
 }
 
@@ -53,6 +53,8 @@ object ShellLogic {
             from == null || to == null -> ScreenTransition.FadeThrough
             isTabRoot(from) && isTabRoot(to) -> ScreenTransition.FadeThrough
             pair == setOf(ShellRoute.Groups, ShellRoute.GroupDetail) -> ScreenTransition.ContainerTransform
+            // A bill row on the group screen grows into the bill.
+            pair == setOf(ShellRoute.GroupDetail, ShellRoute.BillDetail) -> ScreenTransition.ContainerTransform
             // A scanned receipt moves forward into review; only entering and leaving the camera itself is the mode change.
             pair == setOf(ShellRoute.Scan, ShellRoute.Review) -> ScreenTransition.SharedAxis
             ShellRoute.Scan in pair -> ScreenTransition.Rise

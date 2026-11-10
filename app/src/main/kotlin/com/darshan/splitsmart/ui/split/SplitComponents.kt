@@ -295,7 +295,7 @@ fun ModeSwitcher(option: SplitModeOption, onSelect: (SplitModeOption) -> Unit, m
     }
 }
 
-private fun SplitModeOption.labelRes(): Int = when (this) {
+internal fun SplitModeOption.labelRes(): Int = when (this) {
     SplitModeOption.Equal -> R.string.split_mode_equal
     SplitModeOption.ByItem -> R.string.split_mode_by_item
     SplitModeOption.ByShare -> R.string.split_mode_by_share
@@ -655,7 +655,7 @@ fun PersonShareRow(
                 }
             }
             if (share != null) {
-                BasicText(breakdown(share), style = type.label.copy(color = colors.textSecondary))
+                BasicText(shareBreakdown(share), style = type.label.copy(color = colors.textSecondary))
             }
         }
         if (option == SplitModeOption.ByShare || option == SplitModeOption.Percent) {
@@ -685,8 +685,9 @@ private fun CheckDot() {
     }
 }
 
+/** What a share is made of, in one line: items, tax, tip, and a discount, other charges or round-off when there is one. */
 @Composable
-private fun breakdown(share: MemberShare): String {
+fun shareBreakdown(share: MemberShare): String {
     val base = stringResource(
         R.string.bill_share_breakdown,
         AmountFormat.format(share.itemsPaise),

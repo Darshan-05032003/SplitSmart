@@ -56,7 +56,6 @@
     <string name="bill_delete">Delete bill</string>
     <string name="bill_paid_by_value">Paid by %1$s</string>
     <string name="bill_payer_unknown">nobody yet</string>
-    <string name="bill_items_title">Items</string>
     <string name="bill_no_items">No line items. Scan a receipt to add them.</string>
     <string name="bill_item_qty">%1$d × %2$s</string>
     <string name="bill_status_draft">Draft</string>
@@ -135,9 +134,7 @@
     </plurals>
     <string name="bill_split_button">Split this bill</string>
     <string name="bill_split_edit_button">Edit split</string>
-    <string name="bill_shares_title">Shares</string>
     <string name="bill_share_breakdown">Items %1$s · Tax %2$s · Tip %3$s</string>
-    <string name="bill_share_adjustment">Adjustment %1$s</string>
     <string name="split_title">Split bill</string>
     <string name="split_mode_label">How to split</string>
     <string name="split_mode_equal">Equally</string>
@@ -174,7 +171,6 @@
     <string name="app_tagline">Split bills, not friendships</string>
     <string name="action_save">Save</string>
     <string name="badge_ai">AI</string>
-    <string name="badge_ai_read">Read by AI</string>
     <string name="balance_you_are_owed">you\'re owed %1$s</string>
     <string name="balance_you_owe">you owe %1$s</string>
     <string name="balance_settled">settled up</string>
@@ -224,8 +220,6 @@
     <string name="review_totals">Totals</string>
     <string name="review_items_subtotal">Items</string>
     <string name="review_adds_up">Items + tax + tip match the total</string>
-    <string name="review_tax_label">Tax</string>
-    <string name="review_tip_label">Tip</string>
     <!-- Scan / review: UI overhaul row 11 -->
     <string name="scan_hint_text_found">Text found · hold steady</string>
     <string name="scan_hint_hold">Hold still…</string>
@@ -316,6 +310,28 @@
     </plurals>
     <string name="split_percent_of">%1$d%% of the bill</string>
     <string name="split_legend_more">+%1$d more</string>
+
+    <!-- Bill detail (row 12) -->
+    <string name="bill_delete_title">Delete %1$s?</string>
+    <string name="bill_delete_body">Its lines and its split go too. This can\'t be undone.</string>
+    <string name="bill_delete_keep">Keep it</string>
+    <string name="bill_receipt_title">On the receipt</string>
+    <string name="bill_total_label">Total</string>
+    <string name="bill_tax_label">Tax</string>
+    <string name="bill_tip_label">Tip</string>
+    <string name="bill_discount_label">Discount</string>
+    <string name="bill_charges_label">Other charges</string>
+    <string name="bill_round_off_label">Round-off</string>
+    <string name="bill_who_pays_title">Who pays what</string>
+    <string name="bill_share_owes">Owes %1$s</string>
+    <string name="bill_share_owes_spoken">%1$s owes %2$s %3$s</string>
+    <string name="bill_share_paid_back">Paid · gets back %1$s</string>
+    <string name="bill_share_paid_spoken">%1$s paid, gets back %2$s</string>
+    <string name="bill_share_spoken">%1$s, %2$s</string>
+    <string name="bill_not_split_title">Not split yet</string>
+    <string name="bill_not_split_body">Split it to see who owes whom. Each share comes out to the paisa.</string>
+    <string name="bill_line_spoken">%1$s, %2$s</string>
+    <string name="bill_shares_exact">Exact to the paisa</string>
 
     <!-- Settle up -->
     <plurals name="settle_summary">

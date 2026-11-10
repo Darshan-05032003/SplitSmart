@@ -58,7 +58,9 @@ class ShellLogicTest {
     fun `one motion vocabulary for every pair of screens`() {
         assertThat(ShellLogic.transition(ShellRoute.Groups, ShellRoute.Me)).isEqualTo(ScreenTransition.FadeThrough)
         assertThat(ShellLogic.transition(ShellRoute.Groups, ShellRoute.GroupDetail)).isEqualTo(ScreenTransition.ContainerTransform)
-        assertThat(ShellLogic.transition(ShellRoute.GroupDetail, ShellRoute.BillDetail)).isEqualTo(ScreenTransition.SharedAxis)
+        // Row 12: a bill row grows into its bill, like a group card into its group.
+        assertThat(ShellLogic.transition(ShellRoute.GroupDetail, ShellRoute.BillDetail)).isEqualTo(ScreenTransition.ContainerTransform)
+        assertThat(ShellLogic.transition(ShellRoute.BillDetail, ShellRoute.GroupDetail)).isEqualTo(ScreenTransition.ContainerTransform)
         assertThat(ShellLogic.transition(ShellRoute.GroupDetail, ShellRoute.SettleUp)).isEqualTo(ScreenTransition.SharedAxis)
         assertThat(ShellLogic.transition(ShellRoute.BillDetail, ShellRoute.Split)).isEqualTo(ScreenTransition.SharedAxis)
         assertThat(ShellLogic.transition(ShellRoute.GroupDetail, ShellRoute.Scan)).isEqualTo(ScreenTransition.Rise)

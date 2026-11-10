@@ -61,6 +61,8 @@ import com.darshan.splitsmart.ui.designsystem.tokens.Sizes
 import com.darshan.splitsmart.ui.designsystem.tokens.Spacing
 import com.darshan.splitsmart.ui.groups.GroupTile
 import com.darshan.splitsmart.ui.groups.HeroPalette
+import com.darshan.splitsmart.ui.navigation.billContainerKey
+import com.darshan.splitsmart.ui.navigation.containerTransform
 import com.darshan.splitsmart.ui.theme.LocalMarigoldColors
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
 
@@ -224,7 +226,12 @@ fun BillRow(bill: Bill, payerName: String?, onClick: () -> Unit, modifier: Modif
     val colors = SplitSmartTheme.colors
     val type = SplitSmartTheme.type
     val ai = bill.source == BillSource.SCAN_LLM
-    ChunkyCard(modifier.fillMaxWidth().testTag(SplitSmartTestTags.BILL_ITEM), onClick = onClick, onClickLabel = stringResource(R.string.bill_open), contentPadding = PaddingValues(Spacing.md)) {
+    ChunkyCard(
+        modifier.fillMaxWidth().containerTransform(billContainerKey(bill.id)).testTag(SplitSmartTestTags.BILL_ITEM),
+        onClick = onClick,
+        onClickLabel = stringResource(R.string.bill_open),
+        contentPadding = PaddingValues(Spacing.md),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             BillGlyph(if (bill.source == BillSource.MANUAL) "✍️" else "🧾", ai)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {

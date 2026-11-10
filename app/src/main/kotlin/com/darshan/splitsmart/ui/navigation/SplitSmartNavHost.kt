@@ -162,8 +162,11 @@ fun SplitSmartNavHost(
                                 )
                             }
                         }
-                        screen<BillDetailDestination> {
-                            BillDetailRoute(onBack = { navController.popBackStack() }, onSplit = { navController.push(SplitDestination(it)) })
+                        screen<BillDetailDestination> { backStackEntry ->
+                            val billId = backStackEntry.toRoute<BillDetailDestination>().billId
+                            Box(Modifier.fillMaxSize().containerTransform(billContainerKey(billId))) {
+                                BillDetailRoute(onBack = { navController.popBackStack() }, onSplit = { navController.push(SplitDestination(it)) })
+                            }
                         }
                         screen<SettleUpDestination> {
                             SettleUpRoute(onBack = { navController.popBackStack() })

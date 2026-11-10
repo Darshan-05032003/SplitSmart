@@ -49,6 +49,9 @@ val LocalNavAnimatedScope = compositionLocalOf<AnimatedContentScope?> { null }
 /** The shared-element key for one group: its card on the groups list and its group screen carry the same one. */
 fun groupContainerKey(groupId: String): String = "group:$groupId"
 
+/** The shared-element key for one bill: its row on the group screen and its bill screen. */
+fun billContainerKey(billId: String): String = "bill:$billId"
+
 /**
  * Marks the element as one end of a container transform: the element with the same [key] on the other screen is what it grows
  * into, its corners easing from a card's to the screen's. Reduced motion, or a screen outside the shell, leaves the element as

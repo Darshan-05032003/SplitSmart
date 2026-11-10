@@ -1,6 +1,5 @@
 package com.darshan.splitsmart.ui.components
 
-import com.darshan.splitsmart.ui.groups.groupEmoji
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
@@ -88,78 +87,6 @@ private val AVATAR_HUES = listOf(
 
 fun avatarColors(name: String): Pair<Color, Color> = AVATAR_HUES[abs(name.trim().lowercase().hashCode()) % AVATAR_HUES.size]
 
-/** Overlapping avatars for a group's members, "+N" when there are more than [max]. */
-@Composable
-fun AvatarStack(names: List<String>, modifier: Modifier = Modifier, max: Int = 4, size: Dp = 28.dp) {
-    val ring = MaterialTheme.colorScheme.surfaceContainerLow
-    Row(modifier.clearAndSetSemantics { }, verticalAlignment = Alignment.CenterVertically) {
-        names.take(max).forEachIndexed { i, n ->
-            InitialAvatar(n, size = size, ring = ring, modifier = Modifier.offset(x = (-8 * i).dp))
-        }
-        if (names.size > max) {
-            Box(
-                Modifier.offset(x = (-8 * max).dp).size(size).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                contentAlignment = Alignment.Center,
-            ) { Text("+${names.size - max}", style = MaterialTheme.typography.labelSmall) }
-        }
-    }
-}
-
-/** An emoji tile for a group, picked from keywords in the name (trip, flat, dinner…), coloured by the name. */
-@Composable
-fun GroupAvatar(name: String, modifier: Modifier = Modifier, size: Dp = 52.dp) {
-    val (bg, _) = avatarColors(name)
-    Box(modifier.size(size).clip(RoundedCornerShape(16.dp)).background(bg).clearAndSetSemantics { }, contentAlignment = Alignment.Center) {
-        Text(groupEmoji(name), style = MaterialTheme.typography.headlineSmall)
-    }
-}
-
-/** Small indigo pill marking anything the AI produced. */
-@Composable
-fun AiBadge(modifier: Modifier = Modifier, label: String = stringResource(R.string.badge_ai)) {
-    Surface(color = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer, shape = CircleShape, modifier = modifier) {
-        Row(Modifier.padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(appIcon(AppIcons.Sparkle), contentDescription = null, modifier = Modifier.size(12.dp))
-            Spacer(Modifier.width(4.dp))
-            Text(label, style = MaterialTheme.typography.labelSmall)
-        }
-    }
-}
-
-enum class BalanceTone { OWED, OWE, NEUTRAL }
-
-/** Rounded chip for a money state: green when you are owed, red when you owe, neutral otherwise. */
-@Composable
-fun BalanceChip(text: String, tone: BalanceTone, modifier: Modifier = Modifier) {
-    val colors = SplitSmartTheme.legacy
-    val (bg, fg) = when (tone) {
-        BalanceTone.OWED -> colors.owed.container to colors.owed.content
-        BalanceTone.OWE -> colors.owe.container to colors.owe.content
-        BalanceTone.NEUTRAL -> MaterialTheme.colorScheme.surfaceContainerHighest to MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    Surface(color = bg, contentColor = fg, shape = CircleShape, modifier = modifier) {
-        Text(text, style = MaterialTheme.typography.labelMedium, maxLines = 1, modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
-    }
-}
-
-/** Balance text for "you": positive → owed, negative → owe, zero → settled. */
-@Composable
-fun yourBalanceLabel(balancePaise: Long): Pair<String, BalanceTone> = when {
-    balancePaise > 0 -> stringResource(R.string.balance_you_are_owed, Money.formatInr(balancePaise)) to BalanceTone.OWED
-    balancePaise < 0 -> stringResource(R.string.balance_you_owe, Money.formatInr(-balancePaise)) to BalanceTone.OWE
-    else -> stringResource(R.string.balance_settled) to BalanceTone.NEUTRAL
-}
-
-/** A section title with an optional trailing action. */
-@Composable
-fun SectionHeader(title: String, modifier: Modifier = Modifier, action: (@Composable RowScope.() -> Unit)? = null) {
-    Row(modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-        action?.invoke(this)
-    }
-}
-
-/** Icon inside a soft tinted circle (list leading icons, illustrations). */
 @Composable
 fun IconBubble(painter: Painter, modifier: Modifier = Modifier, size: Dp = 40.dp, container: Color = MaterialTheme.colorScheme.primaryContainer, content: Color = MaterialTheme.colorScheme.onPrimaryContainer) {
     Box(modifier.size(size).clip(CircleShape).background(container), contentAlignment = Alignment.Center) {
@@ -205,19 +132,6 @@ fun InfoBanner(
             if (icon != null) Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp).padding(top = 1.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp), content = content)
         }
-    }
-}
-
-/** Label/value row used in totals and breakdowns. */
-@Composable
-fun AmountRow(label: String, value: String, modifier: Modifier = Modifier, emphasize: Boolean = false, valueColor: Color = Color.Unspecified) {
-    Row(modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            label, style = if (emphasize) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
-            color = if (emphasize) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
-        )
-        Text(value, style = if (emphasize) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium, color = valueColor)
     }
 }
 
