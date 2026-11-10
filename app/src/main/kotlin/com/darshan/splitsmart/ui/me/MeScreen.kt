@@ -61,6 +61,7 @@ object MeTags {
     const val HAPTICS = "me_haptics"
     const val REDUCE_MOTION = "me_reduce_motion"
     const val AI = "me_ai"
+    const val AI_HINT = "me_ai_hint"
     const val INTRO = "me_intro"
     fun theme(mode: ThemeMode) = "me_theme_${mode.name.lowercase()}"
 }
@@ -127,6 +128,7 @@ fun MeScreen(state: MeUiState, callbacks: MeCallbacks, scroll: ScrollState = rem
             SsListRow(
                 title = stringResource(R.string.me_ai_title),
                 subtitle = stringResource(if (state.aiReading) R.string.me_ai_on else R.string.me_ai_off),
+                subtitleMaxLines = Int.MAX_VALUE,
                 trailing = {
                     StatusPill(
                         if (state.aiReading) StatusKind.Ai else StatusKind.Neutral,
@@ -136,7 +138,15 @@ fun MeScreen(state: MeUiState, callbacks: MeCallbacks, scroll: ScrollState = rem
                 },
                 modifier = Modifier.testTag(MeTags.AI),
             )
-            SsListRow(title = stringResource(R.string.me_upi_title), subtitle = stringResource(R.string.me_upi_body))
+            if (!state.aiReading) {
+                // For whoever builds the app from source: the review card only says AI reading is off, this says how to turn it on.
+                BasicText(
+                    stringResource(R.string.me_ai_setup_hint),
+                    Modifier.padding(horizontal = Spacing.md).padding(bottom = Spacing.xs).testTag(MeTags.AI_HINT),
+                    style = SplitSmartTheme.type.label.copy(color = colors.textSecondary),
+                )
+            }
+            SsListRow(title = stringResource(R.string.me_upi_title), subtitle = stringResource(R.string.me_upi_body), subtitleMaxLines = Int.MAX_VALUE)
             SsListRow(
                 title = stringResource(R.string.me_intro),
                 leading = { BasicText("🎬", style = SplitSmartTheme.type.title.copy(color = colors.text)) },

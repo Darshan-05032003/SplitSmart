@@ -86,7 +86,7 @@ private class IntroPage(val art: ArtKind, val emoji: String, @StringRes val titl
 private val Pages = listOf(
     IntroPage(ArtKind.Snap, "🧾", R.string.onboarding_1_title, R.string.onboarding_1_body) { it.pending },
     IntroPage(ArtKind.Split, "🍕", R.string.onboarding_2_title, R.string.onboarding_2_body) { it.success },
-    IntroPage(ArtKind.Settle, "💸", R.string.onboarding_3_title, R.string.onboarding_3_body) { it.info },
+    IntroPage(ArtKind.Settle, "📲", R.string.onboarding_3_title, R.string.onboarding_3_body) { it.info },
 )
 
 private val StageShape = RoundedCornerShape(bottomStart = Radii.large, bottomEnd = Radii.large)

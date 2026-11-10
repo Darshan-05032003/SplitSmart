@@ -112,9 +112,10 @@ class ReviewFlowIntegrationTest {
         compose.onNodeWithContentDescription("Read by the built-in parser").assertIsDisplayed() // who read the bill
         compose.onAllNodesWithTag(SplitSmartTestTags.REVIEW_ITEM).assertCountEquals(2)
         compose.onNodeWithText("Paneer Tikka", substring = true).assertExists()
-        // key missing: no point offering a retry of the AI path, and the banner says how to configure the key
+        // key missing: no point offering a retry of the AI path; the card says AI reading is off, in a user's words
         assertThat(compose.onAllNodesWithTagExists(SplitSmartTestTags.REVIEW_RERUN)).isFalse()
-        compose.onNodeWithText("LLM_API_KEY", substring = true).assertExists()
+        compose.onNodeWithText("AI reading is off in this build", substring = true).assertExists()
+        compose.onNodeWithText("LLM_API_KEY", substring = true).assertDoesNotExist()
     }
 
     @Test

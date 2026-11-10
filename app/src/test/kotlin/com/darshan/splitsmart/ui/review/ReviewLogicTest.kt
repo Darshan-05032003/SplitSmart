@@ -1,5 +1,7 @@
 package com.darshan.splitsmart.ui.review
 
+import com.darshan.splitsmart.domain.model.ExtractionSource
+import com.darshan.splitsmart.domain.model.LlmFailure
 import com.darshan.splitsmart.ui.designsystem.motion.MotionDurations
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
@@ -57,5 +59,32 @@ class ReviewLogicTest {
         assertThat(ReviewLogic.mismatch(0)).isEqualTo(Mismatch.AddsUp)
         assertThat(ReviewLogic.mismatch(1_250)).isEqualTo(Mismatch.Over(1_250))
         assertThat(ReviewLogic.mismatch(-500)).isEqualTo(Mismatch.Under(500))
+    }
+    @Test
+    fun `no key is a normal state for this build, so the parser's card stays plain`() {
+        assertThat(ReviewLogic.sourceTone(ExtractionSource.REGEX, refining = false, failure = LlmFailure.KEY_MISSING)).isEqualTo(SourceTone.Plain)
+    }
+
+    @Test
+    fun `a reading the AI made, or one it is still refining, sits on a plain card`() {
+        assertThat(ReviewLogic.sourceTone(ExtractionSource.LLM, refining = false, failure = null)).isEqualTo(SourceTone.Plain)
+        assertThat(ReviewLogic.sourceTone(ExtractionSource.REGEX, refining = true, failure = LlmFailure.TIMEOUT)).isEqualTo(SourceTone.Plain)
+    }
+
+    @Test
+    fun `a rejected key or a pin mismatch is a real failure and keeps the danger tone`() {
+        for (failure in listOf(LlmFailure.UNAUTHORIZED, LlmFailure.INSECURE)) {
+            assertThat(ReviewLogic.sourceTone(ExtractionSource.REGEX, refining = false, failure = failure)).isEqualTo(SourceTone.Danger)
+        }
+    }
+
+    @Test
+    fun `a failure that trying again can fix is a warning`() {
+        val retryable = LlmFailure.entries - setOf(LlmFailure.KEY_MISSING, LlmFailure.UNAUTHORIZED, LlmFailure.INSECURE)
+        assertThat(retryable).contains(LlmFailure.OFFLINE)
+        for (failure in retryable) {
+            assertThat(ReviewLogic.sourceTone(ExtractionSource.REGEX, refining = false, failure = failure)).isEqualTo(SourceTone.Warning)
+        }
+        assertThat(ReviewLogic.sourceTone(ExtractionSource.REGEX, refining = false, failure = null)).isEqualTo(SourceTone.Warning)
     }
 }

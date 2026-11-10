@@ -46,6 +46,7 @@ import com.darshan.splitsmart.R
 import com.darshan.splitsmart.domain.model.Settlement
 import com.darshan.splitsmart.domain.model.SettlementMethod
 import com.darshan.splitsmart.ui.LoadState
+import com.darshan.splitsmart.ui.components.LoadErrorState
 import com.darshan.splitsmart.ui.components.formatDate
 import com.darshan.splitsmart.ui.components.formatShortDate
 import com.darshan.splitsmart.ui.designsystem.components.AmountFormat
@@ -55,7 +56,6 @@ import com.darshan.splitsmart.ui.designsystem.components.ChunkyButton
 import com.darshan.splitsmart.ui.designsystem.components.ChunkyCard
 import com.darshan.splitsmart.ui.designsystem.components.DisplayText
 import com.darshan.splitsmart.ui.designsystem.components.EmptyState
-import com.darshan.splitsmart.ui.designsystem.components.ErrorState
 import com.darshan.splitsmart.ui.designsystem.components.IllustrationKind
 import com.darshan.splitsmart.ui.designsystem.components.SkeletonBlock
 import com.darshan.splitsmart.ui.designsystem.components.SkeletonGroup
@@ -73,7 +73,6 @@ import com.darshan.splitsmart.ui.designsystem.tokens.Radii
 import com.darshan.splitsmart.ui.designsystem.tokens.Sizes
 import com.darshan.splitsmart.ui.designsystem.tokens.Spacing
 import com.darshan.splitsmart.ui.designsystem.tokens.Strokes
-import com.darshan.splitsmart.ui.messageRes
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.delay
@@ -109,7 +108,7 @@ fun HistoryRoute(viewModel: HistoryViewModel = hiltViewModel(), onBack: () -> Un
             }
         }
     }
-    HistoryScreen(state, snackbar, HistoryCallbacks(onBack, onOpenBill, viewModel::select, viewModel::dismiss, viewModel::remove))
+    HistoryScreen(state, snackbar, HistoryCallbacks(onBack, onOpenBill, viewModel::select, viewModel::dismiss, viewModel::remove, viewModel::retry))
 }
 
 data class HistoryCallbacks(
@@ -118,6 +117,7 @@ data class HistoryCallbacks(
     val onSelect: (Settlement) -> Unit = {},
     val onDismiss: () -> Unit = {},
     val onRemove: () -> Unit = {},
+    val onRetry: () -> Unit = {},
 )
 
 /**
@@ -141,12 +141,7 @@ fun HistoryScreen(state: HistoryUiState, snackbar: SsSnackbarState, callbacks: H
             when (val c = state.content) {
                 LoadState.Loading -> HistoryLoading()
                 LoadState.Empty -> EmptyState(IllustrationKind.Bills, stringResource(R.string.history_empty_title), stringResource(R.string.history_empty_body))
-                is LoadState.Error -> ErrorState(
-                    stringResource(R.string.history_error_title),
-                    stringResource(c.reason.messageRes()),
-                    onRetry = callbacks.onBack,
-                    retryLabel = stringResource(R.string.action_back),
-                )
+                is LoadState.Error -> LoadErrorState(stringResource(R.string.history_error_title), c.reason, callbacks.onRetry, callbacks.onBack)
                 is LoadState.Content -> HistoryList(c.data, callbacks)
             }
         }

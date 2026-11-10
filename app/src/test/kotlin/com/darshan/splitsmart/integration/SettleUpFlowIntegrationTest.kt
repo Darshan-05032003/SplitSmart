@@ -155,6 +155,8 @@ class SettleUpFlowIntegrationTest {
         compose.onNodeWithText("Ravi has no UPI ID yet, so there is no payment link.").assertIsDisplayed()
         compose.onNodeWithTag(SplitSmartTestTags.SETTLE_ADD_VPA).performClick()
         compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.MEMBER_VPA_FIELD) }
+        // The sheet exists to add the ID, so its field is not labelled "optional" (the add-member sheet's is).
+        compose.onNodeWithText("UPI ID (optional)", substring = true, useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithTag(SplitSmartTestTags.MEMBER_VPA_FIELD).performTextInput("ravi@upi")
         compose.onNodeWithTag(SplitSmartTestTags.DIALOG_CONFIRM).performClick()
         compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.SETTLE_PAY) }

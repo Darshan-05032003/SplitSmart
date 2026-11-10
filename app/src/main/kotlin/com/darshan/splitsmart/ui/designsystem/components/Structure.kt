@@ -104,7 +104,8 @@ fun ChunkyCard(
 
 /**
  * One row of a list: [leading] (an avatar, an emoji tile), a title and an optional subtitle, and [trailing] (an amount pill, a
- * chevron). Text from outside the app is cleaned with [DisplayText.safe]; the title stays on one line, the subtitle on two.
+ * chevron). Text from outside the app is cleaned with [DisplayText.safe]; the title stays on one line, the subtitle on two
+ * ([subtitleMaxLines]: a sentence of the app's own that must be read in full, such as a fact on Me, may take more).
  * Clickable rows squash a little and merge for TalkBack. Transparent: put rows in a [ChunkyCard] or on the page.
  */
 @Composable
@@ -117,6 +118,7 @@ fun SsListRow(
     onClick: (() -> Unit)? = null,
     onClickLabel: String? = null,
     minHeight: Dp = Sizes.listRowHeight,
+    subtitleMaxLines: Int = 2,
 ) {
     val type = SplitSmartTheme.type
     val colors = SplitSmartTheme.colors
@@ -144,7 +146,7 @@ fun SsListRow(
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xxs / 2)) {
             BasicText(DisplayText.safe(title), style = type.bodyStrong.copy(color = colors.text), maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (subtitle != null) {
-                BasicText(DisplayText.safe(subtitle), style = type.label.copy(color = colors.textSecondary), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                BasicText(DisplayText.safe(subtitle), style = type.label.copy(color = colors.textSecondary), maxLines = subtitleMaxLines, overflow = TextOverflow.Ellipsis)
             }
         }
         if (trailing != null) trailing()
@@ -163,11 +165,12 @@ fun SsSectionHeader(
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
     actionModifier: Modifier = Modifier,
+    gutter: Boolean = true,
 ) {
     val type = SplitSmartTheme.type
     val colors = SplitSmartTheme.colors
     Row(
-        modifier.fillMaxWidth().heightIn(min = Sizes.touchTarget).padding(horizontal = Spacing.screen),
+        modifier.fillMaxWidth().heightIn(min = Sizes.touchTarget).then(if (gutter) Modifier.padding(horizontal = Spacing.screen) else Modifier),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(Modifier.weight(1f).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically) {

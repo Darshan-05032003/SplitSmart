@@ -112,7 +112,10 @@ class ReviewScreenTest {
         show()
         rule.onNodeWithContentDescription("Read by the built-in parser").assertIsDisplayed()
         rule.onNodeWithTag(SplitSmartTestTags.FALLBACK_BANNER).assertIsDisplayed()
-        rule.onNodeWithText("LLM_API_KEY", substring = true).assertIsDisplayed()
+        // No key is how this build ships: said in a user's words, with no setup instructions (those live in Me and the docs).
+        rule.onNodeWithText("AI reading is off in this build", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("LLM_API_KEY", substring = true).assertDoesNotExist()
+        rule.onNodeWithText("local.properties", substring = true).assertDoesNotExist()
         // No key: trying the AI again cannot help, so it is not offered.
         rule.onNodeWithTag(SplitSmartTestTags.REVIEW_RERUN).assertDoesNotExist()
     }

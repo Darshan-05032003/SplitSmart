@@ -2,6 +2,8 @@ package com.darshan.splitsmart.ui.review
 
 import androidx.compose.runtime.Immutable
 import com.darshan.splitsmart.core.Money
+import com.darshan.splitsmart.domain.model.ExtractionSource
+import com.darshan.splitsmart.domain.model.LlmFailure
 import com.darshan.splitsmart.ui.designsystem.motion.MotionDurations
 
 /**
@@ -63,7 +65,30 @@ sealed interface Mismatch {
     data class Under(val paise: Long) : Mismatch
 }
 
+/** The tone of the card that says who read the bill. */
+enum class SourceTone {
+    /** The AI read it, the AI is still refining, or the build has no key: normal states on a plain card. */
+    Plain,
+
+    /** The AI was tried and did not answer in a way trying again can fix (offline, timeout, busy, a bad answer). */
+    Warning,
+
+    /** A real failure trying again will not fix: the key was rejected, or the server's certificate did not match the pins. */
+    Danger,
+}
+
 object ReviewLogic {
+    /**
+     * Who read the bill decides the card's tone. A build without a Gemini key is how SplitSmart ships to anyone who builds it
+     * themselves, so it reads like any other reading, not like an error; the danger tone is kept for real failures.
+     */
+    fun sourceTone(source: ExtractionSource, refining: Boolean, failure: LlmFailure?): SourceTone = when {
+        refining || source != ExtractionSource.REGEX -> SourceTone.Plain
+        failure == LlmFailure.KEY_MISSING -> SourceTone.Plain
+        failure == LlmFailure.UNAUTHORIZED || failure == LlmFailure.INSECURE -> SourceTone.Danger
+        else -> SourceTone.Warning
+    }
+
     fun mismatch(mismatchPaise: Long?): Mismatch = when {
         mismatchPaise == null -> Mismatch.Unknown
         mismatchPaise == 0L -> Mismatch.AddsUp

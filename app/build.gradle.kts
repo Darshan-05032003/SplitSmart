@@ -28,6 +28,9 @@ val localProperties = Properties().apply {
 fun localProperty(name: String): String? =
     (localProperties.getProperty(name) ?: System.getenv(name))?.trim()?.trim('"', '\'')?.trim()?.takeIf { it.isNotEmpty() }
 val llmApiKey: String = localProperty("LLM_API_KEY") ?: ""
+// Compose compiler reports and metrics, off by default (they slow compilation):
+// `./gradlew :app:compileReleaseKotlin -PcomposeReports=true` writes them to app/build/compose_compiler/.
+val composeReports: Boolean = (project.findProperty("composeReports") as? String)?.toBoolean() ?: false
 
 android {
     namespace = "com.darshan.splitsmart"
@@ -147,6 +150,14 @@ dependencies {
 }
 
 // Screenshot tests: `recordRoborazziDebug` writes baselines, `verifyRoborazziDebug` compares against them.
+composeCompiler {
+    stabilityConfigurationFiles.add(layout.projectDirectory.file("compose_stability.conf"))
+    if (composeReports) {
+        reportsDestination.set(layout.buildDirectory.dir("compose_compiler"))
+        metricsDestination.set(layout.buildDirectory.dir("compose_compiler"))
+    }
+}
+
 // Baselines are committed; a plain `testDebugUnitTest` runs the same tests without touching images.
 roborazzi {
     outputDir.set(file("src/test/screenshots"))

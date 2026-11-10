@@ -20,11 +20,13 @@ import com.darshan.splitsmart.ui.designsystem.components.SsSnackbarState
 import com.darshan.splitsmart.ui.designsystem.sameAs
 import com.darshan.splitsmart.ui.designsystem.setDs
 import com.google.common.truth.Truth.assertThat
+import java.time.Duration
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import org.robolectric.shadows.ShadowSystemClock
 
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -116,5 +118,21 @@ class HistoryScreenTest {
         rule.onNodeWithText("No history yet").assertIsDisplayed()
         state = HistoryUiState(LoadState.Error(ErrorReason.STORAGE))
         rule.onNodeWithText("Couldn't load the history").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a read that failed can be tried again, a group that is gone goes back`() {
+        var retries = 0
+        var backs = 0
+        var state by mutableStateOf(HistoryUiState(LoadState.Error(ErrorReason.STORAGE)))
+        rule.setDs(reduceMotion = true) { HistoryScreen(state, SsSnackbarState(), HistoryFixtures.callbacks.copy(onBack = { backs++ }, onRetry = { retries++ })) }
+        rule.onNodeWithText("Try again").performClick()
+        assertThat(retries).isEqualTo(1)
+        state = HistoryUiState(LoadState.Error(ErrorReason.NOT_FOUND))
+        rule.onNodeWithText("Try again").assertDoesNotExist()
+        ShadowSystemClock.advanceBy(Duration.ofMillis(600)) // past the button's one-tap-per-500-ms guard
+        rule.onNodeWithText("Back").performClick()
+        assertThat(backs).isEqualTo(1)
+        assertThat(retries).isEqualTo(1)
     }
 }

@@ -286,7 +286,7 @@ fun CheckCard(check: SettleCheck, recording: Boolean, onYes: () -> Unit, onNotYe
     ChunkyCard(modifier.fillMaxWidth().testTag(SettleUpTags.CHECK_CARD), color = colors.raised, contentPadding = PaddingValues(Spacing.md)) {
         Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             Box(Modifier.size(Sizes.avatar).background(colors.surface, Radii.circleShape).clearAndSetSemantics {}, contentAlignment = Alignment.Center) {
-                BasicText(if (!check.asking) "⏳" else if (upi) "🤔" else "💵", style = type.title.copy(color = colors.text))
+                BasicText(if (!check.asking) "⏳" else if (upi) "🤔" else "🤝", style = type.title.copy(color = colors.text))
             }
             Column(Modifier.weight(1f).semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
                 val title = when {

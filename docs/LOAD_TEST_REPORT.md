@@ -151,7 +151,7 @@ on the build machine (Robolectric SQLite on the JVM, JDK 17 toolchain, Gradle `-
 - Results (numbers):
   - `gemini-3.1-flash-lite` **3,050 ms**, `gemini-flash-lite-latest` 3,509 ms, `gemini-3.5-flash-lite` 4,005 ms (all HTTP 200 and exact: 7 items, tax ₹191.00, total ₹2,101.00); `gemini-3.8-flash` 400 for `minimal`, > 120,000 ms (client timeout) at `low`.
   - `realApiTest` (production pinned client and timeouts): **1,178 ms**, 2 items, total 21,000 paise, 0 warnings.
-  - In-app on the emulator, tap "Continue" → `llm_parse_success` in logcat: **~2.7 s** (Spice Garden, 7 items), **~2.4 s** (Blue Tokai, 5 items, rotated 4°, tip ₹100), **3.3-7 s** (Mainland China, 8 items; not timed exactly: the provisional draft was visible in every capture for the first ~3.3 s, the AI result by the next screenshot; 1 warning: a 10 % discount makes items + tax exceed the total by ₹270, shown as a mismatch).
+  - In-app on the emulator, tap "Continue" → `llm_parse_success` in logcat: **~2.7 s** (Spice Garden, 7 items), **~2.4 s** (Cafe Marigold Beans, 5 items, rotated 4°, tip ₹100), **3.3-7 s** (Golden Wok, 8 items; not timed exactly: the provisional draft was visible in every capture for the first ~3.3 s, the AI result by the next screenshot; 1 warning: a 10 % discount makes items + tax exceed the total by ₹270, shown as a mismatch).
   - Airplane mode: `UnknownHostException` → `llm_parse_failure failure=offline`, on-device result shown at once, no retries, "Try AI again" offered.
   - Stress after the changes: all green; e.g. 1,000 concurrent LLM calls with 600 × 429 → 1,600 requests, 0 failures in 746 ms; 10,000 receipts through the regex parser in 1.0 s; 1,000 extractions off the main thread in 66 ms.
 - What broke:

@@ -84,7 +84,7 @@ fun ScanNeedsGroupContent(onCreateGroup: () -> Unit) {
             stringResource(R.string.groups_add),
             onCreateGroup,
             Modifier.fillMaxWidth().padding(top = Spacing.xs).testTag(ShellTags.SCAN_CREATE_GROUP),
-            emoji = "👯",
+            emoji = "👥",
         )
     }
 }

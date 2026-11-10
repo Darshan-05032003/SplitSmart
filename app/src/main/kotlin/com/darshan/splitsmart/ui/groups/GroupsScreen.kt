@@ -48,13 +48,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.darshan.splitsmart.R
+import com.darshan.splitsmart.ui.ErrorReason
 import com.darshan.splitsmart.ui.LoadState
 import com.darshan.splitsmart.ui.SplitSmartTestTags
+import com.darshan.splitsmart.ui.canRetry
+import com.darshan.splitsmart.ui.components.LoadErrorState
 import com.darshan.splitsmart.ui.components.label
 import com.darshan.splitsmart.ui.designsystem.components.ChunkyButton
 import com.darshan.splitsmart.ui.designsystem.components.DisplayText
 import com.darshan.splitsmart.ui.designsystem.components.EmptyState
-import com.darshan.splitsmart.ui.designsystem.components.ErrorState
 import com.darshan.splitsmart.ui.designsystem.components.Illustration
 import com.darshan.splitsmart.ui.designsystem.components.IllustrationKind
 import com.darshan.splitsmart.ui.designsystem.components.SkeletonBlock
@@ -75,7 +77,6 @@ import com.darshan.splitsmart.ui.designsystem.motion.MotionToken
 import com.darshan.splitsmart.ui.designsystem.tokens.Radii
 import com.darshan.splitsmart.ui.designsystem.tokens.Sizes
 import com.darshan.splitsmart.ui.designsystem.tokens.Spacing
-import com.darshan.splitsmart.ui.messageRes
 import com.darshan.splitsmart.ui.navigation.HideShellBarWhile
 import com.darshan.splitsmart.ui.navigation.LocalBottomBarInset
 import com.darshan.splitsmart.ui.navigation.ScanPickerContent
@@ -202,7 +203,7 @@ fun GroupsScreen(
             when (val groups = state.groups) {
                 LoadState.Loading -> GroupsLoading()
                 LoadState.Empty -> GroupsEmpty(callbacks.onCreateGroup)
-                is LoadState.Error -> GroupsError(stringResource(groups.reason.messageRes()), callbacks.onRetry)
+                is LoadState.Error -> GroupsError(groups.reason, callbacks.onRetry)
                 is LoadState.Content -> GroupsList(state, groups.data, callbacks, listState)
             }
         }
@@ -213,7 +214,7 @@ fun GroupsScreen(
                 actions = listOf(
                     FabAction(stringResource(R.string.groups_menu_scan), "📸", GroupsTags.MENU_SCAN, callbacks.onScan),
                     FabAction(stringResource(R.string.groups_menu_expense), "✍️", GroupsTags.MENU_EXPENSE, addExpense),
-                    FabAction(stringResource(R.string.groups_new_group), "👯", GroupsTags.MENU_NEW_GROUP, callbacks.onCreateGroup),
+                    FabAction(stringResource(R.string.groups_new_group), "👥", GroupsTags.MENU_NEW_GROUP, callbacks.onCreateGroup),
                 ),
                 contentPadding = PaddingValues(bottom = barInset),
                 modifier = Modifier.navigationBarsPadding(),
@@ -251,7 +252,7 @@ private fun GroupsList(state: GroupsUiState, cards: List<GroupCard>, callbacks: 
         }
         if (cards.isNotEmpty()) {
             item(key = "header", contentType = "header") {
-                SsSectionHeader(stringResource(R.string.groups_your_groups), Modifier.padding(top = Spacing.xs), emoji = "👯")
+                SsSectionHeader(stringResource(R.string.groups_your_groups), Modifier.padding(top = Spacing.xs), emoji = "👥")
             }
         } else {
             item(key = "all_archived", contentType = "note") { AllArchivedNote() }
@@ -283,7 +284,7 @@ private fun GroupsList(state: GroupsUiState, cards: List<GroupCard>, callbacks: 
             }
             if (archivedOpen) {
                 items(state.archived, key = { "archived:" + it.group.id }, contentType = { "archived" }) { card ->
-                    ArchivedRow(card, Modifier.animateItem(placementSpec = motion.spec(MotionToken.Settle)), callbacks)
+                    ArchivedRow(card, Modifier.animateItem(fadeInSpec = motion.spec(MotionToken.Small), placementSpec = motion.spec(MotionToken.Settle), fadeOutSpec = motion.spec(MotionToken.Micro)), callbacks)
                 }
             }
         }
@@ -382,7 +383,7 @@ private fun GroupsEmpty(onCreate: () -> Unit) {
             message = stringResource(R.string.groups_empty_subtitle),
             actionLabel = stringResource(R.string.groups_empty_action),
             onAction = onCreate,
-            actionEmoji = "👯",
+            actionEmoji = "👥",
             modifier = Modifier.testTag(SplitSmartTestTags.EMPTY),
         )
         Spacer(Modifier.navigationBarsPadding().height(LocalBottomBarInset.current + Spacing.md))
@@ -390,16 +391,11 @@ private fun GroupsEmpty(onCreate: () -> Unit) {
 }
 
 @Composable
-private fun GroupsError(message: String, onRetry: () -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+private fun GroupsError(reason: ErrorReason, onRetry: () -> Unit) {
+    Column(Modifier.fillMaxSize()) {
         SsTopBar(stringResource(R.string.app_name), large = true)
-        ErrorState(
-            title = stringResource(R.string.groups_error_title),
-            message = message,
-            onRetry = onRetry,
-            retryLabel = stringResource(R.string.retry_label),
-            modifier = Modifier.testTag(SplitSmartTestTags.ERROR),
-        )
+        // A tab root has nowhere to go back to, so every reason retries.
+        LoadErrorState(stringResource(R.string.groups_error_title), reason.takeIf { it.canRetry } ?: ErrorReason.UNKNOWN, onRetry, onRetry)
     }
 }
 
@@ -423,7 +419,7 @@ private fun CreateGroupSheet(draft: GroupDraft?, callbacks: GroupsCallbacks) {
                 label = stringResource(R.string.groups_name_label),
                 placeholder = stringResource(R.string.groups_name_placeholder),
                 error = current.error?.label(),
-                emoji = "👯",
+                emoji = "👥",
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { callbacks.onConfirmCreate() }),
                 modifier = Modifier.testTag(SplitSmartTestTags.GROUP_NAME_FIELD),

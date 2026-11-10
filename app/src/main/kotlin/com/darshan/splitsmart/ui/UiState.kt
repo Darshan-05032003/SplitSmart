@@ -17,6 +17,9 @@ fun ErrorReason.messageRes(): Int = when (this) {
     ErrorReason.UNKNOWN -> com.darshan.splitsmart.R.string.error_unknown
 }
 
+/** Whether loading again can help: a thing that is gone stays gone, so its error page offers the way back instead. */
+val ErrorReason.canRetry: Boolean get() = this != ErrorReason.NOT_FOUND
+
 fun Throwable.toErrorReason(): ErrorReason = when (this) {
     is android.database.sqlite.SQLiteException, is java.io.IOException -> ErrorReason.STORAGE
     else -> ErrorReason.UNKNOWN

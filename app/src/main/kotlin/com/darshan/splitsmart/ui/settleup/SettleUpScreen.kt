@@ -38,6 +38,7 @@ import com.darshan.splitsmart.R
 import com.darshan.splitsmart.data.upi.ZxingQrCodeGenerator
 import com.darshan.splitsmart.ui.LoadState
 import com.darshan.splitsmart.ui.SplitSmartTestTags
+import com.darshan.splitsmart.ui.components.LoadErrorState
 import com.darshan.splitsmart.ui.components.label
 import com.darshan.splitsmart.ui.designsystem.components.AmountFormat
 import com.darshan.splitsmart.ui.designsystem.components.AmountText
@@ -46,7 +47,6 @@ import com.darshan.splitsmart.ui.designsystem.components.ChunkyButton
 import com.darshan.splitsmart.ui.designsystem.components.ConfettiBurst
 import com.darshan.splitsmart.ui.designsystem.components.DisplayText
 import com.darshan.splitsmart.ui.designsystem.components.EmptyState
-import com.darshan.splitsmart.ui.designsystem.components.ErrorState
 import com.darshan.splitsmart.ui.designsystem.components.IllustrationKind
 import com.darshan.splitsmart.ui.designsystem.components.SkeletonBlock
 import com.darshan.splitsmart.ui.designsystem.components.SkeletonGroup
@@ -63,10 +63,10 @@ import com.darshan.splitsmart.ui.designsystem.effects.CollectUiEffects
 import com.darshan.splitsmart.ui.designsystem.modifiers.FilterObscuredTouches
 import com.darshan.splitsmart.ui.designsystem.motion.LocalMotion
 import com.darshan.splitsmart.ui.designsystem.motion.MotionDurations
+import com.darshan.splitsmart.ui.designsystem.motion.MotionToken
 import com.darshan.splitsmart.ui.designsystem.tokens.Radii
 import com.darshan.splitsmart.ui.designsystem.tokens.Sizes
 import com.darshan.splitsmart.ui.designsystem.tokens.Spacing
-import com.darshan.splitsmart.ui.messageRes
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
 import kotlinx.coroutines.launch
 
@@ -127,6 +127,7 @@ fun SettleUpRoute(
             onNotYet = viewModel::notYet,
             onOpenBill = onOpenBill,
             onHistory = { onHistory(viewModel.groupId) },
+            onRetry = viewModel::retry,
         ),
     )
 }
@@ -146,6 +147,7 @@ data class SettleUpCallbacks(
     val onNotYet: () -> Unit = {},
     val onOpenBill: (String) -> Unit = {},
     val onHistory: () -> Unit = {},
+    val onRetry: () -> Unit = {},
 )
 
 /**
@@ -183,7 +185,7 @@ fun SettleUpScreen(state: SettleUpUiState, snackbar: SsSnackbarState, callbacks:
                     stringResource(R.string.settle_empty),
                     stringResource(R.string.settle_empty_subtitle),
                 )
-                is LoadState.Error -> ErrorState(stringResource(R.string.settle_error_title), stringResource(c.reason.messageRes()), onRetry = callbacks.onBack, retryLabel = stringResource(R.string.action_back))
+                is LoadState.Error -> LoadErrorState(stringResource(R.string.settle_error_title), c.reason, callbacks.onRetry, callbacks.onBack)
                 is LoadState.Content -> SettleUpList(c.data, state, fresh, callbacks)
             }
         }
@@ -211,17 +213,17 @@ private fun SettleUpList(content: SettleUpContent, state: SettleUpUiState, fresh
         }
         if (moment != null && !moment.allSquare) {
             item(key = "settled:" + moment.settlementId, contentType = "settled") {
-                SettledCard(moment, playStamp = fresh, modifier = gutter.animateItem())
+                SettledCard(moment, playStamp = fresh, modifier = gutter.animateItem(fadeInSpec = motion.spec(MotionToken.Small), placementSpec = motion.spec(MotionToken.Settle), fadeOutSpec = motion.spec(MotionToken.Micro)))
             }
         }
         if (check != null && content.items.none { it.key == check.key }) {
             item(key = "check", contentType = "check") {
-                CheckCard(check, state.recording, callbacks.onConfirmPaid, callbacks.onNotYet, gutter.animateItem())
+                CheckCard(check, state.recording, callbacks.onConfirmPaid, callbacks.onNotYet, gutter.animateItem(fadeInSpec = motion.spec(MotionToken.Small), placementSpec = motion.spec(MotionToken.Settle), fadeOutSpec = motion.spec(MotionToken.Micro)))
             }
         }
         itemsIndexed(content.items, key = { _, item -> item.key }, contentType = { _, _ -> "payment" }) { index, item ->
             val asking = check?.key == item.key
-            AnimatedContent(asking, gutter.animateItem(), transitionSpec = { motion.fadeThrough() }, label = "payment") { checking ->
+            AnimatedContent(asking, gutter.animateItem(fadeInSpec = motion.spec(MotionToken.Small), placementSpec = motion.spec(MotionToken.Settle), fadeOutSpec = motion.spec(MotionToken.Micro)), transitionSpec = { motion.fadeThrough() }, label = "payment") { checking ->
                 if (checking && check != null) {
                     CheckCard(check, state.recording, callbacks.onConfirmPaid, callbacks.onNotYet)
                 } else {
@@ -296,7 +298,7 @@ private fun VpaSheet(draft: VpaDraft?, payeeName: String?, callbacks: SettleUpCa
             SsTextField(
                 value = current.text,
                 onValueChange = callbacks.onVpaChange,
-                label = stringResource(R.string.member_vpa_label),
+                label = stringResource(R.string.settle_vpa_label),
                 modifier = Modifier.fillMaxWidth().testTag(SplitSmartTestTags.MEMBER_VPA_FIELD),
                 error = current.error?.label(),
                 supporting = stringResource(R.string.member_vpa_hint),

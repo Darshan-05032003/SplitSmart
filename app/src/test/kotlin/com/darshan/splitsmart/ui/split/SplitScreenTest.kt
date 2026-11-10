@@ -1,5 +1,6 @@
 package com.darshan.splitsmart.ui.split
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -39,11 +40,12 @@ import com.darshan.splitsmart.ui.designsystem.components.SsSnackbarState
 import com.darshan.splitsmart.ui.designsystem.recompositionCycles
 import com.darshan.splitsmart.ui.designsystem.setDs
 import com.google.common.truth.Truth.assertThat
-import androidx.compose.runtime.mutableStateOf
+import java.time.Duration
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowSystemClock
 
 /** Fixtures shared by the split screen's UI and screenshot tests: a fictional beach-shack dinner for three. */
 internal object SplitFixtures {
@@ -91,12 +93,13 @@ class SplitScreenTest {
         val steps = mutableListOf<Pair<String, Int>>()
         var saves = 0
         var retries = 0
+        var backs = 0
         var cleared = 0
         val payers = mutableListOf<String?>()
         val participants = mutableListOf<String>()
 
         fun callbacks() = SplitCallbacks(
-            onBack = {}, onRetry = { retries++ }, onMode = { modes += it }, onToggleParticipant = { participants += it },
+            onBack = { backs++ }, onRetry = { retries++ }, onMode = { modes += it }, onToggleParticipant = { participants += it },
             onToggleItem = { item, member -> toggledItems += item to member }, onShareText = { _, _ -> }, onPayer = { payers += it },
             onSave = { saves++ }, onToggleSelect = { picks += it }, onClearSelection = { cleared++ },
             onAssign = { ids, member -> assigned += ids.toList() to member }, onAssignSelected = { assignedPicks += it },
@@ -261,10 +264,20 @@ class SplitScreenTest {
         rule.setDs(reduceMotion = true) { SplitScreen(state.value, SsSnackbarState(), calls.callbacks()) }
         rule.mainClock.advanceTimeBy(500)
         rule.onNodeWithTag(SplitSmartTestTags.LOADING).assertExists()
-        commitState { state.value = SplitUiState(LoadState.Error(ErrorReason.NOT_FOUND)) }
+        commitState { state.value = SplitUiState(LoadState.Error(ErrorReason.STORAGE)) }
         rule.mainClock.advanceTimeBy(500)
         rule.onNodeWithTag(SplitSmartTestTags.ERROR).assertExists()
+        rule.onNodeWithText("Couldn't load this split").assertExists()
         rule.onNodeWithText("Try again").performClick()
+        assertThat(calls.retries).isEqualTo(1)
+        // A bill that is gone cannot load again: the button goes back instead.
+        commitState { state.value = SplitUiState(LoadState.Error(ErrorReason.NOT_FOUND)) }
+        rule.mainClock.advanceTimeBy(500)
+        rule.onNodeWithText("Try again").assertDoesNotExist()
+        rule.onNodeWithTag(SplitSmartTestTags.ERROR).assertExists()
+        ShadowSystemClock.advanceBy(Duration.ofMillis(600)) // past the button's one-tap-per-500-ms guard
+        rule.onNodeWithText("Back").performClick()
+        assertThat(calls.backs).isEqualTo(1)
         assertThat(calls.retries).isEqualTo(1)
     }
 

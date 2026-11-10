@@ -641,7 +641,7 @@ private fun ErrorPage(error: ScanError, callbacks: ScanCallbacks) {
             PageTitle(stringResource(R.string.scan_error_title))
             PageBody(stringResource(error.messageRes()))
             Spacer(Modifier.height(Spacing.xs))
-            ChunkyButton(stringResource(R.string.retry), callbacks.onRetry, Modifier.fillMaxWidth())
+            ChunkyButton(stringResource(R.string.retry_label), callbacks.onRetry, Modifier.fillMaxWidth())
             ChunkyButton(
                 stringResource(R.string.scan_pick_gallery),
                 callbacks.onPickImage,
@@ -700,5 +700,5 @@ fun ScanError.messageRes(): Int = when (this) {
     ScanError.RECOGNITION_FAILED -> R.string.scan_error_recognition
     ScanError.IMAGE_UNREADABLE -> R.string.scan_error_image
     ScanError.CAPTURE_FAILED -> R.string.scan_error_capture
-    ScanError.STORAGE_FAILED -> R.string.error_storage
+    ScanError.STORAGE_FAILED -> R.string.scan_error_storage
 }

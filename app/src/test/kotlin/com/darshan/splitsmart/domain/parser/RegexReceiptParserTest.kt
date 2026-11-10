@@ -81,8 +81,8 @@ class RegexReceiptParserTest {
     }
 
     /** OCR text exactly as ML Kit + OcrLayout produced it on the emulator (2026-10-31); the "2" of the first row was lost. */
-    private val mainlandChina = """MAINLAND CHINA
-Phoenix Market city, Viman Nagar
+    private val goldenWok = """GOLDEN WOK
+Marigold Market, Lake Road
 GSTIN 27AABCM4455Q1Z9
 KOT 118 Table 22 Covers 4
 31/10/2026 20:47
@@ -106,7 +106,7 @@ Thank you for dining with us"""
 
     @Test
     fun `emulator regression - a dropped qty column is recovered from rate and amount`() {
-        val r = RegexReceiptParser.parse(mainlandChina)
+        val r = RegexReceiptParser.parse(goldenWok)
         assertThat(r.items).hasSize(8)
         assertThat(r.items[0]).isEqualTo(ExtractedItem("Veg Manchow Sou", 2, 16_000, 32_000))
         assertThat(r.items[1]).isEqualTo(ExtractedItem("Chilli Paneer", 1, 38_000, 38_000))

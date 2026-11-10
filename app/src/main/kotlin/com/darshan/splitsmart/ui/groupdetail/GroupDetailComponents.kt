@@ -125,7 +125,7 @@ fun GroupHero(detail: GroupDetail, primary: PrimaryAction, onSettleUp: () -> Uni
                     stringResource(R.string.group_settle_up),
                     onSettleUp,
                     Modifier.fillMaxWidth().padding(top = Spacing.md).testTag(SplitSmartTestTags.SETTLE_UP_BUTTON),
-                    emoji = "💸",
+                    emoji = "📲",
                 )
             }
         }

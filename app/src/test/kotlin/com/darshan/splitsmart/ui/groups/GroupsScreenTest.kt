@@ -199,7 +199,7 @@ class GroupsScreenTest {
         var retries = 0
         show(GroupsUiState(LoadState.Error(ErrorReason.STORAGE)), GroupsCallbacks(onRetry = { retries++ }))
         rule.onNodeWithText("Couldn't load your groups").assertIsDisplayed()
-        rule.onNodeWithText("Could not read local storage. Try again.").assertIsDisplayed()
+        rule.onNodeWithText("SplitSmart couldn't read its data on this phone. Nothing was changed.").assertIsDisplayed()
         rule.onNodeWithText("Try again").performClick()
         assertThat(retries).isEqualTo(1)
     }

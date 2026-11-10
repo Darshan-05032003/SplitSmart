@@ -77,7 +77,7 @@ class MeScreenTest {
         rule.onNodeWithTag(MeTags.HAPTICS).performClick()
         rule.onNodeWithTag(MeTags.REDUCE_MOTION).performClick()
         rule.onNodeWithTag(MeTags.theme(ThemeMode.Light)).performClick()
-        rule.onNodeWithTag(MeTags.INTRO).performScrollTo().performClick()
+        rule.onNodeWithTag(MeTags.INTRO).scrolledTo().performClick()
         assertThat(calls).containsAtLeast("haptics:false", "reduce:true", "theme:Light", "intro").inOrder()
     }
 
@@ -86,6 +86,8 @@ class MeScreenTest {
         show(MeUiState(aiReading = false))
         rule.onNodeWithText("no Gemini API key", substring = true).assertExists()
         rule.onNodeWithContentDescription("Off").assertExists()
+        // The developer's setup hint lives here (the review card only says AI reading is off).
+        rule.onNodeWithText("LLM_API_KEY", substring = true).assertExists()
     }
 
     @Test
@@ -93,6 +95,7 @@ class MeScreenTest {
         show(MeUiState(aiReading = true))
         rule.onNodeWithText("sent to Gemini", substring = true).assertExists()
         rule.onNodeWithContentDescription("On").assertExists()
+        rule.onNodeWithText("LLM_API_KEY", substring = true).assertDoesNotExist()
     }
 
     @Test
@@ -109,15 +112,26 @@ class MeScreenTest {
         show(MeUiState(name = "Asha Raghunathan Venkataraman", aiReading = true), fontScale = 1.3f)
         val root = rule.onNodeWithTag(ROOT)
         rule.onNodeWithTag(MeTags.PROFILE).assertInside(root)
-        rule.onNodeWithTag(MeTags.AI).performScrollTo().assertInside(root)
-        rule.onNodeWithTag(MeTags.INTRO).performScrollTo().assertInside(root)
+        rule.onNodeWithTag(MeTags.AI).scrolledTo().assertInside(root)
+        rule.onNodeWithTag(MeTags.INTRO).scrolledTo().assertInside(root)
+    }
+
+    /**
+     * Scrolls the page to this node. The page's scroll animates, and an animation never ends on the paused test clock (the
+     * scroll action would wait forever), so the clock runs for the scroll and is paused again after.
+     */
+    private fun androidx.compose.ui.test.SemanticsNodeInteraction.scrolledTo(): androidx.compose.ui.test.SemanticsNodeInteraction {
+        rule.mainClock.autoAdvance = true
+        performScrollTo()
+        rule.mainClock.autoAdvance = false
+        return this
     }
 
     @Test
     fun `reduced motion changes nothing about what is offered`() {
         show(MeUiState(name = "Asha"), reduceMotion = true)
         rule.onNodeWithTag(MeTags.HAPTICS).assertIsOn()
-        rule.onNodeWithTag(MeTags.INTRO).performScrollTo().performClick()
+        rule.onNodeWithTag(MeTags.INTRO).scrolledTo().performClick()
         assertThat(calls).contains("intro")
     }
 

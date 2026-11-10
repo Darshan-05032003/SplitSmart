@@ -35,6 +35,7 @@ import com.darshan.splitsmart.ui.designsystem.effects.UiEffectChannel
 import com.darshan.splitsmart.ui.toErrorReason
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +44,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -155,7 +157,11 @@ class SettleUpViewModel @Inject constructor(
 
     @Volatile private var members: List<Member> = emptyList()
 
-    private val content: Flow<LoadState<SettleUpContent>> =
+    /** Bumped by [retry]: reading again after a failed read. */
+    private val reload = MutableStateFlow(0)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val content: Flow<LoadState<SettleUpContent>> = reload.flatMapLatest {
         combine(
             groupRepository.observeGroup(groupId),
             groupRepository.observeMembers(groupId),
@@ -168,7 +174,11 @@ class SettleUpViewModel @Inject constructor(
                 bills.isEmpty() && settlements.isEmpty() -> LoadState.Empty
                 else -> LoadState.Content(contentOf(group, members, bills, settlements))
             }
-        }.onStart<LoadState<SettleUpContent>> { emit(LoadState.Loading) }.catch { emit(LoadState.Error(it.toErrorReason())) }.flowOn(dispatchers.default)
+        }.onStart<LoadState<SettleUpContent>> { emit(LoadState.Loading) }.catch { emit(LoadState.Error(it.toErrorReason())) }
+    }.flowOn(dispatchers.default)
+
+    /** Reads the group again after a failed read. */
+    fun retry() = reload.update { it + 1 }
 
     val uiState: StateFlow<SettleUpUiState> = combine(content, dialogs) { c, d -> d.copy(content = c) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), dialogs.value)

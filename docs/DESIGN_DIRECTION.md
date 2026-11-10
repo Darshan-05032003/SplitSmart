@@ -43,7 +43,7 @@ Open [`design-preview.html`](design-preview.html) in a browser to see both direc
 ```
 GROUPS HOME                 AI READS THE BILL           ASSIGN + SPLIT
 +------------------------+  +------------------------+  +------------------------+
-| SplitSmart         (D) |  | <  Reading your bill   |  | <  Blue Tokai   ₹1,412 |
+| SplitSmart         (D) |  | <  Reading your bill   |  | <  Marigold Cafe ₹1,412|
 | +--------------------+ |  |  ✦ AI is on it...      |  |   (D)2  (A)3  (R)1     |
 | | You're owed        | |  |                        |  |   avatars gulp + bump  |
 | | ₹1,118.70  green   | |  | Cappuccino  x2  ₹360 ✓ |  |                        |
@@ -135,7 +135,7 @@ GROUPS HOME                 AI READS THE BILL           ASSIGN + SPLIT
 ```
 GROUPS HOME                 AI READS THE BILL           ASSIGN + SPLIT
 +------------------------+  +------------------------+  +------------------------+
-| SplitSmart  ( ) ( )    |  | <  Reading your bill   |  | <  Blue Tokai   ₹1,412 |
+| SplitSmart  ( ) ( )    |  | <  Reading your bill   |  | <  Marigold Cafe ₹1,412|
 | (  You're owed       ) |  | ( ✦ AI is on it...   ) |  |  (D)2   (A)3   (R)1    |
 | (  ₹1,118.70  glow   ) |  |                        |  |   bubbles squish       |
 |                        |  | ( Cappuccino ₹360  o ) |  |                        |

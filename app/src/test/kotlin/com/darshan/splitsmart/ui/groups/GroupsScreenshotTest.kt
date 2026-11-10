@@ -31,6 +31,8 @@ import com.darshan.splitsmart.ui.designsystem.components.SsSnackbarState
 import com.darshan.splitsmart.ui.designsystem.setDs
 import com.darshan.splitsmart.ui.navigation.BottomBarInset
 import com.darshan.splitsmart.ui.navigation.LocalBottomBarInset
+import com.darshan.splitsmart.ui.navigation.LocalShellBar
+import com.darshan.splitsmart.ui.navigation.ShellBarState
 import com.darshan.splitsmart.ui.navigation.ShellBottomBar
 import org.junit.Rule
 import org.junit.Test
@@ -57,10 +59,12 @@ class GroupsScreenshotTest {
     private fun shot(name: String, dark: Boolean = false, fontScale: Float = 1f, reduceMotion: Boolean = false, settle: Long = 2_000, act: () -> Unit = {}, content: @Composable () -> Unit) {
         rule.mainClock.autoAdvance = false
         rule.setDs(dark = dark, fontScale = fontScale, reduceMotion = reduceMotion) {
-            CompositionLocalProvider(LocalBottomBarInset provides BottomBarInset) {
+            // As in the shell: a sheet or the FAB menu asks the bar to step aside (HideShellBarWhile), so it is not drawn over them.
+            val bar = remember { ShellBarState() }
+            CompositionLocalProvider(LocalBottomBarInset provides BottomBarInset, LocalShellBar provides bar) {
                 Box(Modifier.fillMaxSize().testTag(ROOT)) {
                     content()
-                    ShellBottomBar(selectedIndex = 0, onSelect = {}, onReselect = {}, modifier = Modifier.align(Alignment.BottomCenter))
+                    if (!bar.modalOpen) ShellBottomBar(selectedIndex = 0, onSelect = {}, onReselect = {}, modifier = Modifier.align(Alignment.BottomCenter))
                 }
             }
         }

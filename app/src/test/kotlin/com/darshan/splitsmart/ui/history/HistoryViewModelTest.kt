@@ -2,6 +2,7 @@ package com.darshan.splitsmart.ui.history
 
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
+import com.darshan.splitsmart.domain.model.Settlement
 import com.darshan.splitsmart.testutil.FakeBillRepository
 import com.darshan.splitsmart.testutil.FakeGroupRepository
 import com.darshan.splitsmart.testutil.FakeSettlementRepository
@@ -17,6 +18,9 @@ import com.darshan.splitsmart.ui.designsystem.effects.HapticEvent
 import com.darshan.splitsmart.ui.designsystem.effects.UiEffect
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -42,6 +46,26 @@ class HistoryViewModelTest {
     }
 
     private fun vm(groupId: String = "g1") = HistoryViewModel(SavedStateHandle(mapOf("groupId" to groupId)), groups, bills, settlements, TestDispatcherProvider(dispatcher))
+
+    @Test
+    fun `a failed read shows the error, and retry reads again`() = runTest(dispatcher) {
+        val failing = object : FakeSettlementRepository() {
+            var calls = 0
+            override fun observeSettlements(groupId: String): Flow<List<Settlement>> = flow {
+                if (calls++ == 0) throw android.database.sqlite.SQLiteException("disk") else emitAll(super.observeSettlements(groupId))
+            }
+        }
+        failing.settlements.value = settlements.settlements.value
+        val vm = HistoryViewModel(SavedStateHandle(mapOf("groupId" to "g1")), groups, bills, failing, TestDispatcherProvider(dispatcher))
+        vm.uiState.test {
+            var state = awaitItem()
+            while (state.content !is LoadState.Error) state = awaitItem()
+            assertThat(state.content).isEqualTo(LoadState.Error(ErrorReason.STORAGE))
+            vm.retry()
+            while (state.content !is LoadState.Content) state = awaitItem()
+            assertThat((state.content as LoadState.Content).data.entryCount).isEqualTo(2)
+        }
+    }
 
     @Test
     fun `history has the timeline and the insights of the group`() = runTest(dispatcher) {

@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,7 +25,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -72,6 +72,7 @@ import com.darshan.splitsmart.domain.model.LlmFailure
 import com.darshan.splitsmart.domain.model.Member
 import com.darshan.splitsmart.ui.ErrorReason
 import com.darshan.splitsmart.ui.SplitSmartTestTags
+import com.darshan.splitsmart.ui.components.LoadErrorState
 import com.darshan.splitsmart.ui.components.label
 import com.darshan.splitsmart.ui.designsystem.components.AmountFormat
 import com.darshan.splitsmart.ui.designsystem.components.AmountText
@@ -81,7 +82,6 @@ import com.darshan.splitsmart.ui.designsystem.components.ChunkyButton
 import com.darshan.splitsmart.ui.designsystem.components.ChunkyCard
 import com.darshan.splitsmart.ui.designsystem.components.DisplayText
 import com.darshan.splitsmart.ui.designsystem.components.EmojiChip
-import com.darshan.splitsmart.ui.designsystem.components.ErrorState
 import com.darshan.splitsmart.ui.designsystem.components.SkeletonBlock
 import com.darshan.splitsmart.ui.designsystem.components.SkeletonGroup
 import com.darshan.splitsmart.ui.designsystem.components.SkeletonLine
@@ -91,9 +91,10 @@ import com.darshan.splitsmart.ui.designsystem.components.SsTextField
 import com.darshan.splitsmart.ui.designsystem.components.SsTopBar
 import com.darshan.splitsmart.ui.designsystem.components.StatusKind
 import com.darshan.splitsmart.ui.designsystem.components.StatusPill
+import com.darshan.splitsmart.ui.designsystem.components.SsSectionHeader
 import com.darshan.splitsmart.ui.designsystem.components.TextAction
-import com.darshan.splitsmart.ui.designsystem.modifiers.rememberPressFeedback
 import com.darshan.splitsmart.ui.designsystem.modifiers.Squash
+import com.darshan.splitsmart.ui.designsystem.modifiers.rememberPressFeedback
 import com.darshan.splitsmart.ui.designsystem.modifiers.squash
 import com.darshan.splitsmart.ui.designsystem.modifiers.trackPress
 import com.darshan.splitsmart.ui.designsystem.motion.LocalMotion
@@ -182,13 +183,8 @@ fun ReviewScreen(state: ReviewUiState, snackbar: SsSnackbarState, callbacks: Rev
             val form = state.form
             Box(Modifier.weight(1f)) {
                 when {
-                    state.phase == ReviewPhase.ERROR -> ErrorState(
-                        title = stringResource(R.string.scan_error_title),
-                        message = stringResource((state.error ?: ErrorReason.UNKNOWN).messageRes()),
-                        onRetry = callbacks.onRetry,
-                        retryLabel = stringResource(R.string.retry),
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    state.phase == ReviewPhase.ERROR ->
+                        LoadErrorState(stringResource(R.string.review_error_title), state.error ?: ErrorReason.UNKNOWN, callbacks.onRetry, callbacks.onBack)
                     form == null || state.phase == ReviewPhase.LOADING || state.phase == ReviewPhase.EXTRACTING -> ReadingList()
                     else -> ReviewList(state, form, callbacks)
                 }
@@ -348,16 +344,16 @@ private fun noticesOf(state: ReviewUiState, form: ReviewForm): List<Notice> = bu
 
 @Composable
 private fun ItemsHeader(count: Int, onAdd: () -> Unit) {
-    val type = SplitSmartTheme.type
-    val colors = SplitSmartTheme.colors
-    Row(Modifier.fillMaxWidth().padding(top = Spacing.xs), verticalAlignment = Alignment.CenterVertically) {
-        BasicText(
-            "🧾 " + pluralStringResource(R.plurals.review_items_header, count, count),
-            Modifier.weight(1f).semantics { heading() },
-            style = type.title.copy(color = colors.text),
-        )
-        TextAction(stringResource(R.string.review_add_item), onAdd, Modifier.testTag(SplitSmartTestTags.REVIEW_ADD_ITEM))
-    }
+    // The same section heading as every other screen (emoji, gap, title, action); the list already keeps the gutter.
+    SsSectionHeader(
+        pluralStringResource(R.plurals.review_items_header, count, count),
+        Modifier.padding(top = Spacing.xs),
+        emoji = "🧾",
+        actionLabel = stringResource(R.string.review_add_item),
+        onAction = onAdd,
+        actionModifier = Modifier.testTag(SplitSmartTestTags.REVIEW_ADD_ITEM),
+        gutter = false,
+    )
 }
 
 /**
@@ -419,8 +415,9 @@ private fun rememberReveal(reveal: ItemReveal?, onShown: (Long) -> Unit): LongSt
 
 /**
  * Who read the bill, in a pill and a sentence. The AI's reading sits on a plain card with a plum pill; while the AI refines the
- * pill breathes and the card says edits are safe; a parser reading takes the warning (or error) tone and says why the AI was not
- * used, with one retry when trying again can help (never for a missing or rejected key).
+ * pill breathes and the card says edits are safe. A parser reading says why the AI was not used: plainly when the build has no
+ * key (a normal state), in the warning tone with one retry when trying again can help, in the danger tone when the key was
+ * rejected or the pins did not match ([ReviewLogic.sourceTone]).
  */
 @Composable
 private fun SourceCard(form: ReviewForm, refining: Boolean, onRerun: () -> Unit) {
@@ -428,10 +425,10 @@ private fun SourceCard(form: ReviewForm, refining: Boolean, onRerun: () -> Unit)
     val type = SplitSmartTheme.type
     val parser = form.source == ExtractionSource.REGEX && !refining
     val failure = form.llmFailure
-    val tone = when {
-        !parser -> null
-        failure == LlmFailure.KEY_MISSING || failure == LlmFailure.UNAUTHORIZED || failure == LlmFailure.INSECURE -> colors.failed
-        else -> colors.pending
+    val tone = when (ReviewLogic.sourceTone(form.source, refining, failure)) {
+        SourceTone.Plain -> null
+        SourceTone.Warning -> colors.pending
+        SourceTone.Danger -> colors.failed
     }
     val (kind, label) = when {
         refining -> StatusKind.Refining to stringResource(R.string.review_source_draft)

@@ -13,12 +13,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.Composable
@@ -53,8 +51,10 @@ import com.darshan.splitsmart.R
 import com.darshan.splitsmart.domain.model.BillItem
 import com.darshan.splitsmart.domain.model.BillSource
 import com.darshan.splitsmart.domain.model.BillStatus
+import com.darshan.splitsmart.ui.ErrorReason
 import com.darshan.splitsmart.ui.LoadState
 import com.darshan.splitsmart.ui.SplitSmartTestTags
+import com.darshan.splitsmart.ui.components.LoadErrorState
 import com.darshan.splitsmart.ui.components.formatDate
 import com.darshan.splitsmart.ui.components.label
 import com.darshan.splitsmart.ui.designsystem.components.AmountFormat
@@ -64,7 +64,6 @@ import com.darshan.splitsmart.ui.designsystem.components.ChunkyButton
 import com.darshan.splitsmart.ui.designsystem.components.ChunkyCard
 import com.darshan.splitsmart.ui.designsystem.components.ChunkyIconButton
 import com.darshan.splitsmart.ui.designsystem.components.DisplayText
-import com.darshan.splitsmart.ui.designsystem.components.ErrorState
 import com.darshan.splitsmart.ui.designsystem.components.Illustration
 import com.darshan.splitsmart.ui.designsystem.components.IllustrationKind
 import com.darshan.splitsmart.ui.designsystem.components.MemberAvatar
@@ -85,7 +84,6 @@ import com.darshan.splitsmart.ui.designsystem.tokens.Sizes
 import com.darshan.splitsmart.ui.designsystem.tokens.Spacing
 import com.darshan.splitsmart.ui.designsystem.tokens.Strokes
 import com.darshan.splitsmart.ui.groups.HeroPalette
-import com.darshan.splitsmart.ui.messageRes
 import com.darshan.splitsmart.ui.split.AdjustmentKind
 import com.darshan.splitsmart.ui.split.ColorDot
 import com.darshan.splitsmart.ui.split.DonutLogic
@@ -167,8 +165,8 @@ fun BillDetailScreen(
             )
             when (val bill = state.bill) {
                 LoadState.Loading -> BillLoading()
-                LoadState.Empty -> BillError(stringResource(R.string.error_not_found), onRetry)
-                is LoadState.Error -> BillError(stringResource(bill.reason.messageRes()), onRetry)
+                LoadState.Empty -> LoadErrorState(stringResource(R.string.bill_error_title), ErrorReason.NOT_FOUND, onRetry, onBack)
+                is LoadState.Error -> LoadErrorState(stringResource(R.string.bill_error_title), bill.reason, onRetry, onBack)
                 is LoadState.Content -> BillDetailContent(bill.data, onSplit)
             }
         }
@@ -441,19 +439,6 @@ private fun BillLoading() {
 }
 
 private const val LOADING_ROWS = 4
-
-@Composable
-private fun BillError(message: String, onRetry: () -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        ErrorState(
-            title = stringResource(R.string.bill_title),
-            message = message,
-            onRetry = onRetry,
-            retryLabel = stringResource(R.string.retry_label),
-            modifier = Modifier.testTag(SplitSmartTestTags.ERROR),
-        )
-    }
-}
 
 @Composable
 private fun DeleteSheet(visible: Boolean, title: String, deleting: Boolean, onDismiss: () -> Unit, onConfirm: () -> Unit) {

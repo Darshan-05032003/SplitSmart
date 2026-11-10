@@ -42,15 +42,16 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.darshan.splitsmart.R
 import com.darshan.splitsmart.domain.model.Member
+import com.darshan.splitsmart.ui.ErrorReason
 import com.darshan.splitsmart.ui.LoadState
 import com.darshan.splitsmart.ui.SplitSmartTestTags
+import com.darshan.splitsmart.ui.components.LoadErrorState
 import com.darshan.splitsmart.ui.components.label
 import com.darshan.splitsmart.ui.designsystem.components.ButtonStyle
 import com.darshan.splitsmart.ui.designsystem.components.ChunkyButton
 import com.darshan.splitsmart.ui.designsystem.components.ChunkyIconButton
 import com.darshan.splitsmart.ui.designsystem.components.DisplayText
 import com.darshan.splitsmart.ui.designsystem.components.EmojiChip
-import com.darshan.splitsmart.ui.designsystem.components.ErrorState
 import com.darshan.splitsmart.ui.designsystem.components.Illustration
 import com.darshan.splitsmart.ui.designsystem.components.IllustrationKind
 import com.darshan.splitsmart.ui.designsystem.components.MemberAvatar
@@ -72,7 +73,6 @@ import com.darshan.splitsmart.ui.designsystem.effects.heavy
 import com.darshan.splitsmart.ui.designsystem.tokens.Radii
 import com.darshan.splitsmart.ui.designsystem.tokens.Sizes
 import com.darshan.splitsmart.ui.designsystem.tokens.Spacing
-import com.darshan.splitsmart.ui.messageRes
 import com.darshan.splitsmart.ui.simplify.DebtGraphLogic
 import com.darshan.splitsmart.ui.simplify.SimplifyCard
 import com.darshan.splitsmart.ui.simplify.SimplifySheetContent
@@ -200,8 +200,8 @@ fun GroupDetailScreen(state: GroupDetailUiState, snackbar: SsSnackbarState, call
             )
             when (val detail = state.detail) {
                 LoadState.Loading -> DetailLoading()
-                LoadState.Empty -> DetailError(stringResource(R.string.error_not_found), callbacks.onRetry)
-                is LoadState.Error -> DetailError(stringResource(detail.reason.messageRes()), callbacks.onRetry)
+                LoadState.Empty -> LoadErrorState(stringResource(R.string.group_error_title), ErrorReason.NOT_FOUND, callbacks.onRetry, callbacks.onBack)
+                is LoadState.Error -> LoadErrorState(stringResource(R.string.group_error_title), detail.reason, callbacks.onRetry, callbacks.onBack)
                 is LoadState.Content -> GroupDetailContent(
                     detail.data,
                     callbacks,
@@ -255,7 +255,7 @@ private fun GroupDetailContent(detail: GroupDetail, callbacks: GroupDetailCallba
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                 SsSectionHeader(
                     stringResource(R.string.members_title),
-                    emoji = "👯",
+                    emoji = "👥",
                     actionLabel = stringResource(R.string.members_add_short),
                     onAction = callbacks.onAddMember,
                     actionModifier = Modifier.testTag(SplitSmartTestTags.ADD_MEMBER_BUTTON).semantics { contentDescription = addMemberLabel },
@@ -359,19 +359,6 @@ private fun DetailLoading() {
 }
 
 private const val DETAIL_SKELETON_ROWS = 4
-
-@Composable
-private fun DetailError(message: String, onRetry: () -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        ErrorState(
-            title = stringResource(R.string.group_title),
-            message = message,
-            onRetry = onRetry,
-            retryLabel = stringResource(R.string.retry_label),
-            modifier = Modifier.testTag(SplitSmartTestTags.ERROR),
-        )
-    }
-}
 
 @Composable
 private fun SheetTitle(text: String) {

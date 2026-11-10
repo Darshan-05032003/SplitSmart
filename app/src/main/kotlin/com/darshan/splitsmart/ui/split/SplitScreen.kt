@@ -1,5 +1,7 @@
 package com.darshan.splitsmart.ui.split
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -15,9 +17,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,8 +32,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -41,9 +41,6 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ContentTransform
-import com.darshan.splitsmart.ui.designsystem.motion.LocalMotion
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.darshan.splitsmart.R
@@ -51,13 +48,13 @@ import com.darshan.splitsmart.domain.model.Member
 import com.darshan.splitsmart.domain.model.SplitError
 import com.darshan.splitsmart.ui.LoadState
 import com.darshan.splitsmart.ui.SplitSmartTestTags
+import com.darshan.splitsmart.ui.components.LoadErrorState
 import com.darshan.splitsmart.ui.designsystem.components.AmountFormat
 import com.darshan.splitsmart.ui.designsystem.components.AmountText
 import com.darshan.splitsmart.ui.designsystem.components.ChunkyButton
 import com.darshan.splitsmart.ui.designsystem.components.ChunkyCard
 import com.darshan.splitsmart.ui.designsystem.components.ConfettiBurst
 import com.darshan.splitsmart.ui.designsystem.components.DisplayText
-import com.darshan.splitsmart.ui.designsystem.components.ErrorState
 import com.darshan.splitsmart.ui.designsystem.components.RollingAmount
 import com.darshan.splitsmart.ui.designsystem.components.SkeletonBlock
 import com.darshan.splitsmart.ui.designsystem.components.SkeletonGroup
@@ -70,7 +67,9 @@ import com.darshan.splitsmart.ui.designsystem.components.StatusKind
 import com.darshan.splitsmart.ui.designsystem.components.StatusPill
 import com.darshan.splitsmart.ui.designsystem.components.TextAction
 import com.darshan.splitsmart.ui.designsystem.effects.CollectUiEffects
+import com.darshan.splitsmart.ui.designsystem.motion.LocalMotion
 import com.darshan.splitsmart.ui.designsystem.motion.MotionDurations
+import com.darshan.splitsmart.ui.designsystem.motion.MotionToken
 import com.darshan.splitsmart.ui.designsystem.tokens.Radii
 import com.darshan.splitsmart.ui.designsystem.tokens.Sizes
 import com.darshan.splitsmart.ui.designsystem.tokens.Spacing
@@ -151,15 +150,7 @@ fun SplitScreen(state: SplitUiState, snackbar: SsSnackbarState, callbacks: Split
             Box(Modifier.weight(1f)) {
                 when (val e = state.editor) {
                     LoadState.Loading, LoadState.Empty -> SplitLoading()
-                    is LoadState.Error -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                        ErrorState(
-                            title = stringResource(R.string.split_title),
-                            message = stringResource(e.reason.messageRes()),
-                            onRetry = callbacks.onRetry,
-                            retryLabel = stringResource(R.string.retry_label),
-                            modifier = Modifier.testTag(SplitSmartTestTags.ERROR),
-                        )
-                    }
+                    is LoadState.Error -> LoadErrorState(stringResource(R.string.split_error_title), e.reason, callbacks.onRetry, callbacks.onBack)
                     is LoadState.Content -> SplitList(e.data, drag, callbacks)
                 }
             }
@@ -202,6 +193,7 @@ private fun Celebration(celebrate: Int) {
 private fun SplitList(editor: SplitEditor, drag: DragAssignState, callbacks: SplitCallbacks) {
     val colors = SplitSmartTheme.colors
     val type = SplitSmartTheme.type
+    val motion = LocalMotion.current
     val option = editor.option
     val byId = remember(editor.members) { editor.members.associateBy { it.id } }
     val participants = remember(editor.members, editor.config.participantIds) { editor.config.participantIds.mapNotNull { byId[it] } }
@@ -264,11 +256,11 @@ private fun SplitList(editor: SplitEditor, drag: DragAssignState, callbacks: Spl
                     onPick = { callbacks.onToggleSelect(item.id) },
                     onToggleOwner = { member -> callbacks.onToggleItem(item.id, member) },
                     onDrop = { ids, member -> callbacks.onAssign(ids, member) },
-                    modifier = Modifier.padding(horizontal = Spacing.screen).animateItem(),
+                    modifier = Modifier.padding(horizontal = Spacing.screen).animateItem(fadeInSpec = motion.spec(MotionToken.Small), placementSpec = motion.spec(MotionToken.Settle), fadeOutSpec = motion.spec(MotionToken.Micro)),
                 )
             }
         }
-        item(key = "peopleHeader", contentType = "section") { SsSectionHeader(stringResource(R.string.split_preview_title), emoji = "💰") }
+        item(key = "peopleHeader", contentType = "section") { SsSectionHeader(stringResource(R.string.split_preview_title), emoji = "👛") }
         items(participants, key = { "person:" + it.id }, contentType = { "person" }) { member ->
             PersonShareRow(
                 member = member,

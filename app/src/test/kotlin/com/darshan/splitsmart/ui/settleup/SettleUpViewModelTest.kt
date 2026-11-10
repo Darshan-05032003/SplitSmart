@@ -5,6 +5,7 @@ import app.cash.turbine.test
 import com.darshan.splitsmart.data.upi.UpiLaunchResult
 import com.darshan.splitsmart.domain.model.BillSplit
 import com.darshan.splitsmart.domain.model.BillStatus
+import com.darshan.splitsmart.domain.model.Settlement
 import com.darshan.splitsmart.domain.model.SettlementMethod
 import com.darshan.splitsmart.domain.model.SplitConfig
 import com.darshan.splitsmart.domain.model.SplitMode
@@ -30,9 +31,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Rule
@@ -60,6 +63,25 @@ class SettleUpViewModelTest {
 
     private fun vm(groupId: String = "g1", handle: SavedStateHandle = SavedStateHandle(mapOf("groupId" to groupId))) =
         SettleUpViewModel(handle, groups, bills, settlements, launcher, analytics, TestDispatcherProvider(dispatcher))
+
+    @Test
+    fun `a failed read shows the error, and retry reads again`() = runTest(dispatcher) {
+        val failing = object : FakeSettlementRepository() {
+            var calls = 0
+            override fun observeSettlements(groupId: String): Flow<List<Settlement>> = flow {
+                if (calls++ == 0) throw android.database.sqlite.SQLiteException("disk") else emitAll(super.observeSettlements(groupId))
+            }
+        }
+        val vm = SettleUpViewModel(SavedStateHandle(mapOf("groupId" to "g1")), groups, bills, failing, launcher, analytics, TestDispatcherProvider(dispatcher))
+        vm.uiState.test {
+            var state = awaitItem()
+            while (state.content !is LoadState.Error) state = awaitItem()
+            assertThat(state.content).isEqualTo(LoadState.Error(ErrorReason.STORAGE))
+            vm.retry()
+            while (state.content !is LoadState.Content) state = awaitItem()
+            assertThat((state.content as LoadState.Content).data.items).hasSize(2)
+        }
+    }
 
     private suspend fun SettleUpViewModel.content(): SettleUpContent {
         uiState.test { while (awaitItem().content !is LoadState.Content) { }; cancelAndIgnoreRemainingEvents() }

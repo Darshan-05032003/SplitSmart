@@ -19,6 +19,7 @@ import com.darshan.splitsmart.ui.toErrorReason
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.ZoneId
 import javax.inject.Inject
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +27,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -70,7 +72,11 @@ class HistoryViewModel @Inject constructor(
     private val effectChannel = UiEffectChannel()
     val effects: Flow<UiEffect> = effectChannel.effects
 
-    private val content: Flow<LoadState<HistoryContent>> =
+    /** Bumped by [retry]: reading again after a failed read. */
+    private val reload = MutableStateFlow(0)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val content: Flow<LoadState<HistoryContent>> = reload.flatMapLatest {
         combine(
             groupRepository.observeGroup(groupId),
             groupRepository.observeMembers(groupId),
@@ -84,7 +90,11 @@ class HistoryViewModel @Inject constructor(
                     HistoryContent(group, HistoryLogic.timeline(bills, settlements, members, zone), InsightsLogic.of(bills, members, settlements)),
                 )
             }
-        }.onStart<LoadState<HistoryContent>> { emit(LoadState.Loading) }.catch { emit(LoadState.Error(it.toErrorReason())) }.flowOn(dispatchers.default)
+        }.onStart<LoadState<HistoryContent>> { emit(LoadState.Loading) }.catch { emit(LoadState.Error(it.toErrorReason())) }
+    }.flowOn(dispatchers.default)
+
+    /** Reads the group again after a failed read. */
+    fun retry() = reload.update { it + 1 }
 
     val uiState: StateFlow<HistoryUiState> = combine(content, sheet) { c, s -> s.copy(content = c) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HistoryUiState())

@@ -71,6 +71,7 @@ class BillDetailScreenTest {
         var deletes = 0
         var splits = 0
         var retries = 0
+        var backs = 0
     }
 
     private fun show(bill: Bill, calls: Calls = Calls(), fontScale: Float = 1f, deleting: Boolean = false, haptics: FakeHaptics = FakeHaptics()): Calls {
@@ -161,14 +162,29 @@ class BillDetailScreenTest {
         val calls = Calls()
         val state = mutableStateOf(BillDetailUiState())
         rule.mainClock.autoAdvance = false
-        rule.setDs(reduceMotion = true) { BillDetailScreen(state.value, SsSnackbarState(), onBack = {}, onDelete = {}, onRetry = { calls.retries++ }, onSplit = {}) }
+        rule.setDs(reduceMotion = true) { BillDetailScreen(state.value, SsSnackbarState(), onBack = { calls.backs++ }, onDelete = {}, onRetry = { calls.retries++ }, onSplit = {}) }
         rule.mainClock.advanceTimeBy(500)
         rule.onNodeWithTag(SplitSmartTestTags.LOADING).assertExists()
-        commitState { state.value = BillDetailUiState(LoadState.Error(ErrorReason.NOT_FOUND)) }
+        commitState { state.value = BillDetailUiState(LoadState.Error(ErrorReason.STORAGE)) }
         rule.mainClock.advanceTimeBy(500)
         rule.onNodeWithTag(SplitSmartTestTags.ERROR).assertExists()
+        rule.onNodeWithText("Couldn't load this bill").assertExists()
         rule.onNodeWithText("Try again").performClick()
         assertThat(calls.retries).isEqualTo(1)
+    }
+
+    @Test
+    fun `a bill that is gone offers the way back, not a retry that cannot work`() {
+        val calls = Calls()
+        rule.mainClock.autoAdvance = false
+        rule.setDs(reduceMotion = true) {
+            BillDetailScreen(BillDetailUiState(LoadState.Error(ErrorReason.NOT_FOUND)), SsSnackbarState(), onBack = { calls.backs++ }, onDelete = {}, onRetry = { calls.retries++ }, onSplit = {})
+        }
+        rule.mainClock.advanceTimeBy(500)
+        rule.onNodeWithText("Try again").assertDoesNotExist()
+        rule.onNodeWithText("Back").performClick()
+        assertThat(calls.backs).isEqualTo(1)
+        assertThat(calls.retries).isEqualTo(0)
     }
 
     @Test

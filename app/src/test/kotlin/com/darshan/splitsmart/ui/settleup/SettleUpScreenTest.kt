@@ -302,6 +302,23 @@ class SettleUpScreenTest {
         rule.onNodeWithText("Couldn't load settle up").assertIsDisplayed()
     }
 
+    @Test
+    fun `a read that failed can be tried again, a group that is gone goes back`() {
+        var retries = 0
+        var backs = 0
+        var state by mutableStateOf(SettleUpUiState(LoadState.Error(ErrorReason.STORAGE)))
+        rule.setDs(reduceMotion = true) { SettleUpScreen(state, SsSnackbarState(), SettleUpFixtures.callbacks.copy(onBack = { backs++ }, onRetry = { retries++ })) }
+        rule.onNodeWithText("Try again").performClick()
+        assertThat(retries).isEqualTo(1)
+        state = SettleUpUiState(LoadState.Error(ErrorReason.NOT_FOUND))
+        rule.onNodeWithText("Try again").assertDoesNotExist()
+        rule.onNodeWithTag(SplitSmartTestTags.ERROR).assertExists()
+        ShadowSystemClock.advanceBy(Duration.ofMillis(600)) // past the button's one-tap-per-500-ms guard
+        rule.onNodeWithText("Back").performClick()
+        assertThat(backs).isEqualTo(1)
+        assertThat(retries).isEqualTo(1)
+    }
+
     private fun firstTag(tag: String): String = tag.also { assertThat(rule.onAllNodesWithTag(it).fetchSemanticsNodes()).isNotEmpty() }
 
     private companion object {

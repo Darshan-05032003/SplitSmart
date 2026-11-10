@@ -210,7 +210,7 @@ class ScanScreenTest {
         show(calls)
         rule.onNodeWithTag(SplitSmartTestTags.ERROR).assertExists()
         rule.onNodeWithText("No text found. Try better light or move closer.").assertIsDisplayed()
-        rule.onNodeWithText("Retry").performClick()
+        rule.onNodeWithText("Try again").performClick()
         rule.onNodeWithTag(SplitSmartTestTags.GALLERY_BUTTON).performClick()
         assertThat(calls.retry).isEqualTo(1)
         assertThat(calls.gallery).isEqualTo(1)
