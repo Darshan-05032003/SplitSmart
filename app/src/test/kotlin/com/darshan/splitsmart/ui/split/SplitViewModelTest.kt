@@ -17,6 +17,9 @@ import com.darshan.splitsmart.ui.LoadState
 import com.darshan.splitsmart.testutil.RecordingAnalyticsTracker
 import com.darshan.splitsmart.testutil.RecordingCrashReporter
 import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertWithMessage
+import com.darshan.splitsmart.ui.designsystem.effects.HapticEvent
+import com.darshan.splitsmart.ui.designsystem.effects.UiEffect
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -148,5 +151,160 @@ class SplitViewModelTest {
         vm.save(); vm.save()
         dispatcher.scheduler.advanceUntilIdle()
         assertThat(writes).isEqualTo(1)
+    }
+    @Test
+    fun `percent mode starts from an even 100 and only splits once the percentages add up to 100`() = runTest(dispatcher) {
+        val handle = SavedStateHandle(mapOf("billId" to "b1"))
+        val vm = vm(handle)
+        vm.editor()
+        vm.setModeOption(SplitModeOption.Percent)
+        dispatcher.scheduler.advanceUntilIdle()
+        var e = (vm.uiState.value.editor as LoadState.Content).data
+        assertThat(e.option).isEqualTo(SplitModeOption.Percent)
+        assertThat(e.shareTexts).containsExactly("a", "34", "b", "33", "c", "33")
+        assertThat(e.percentLeft).isEqualTo(0)
+        assertThat(e.preview!!.shares.map { it.totalPaise }).containsExactly(102L, 99L, 99L).inOrder()
+
+        vm.setShareText("a", "50")
+        dispatcher.scheduler.advanceUntilIdle()
+        e = (vm.uiState.value.editor as LoadState.Content).data
+        assertThat(e.percentLeft).isEqualTo(-16)
+        assertThat(e.preview).isNull()
+        vm.effects.test {
+            vm.save()
+            assertThat(awaitItem()).isEqualTo(UiEffect.Haptic(HapticEvent.Reject))
+        }
+        assertThat(bills.bills.value.single().split).isNull()
+
+        vm.setShareText("a", "34")
+        vm.save()
+        dispatcher.scheduler.advanceUntilIdle()
+        val stored = bills.bills.value.single().split!!
+        assertThat(stored.config.percent).isTrue()
+        assertThat(stored.shares.sumOf { it.totalPaise }).isEqualTo(300)
+        val reopened = vm(SavedStateHandle(mapOf("billId" to "b1"))).editor()
+        assertThat(reopened.option).isEqualTo(SplitModeOption.Percent)
+        assertThat(reopened.shareTexts).containsExactly("a", "34", "b", "33", "c", "33")
+    }
+
+    @Test
+    fun `leaving percent for shares keeps the numbers as weights`() = runTest(dispatcher) {
+        val vm = vm()
+        vm.editor()
+        vm.setModeOption(SplitModeOption.Percent)
+        vm.setModeOption(SplitModeOption.ByShare)
+        dispatcher.scheduler.advanceUntilIdle()
+        val e = (vm.uiState.value.editor as LoadState.Content).data
+        assertThat(e.config.percent).isFalse()
+        assertThat(e.percentLeft).isNull()
+        assertThat(e.shareTexts).containsExactly("a", "34", "b", "33", "c", "33")
+    }
+
+    @Test
+    fun `dropping an item on a face assigns it with a light haptic, a repeat drop changes nothing`() = runTest(dispatcher) {
+        val vm = vm()
+        vm.editor()
+        vm.setModeOption(SplitModeOption.ByItem)
+        vm.effects.test {
+            vm.assignItems(listOf("i1"), "a")
+            assertThat(awaitItem()).isEqualTo(UiEffect.Haptic(HapticEvent.Light))
+            vm.assignItems(listOf("i1"), "a")
+            vm.assignItems(listOf("i1"), "stranger")
+            dispatcher.scheduler.advanceUntilIdle()
+            expectNoEvents()
+        }
+        val e = (vm.uiState.value.editor as LoadState.Content).data
+        assertThat(e.config.itemAssignments["i1"]).containsExactly("a")
+        assertThat(e.assignedCounts).containsExactly("a", 1, "b", 0, "c", 0)
+        assertThat(e.preview!!.shares.associate { it.memberId to it.totalPaise }).containsExactly("a", 234L, "b", 33L, "c", 33L)
+        assertThat(e.preview!!.totalPaise).isEqualTo(300)
+    }
+
+    @Test
+    fun `the last unassigned item plays the celebration once`() = runTest(dispatcher) {
+        val vm = vm()
+        vm.editor()
+        vm.setModeOption(SplitModeOption.ByItem)
+        vm.assignItems(listOf("i1"), "a")
+        dispatcher.scheduler.advanceUntilIdle()
+        assertThat((vm.uiState.value.editor as LoadState.Content).data.celebrate).isEqualTo(0)
+        vm.assignItems(listOf("i2"), "b")
+        dispatcher.scheduler.advanceUntilIdle()
+        var e = (vm.uiState.value.editor as LoadState.Content).data
+        assertThat(e.allAssigned).isTrue()
+        assertThat(e.celebrate).isEqualTo(1)
+        vm.assignItems(listOf("i2"), "c") // still all assigned: no second party
+        dispatcher.scheduler.advanceUntilIdle()
+        e = (vm.uiState.value.editor as LoadState.Content).data
+        assertThat(e.celebrate).isEqualTo(1)
+        // An already fully assigned split that is reopened does not celebrate on load.
+        vm.save()
+        dispatcher.scheduler.advanceUntilIdle()
+        val reopened = vm(SavedStateHandle(mapOf("billId" to "b1"))).editor()
+        assertThat(reopened.allAssigned).isTrue()
+        assertThat(reopened.celebrate).isEqualTo(0)
+    }
+
+    @Test
+    fun `long-press picks survive process death and go to one face together`() = runTest(dispatcher) {
+        val handle = SavedStateHandle(mapOf("billId" to "b1"))
+        val vm = vm(handle)
+        vm.editor()
+        vm.setModeOption(SplitModeOption.ByItem)
+        vm.toggleSelected("i1"); vm.toggleSelected("i2"); vm.toggleSelected("i2"); vm.toggleSelected("i2")
+        dispatcher.scheduler.advanceUntilIdle()
+        val restored = vm(handle).editor()
+        assertThat(restored.selected).containsExactly("i1", "i2")
+        vm.effects.test {
+            vm.assignSelected("c")
+            assertThat(awaitItem()).isEqualTo(UiEffect.Haptic(HapticEvent.Light))
+            cancelAndIgnoreRemainingEvents()
+        }
+        val e = (vm.uiState.value.editor as LoadState.Content).data
+        assertThat(e.selected).isEmpty()
+        assertThat(e.config.itemAssignments).containsExactly("i1", setOf("c"), "i2", setOf("c"))
+        vm.clearSelection()
+        vm.toggleSelected("i1")
+        vm.setModeOption(SplitModeOption.Equal) // picks belong to "by item"
+        dispatcher.scheduler.advanceUntilIdle()
+        assertThat((vm.uiState.value.editor as LoadState.Content).data.selected).isEmpty()
+    }
+
+    @Test
+    fun `share steppers move one share at a time and never below zero`() = runTest(dispatcher) {
+        val vm = vm()
+        vm.editor()
+        vm.setModeOption(SplitModeOption.ByShare)
+        vm.stepShare("a", 1); vm.stepShare("b", -1); vm.stepShare("b", -1)
+        dispatcher.scheduler.advanceUntilIdle()
+        val e = (vm.uiState.value.editor as LoadState.Content).data
+        assertThat(e.shareTexts).containsExactly("a", "2", "b", "0", "c", "1")
+        assertThat(e.preview!!.shares.map { it.totalPaise }).containsExactly(200L, 0L, 100L).inOrder()
+    }
+
+    @Test
+    fun `a saved split confirms with the confirm haptic`() = runTest(dispatcher) {
+        val vm = vm()
+        vm.editor()
+        vm.effects.test {
+            vm.save()
+            assertThat(awaitItem()).isEqualTo(UiEffect.Haptic(HapticEvent.Confirm))
+        }
+    }
+
+    @Test
+    fun `odd paise across 3 and 7 people still add up to the bill, nobody more than a paisa apart`() = runTest(dispatcher) {
+        groups.members.value = (1..7).map { testMember("p$it", name = "Person $it") }
+        for ((total, people) in listOf(10_000L to 3, 100_001L to 7, 1L to 3, com.darshan.splitsmart.core.Money.MAX_PAISE - 1 to 7)) {
+            bills.bills.value = listOf(testBill(totalPaise = total, items = listOf(testItem("i1", unitPaise = total))))
+            val vm = vm()
+            vm.editor()
+            (people + 1..7).forEach { vm.toggleParticipant("p$it") }
+            dispatcher.scheduler.advanceUntilIdle()
+            val shares = (vm.uiState.value.editor as LoadState.Content).data.preview!!.shares.map { it.totalPaise }
+            assertWithMessage("$total over $people").that(shares).hasSize(people)
+            assertWithMessage("$total over $people").that(shares.sum()).isEqualTo(total)
+            assertWithMessage("$total over $people").that(shares.max() - shares.min()).isAtMost(1L)
+        }
     }
 }

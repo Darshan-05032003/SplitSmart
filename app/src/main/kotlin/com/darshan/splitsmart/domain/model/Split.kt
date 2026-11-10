@@ -13,6 +13,11 @@ data class SplitConfig(
     val itemAssignments: Map<String, Set<String>> = emptyMap(),
     /** memberId → weight or percentage (any non-negative integers; only ratios matter). */
     val shares: Map<String, Int> = emptyMap(),
+    /**
+     * BY_SHARE weights that were entered as percentages (the screen only saves them once they total 100). Presentation only:
+     * the maths treat them as weights like any other, and older stored configs without the field read as false.
+     */
+    val percent: Boolean = false,
 )
 
 /** One participant's part of a bill, in paise. `adjustmentPaise` carries rounding and a total that does not add up. */
