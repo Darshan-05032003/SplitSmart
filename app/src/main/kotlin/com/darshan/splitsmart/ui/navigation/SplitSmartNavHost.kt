@@ -5,8 +5,6 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -51,7 +49,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object GroupsDestination
 @Serializable data object MeDestination
-@Serializable data class GroupDetailDestination(val groupId: String)
+/** [addBill] opens the group with its add-bill sheet up (the home's "Add an expense"). */
+@Serializable data class GroupDetailDestination(val groupId: String, val addBill: Boolean = false)
 @Serializable data class BillDetailDestination(val billId: String)
 @Serializable data class ScanDestination(val groupId: String, val gallery: Boolean = false)
 @Serializable data class ReviewDestination(val draftId: String)
@@ -111,6 +110,7 @@ fun SplitSmartNavHost(
 
     val motion = LocalMotion.current
     val transitions = remember(motion) { ShellTransitions(motion) }
+    val barState = remember { ShellBarState() }
 
     val openScan: () -> Unit = {
         when (val target = ScanTarget.resolve(scanChoices)) {
@@ -125,6 +125,7 @@ fun SplitSmartNavHost(
         LocalBottomBarInset provides BottomBarInset,
         LocalTabReselects provides reselects,
         LocalShellRequests provides requestFlow,
+        LocalShellBar provides barState,
     ) {
         SharedTransitionLayout(Modifier.fillMaxSize()) {
             CompositionLocalProvider(LocalSharedTransitionScope provides this) {
@@ -139,14 +140,12 @@ fun SplitSmartNavHost(
                         sizeTransform = null,
                     ) {
                         screen<GroupsDestination> {
-                            // The groups list is not rebuilt yet (row 10): it keeps its own Scaffold, so it ends above the bar
-                            // instead of drawing under it. Row 10 removes this padding and uses LocalBottomBarInset.
-                            Box(Modifier.fillMaxSize().navigationBarsPadding().padding(bottom = BottomBarInset)) {
-                                GroupsRoute(
-                                    onOpenGroup = { navController.push(GroupDetailDestination(it)) },
-                                    onScanReceipt = { navController.push(ScanDestination(it)) },
-                                )
-                            }
+                            // Draws under the floating bar; the list's end and the FAB keep clear of it (LocalBottomBarInset).
+                            GroupsRoute(
+                                onOpenGroup = { navController.push(GroupDetailDestination(it)) },
+                                onScan = openScan,
+                                onAddExpense = { navController.push(GroupDetailDestination(it, addBill = true)) },
+                            )
                         }
                         screen<MeDestination> {
                             MeRoute(onReplayIntro = onReplayIntro)
@@ -187,7 +186,7 @@ fun SplitSmartNavHost(
                         }
                     }
                     AnimatedVisibility(
-                        visible = ShellLogic.barVisible(route),
+                        visible = ShellLogic.barVisible(route, modalOpen = barState.modalOpen),
                         modifier = Modifier.align(Alignment.BottomCenter),
                         enter = motion.enter(),
                         exit = motion.exit(),

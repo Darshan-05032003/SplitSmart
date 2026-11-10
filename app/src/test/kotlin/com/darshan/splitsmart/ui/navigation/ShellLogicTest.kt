@@ -20,6 +20,19 @@ class ShellLogicTest {
     }
 
     @Test
+    fun `a sheet or menu open on a tab hides the bar, so nothing modal sits under it`() {
+        assertThat(ShellLogic.barVisible(ShellRoute.Groups, modalOpen = true)).isFalse()
+        assertThat(ShellLogic.barVisible(ShellRoute.Me, modalOpen = true)).isFalse()
+        assertThat(ShellLogic.barVisible(ShellRoute.Groups, modalOpen = false)).isTrue()
+        val bar = ShellBarState()
+        assertThat(bar.modalOpen).isFalse()
+        bar.push(); bar.push(); bar.pop()
+        assertThat(bar.modalOpen).isTrue()
+        bar.pop(); bar.pop()
+        assertThat(bar.modalOpen).isFalse()
+    }
+
+    @Test
     fun `scan offers active groups only, unless every group is archived`() {
         val goa = com.darshan.splitsmart.testutil.testGroup("goa", "Goa trip")
         val old = com.darshan.splitsmart.testutil.testGroup("old", "Old trip").copy(archivedAt = java.time.Instant.EPOCH)

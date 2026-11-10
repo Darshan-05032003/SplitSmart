@@ -19,6 +19,7 @@ import com.darshan.splitsmart.ui.LoadState
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
@@ -129,6 +130,90 @@ class GroupDetailViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
         assertThat(vm.uiState.value.billDraft?.amountError).isTrue()
         assertThat(bills.bills.value).isEmpty()
+    }
+
+    // ----- row 10: add-expense entry, archive, guarded delete -----
+    @Test
+    fun `opened from the home's add an expense, the bill sheet is up once and stays closed after a restore`() = runTest(dispatcher) {
+        groups.groups.value = listOf(testGroup())
+        val handle = SavedStateHandle(mapOf("groupId" to "g1", "addBill" to true))
+        val vm = vm(handle)
+        vm.uiState.test { awaitItem(); cancelAndIgnoreRemainingEvents() }
+        assertThat(vm.uiState.value.billDraft).isNotNull()
+        vm.dismissBill()
+        dispatcher.scheduler.advanceUntilIdle()
+        // Process death: the nav argument is still there, but the sheet was already offered.
+        val restored = vm(handle)
+        restored.uiState.test { awaitItem(); cancelAndIgnoreRemainingEvents() }
+        assertThat(restored.uiState.value.billDraft).isNull()
+    }
+
+    @Test
+    fun `archive from the group screen emits an undoable event, and unarchive restores it`() = runTest(dispatcher) {
+        groups.groups.value = listOf(testGroup())
+        val vm = vm()
+        vm.uiState.test { awaitItem(); awaitItem(); cancelAndIgnoreRemainingEvents() }
+        vm.events.test {
+            vm.setArchived(true)
+            assertThat(awaitItem()).isEqualTo(GroupDetailEvent.GroupArchived("Goa trip"))
+        }
+        assertThat(groups.groups.value.single().isArchived).isTrue()
+        vm.setArchived(false)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertThat(groups.groups.value.single().isArchived).isFalse()
+    }
+
+    @Test
+    fun `a burst of delete confirmations deletes once and reports it once`() = runTest(dispatcher) {
+        groups.groups.value = listOf(testGroup())
+        var deletes = 0
+        val counting = object : FakeGroupRepository() {
+            override suspend fun deleteGroup(groupId: String) {
+                deletes++
+                super.deleteGroup(groupId)
+            }
+        }
+        counting.groups.value = groups.groups.value
+        val vm = GroupDetailViewModel(
+            SavedStateHandle(mapOf("groupId" to "g1")), counting, bills, AddMemberUseCase(counting), CreateManualBillUseCase(bills, fixedClock),
+            TestDispatcherProvider(dispatcher),
+        )
+        val events = mutableListOf<GroupDetailEvent>()
+        backgroundScope.launch(kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler)) { vm.events.collect { events += it } }
+        vm.uiState.test {
+            awaitItem(); awaitItem()
+            repeat(1_000) { vm.deleteGroup() }
+            // The confirmation locks at once (loading button, sheet not dismissible).
+            assertThat(awaitItem().deleting).isTrue()
+            cancelAndIgnoreRemainingEvents()
+        }
+        dispatcher.scheduler.advanceUntilIdle()
+        assertThat(deletes).isEqualTo(1)
+        assertThat(events).containsExactly(GroupDetailEvent.GroupDeleted)
+    }
+
+    @Test
+    fun `a failed delete unlocks the confirmation and says so`() = runTest(dispatcher) {
+        groups.groups.value = listOf(testGroup())
+        val vm = vm()
+        vm.uiState.test { awaitItem(); awaitItem(); cancelAndIgnoreRemainingEvents() }
+        groups.failWith = IllegalStateException("locked")
+        val events = mutableListOf<GroupDetailEvent>()
+        backgroundScope.launch(kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler)) { vm.events.collect { events += it } }
+        vm.uiState.test {
+            awaitItem() // the content again: the earlier subscription kept the upstream alive
+            vm.deleteGroup()
+            dispatcher.scheduler.advanceUntilIdle()
+            assertThat(events).containsExactly(GroupDetailEvent.Failed)
+            assertThat(groups.groups.value).hasSize(1)
+            // Unlocked again: a retry goes through.
+            groups.failWith = null
+            vm.deleteGroup()
+            dispatcher.scheduler.advanceUntilIdle()
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertThat(events).containsExactly(GroupDetailEvent.Failed, GroupDetailEvent.GroupDeleted).inOrder()
+        assertThat(groups.groups.value).isEmpty()
     }
 
     @Test

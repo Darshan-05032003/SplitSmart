@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -100,6 +101,6 @@ class SplitFlowIntegrationTest {
         compose.waitUntilWithMainLooper { compose.scrollListTo(SplitSmartTestTags.DEBT_ITEM) } // below the summary and add-bill cards now
         compose.onNodeWithTag(SplitSmartTestTags.DEBT_ITEM).performScrollTo()
         compose.onNodeWithText("Ravi owes Asha").assertExists()
-        compose.onNodeWithText("₹150.00").assertExists()
+        compose.onNodeWithContentDescription("₹150.00").assertExists() // amounts read out through their description
     }
 }

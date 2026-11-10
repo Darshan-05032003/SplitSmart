@@ -1,6 +1,8 @@
 package com.darshan.splitsmart.ui.navigation
 
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import com.darshan.splitsmart.domain.model.Group
 import com.darshan.splitsmart.ui.designsystem.tokens.contrastRatio
@@ -34,8 +36,11 @@ object ShellLogic {
     /** Scan is in the bar but is not a tab: it opens the camera for a group over the current tab, and back returns there. */
     fun isAction(route: ShellRoute?): Boolean = route == ShellRoute.Scan
 
-    /** The bar belongs to the tab roots. A task inside a flow gets the whole screen. */
-    fun barVisible(route: ShellRoute?): Boolean = isTabRoot(route)
+    /**
+     * The bar belongs to the tab roots. A task inside a flow gets the whole screen, and so does anything modal on a tab (a sheet,
+     * the FAB menu): drawn inside the screen, it would otherwise sit under the floating bar.
+     */
+    fun barVisible(route: ShellRoute?, modalOpen: Boolean = false): Boolean = isTabRoot(route) && !modalOpen
 
     /** Where the blob sits: on the current tab, or on the tab the user came from. */
     fun selectedIndex(route: ShellRoute?, lastTab: ShellRoute): Int =
@@ -53,6 +58,21 @@ object ShellLogic {
             ShellRoute.Scan in pair -> ScreenTransition.Rise
             else -> ScreenTransition.SharedAxis
         }
+    }
+}
+
+/** Counts the modal surfaces open on the current tab screen; the bar hides while there is any. */
+@androidx.compose.runtime.Stable
+class ShellBarState {
+    private var open by androidx.compose.runtime.mutableIntStateOf(0)
+    val modalOpen: Boolean get() = open > 0
+
+    fun push() {
+        open++
+    }
+
+    fun pop() {
+        open = (open - 1).coerceAtLeast(0)
     }
 }
 

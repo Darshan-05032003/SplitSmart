@@ -35,14 +35,17 @@ object ShellTags {
     fun scanChoice(groupId: String) = "shell_scan_choice_$groupId"
 }
 
-/** "Which group is this receipt for?": every group, newest first, scrolling inside the sheet when there are many. */
+/**
+ * "Which group is this receipt for?": every group, newest first, scrolling inside the sheet when there are many. [title] asks
+ * the question (the groups home asks it for an expense typed by hand).
+ */
 @Composable
-fun ScanPickerContent(choices: List<ScanChoice>, onPick: (String) -> Unit) {
+fun ScanPickerContent(choices: List<ScanChoice>, title: String = stringResource(R.string.groups_pick_for_scan), onPick: (String) -> Unit) {
     val colors = SplitSmartTheme.colors
     val type = SplitSmartTheme.type
     Column(Modifier.fillMaxWidth().testTag(ShellTags.SCAN_PICKER), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
         BasicText(
-            stringResource(R.string.groups_pick_for_scan),
+            title,
             style = type.title.copy(color = colors.text),
             modifier = Modifier.padding(horizontal = Spacing.screen).semantics { heading() },
         )

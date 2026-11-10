@@ -22,9 +22,9 @@ class UpiLinkBuilderTest {
 
     @Test
     fun `percent-encodes everything that could break the query`() {
-        val link = UpiLinkBuilder.build("a@upi", "Tom & Jerry's #1 Café", 1, "Dinner=fun?&x=1 ₹ 100%")
+        val link = UpiLinkBuilder.build("a@upi", "Tim & Jo's #1 Café", 1, "Dinner=fun?&x=1 ₹ 100%")
         assertThat(link.uri).doesNotContain("&pa=x")
-        assertThat(link.uri).contains("pn=Tom%20%26%20Jerry%27s%20%231%20Caf%C3%A9")
+        assertThat(link.uri).contains("pn=Tim%20%26%20Jo%27s%20%231%20Caf%C3%A9")
         assertThat(link.uri).contains("tn=Dinner%3Dfun%3F%26x%3D1%20%E2%82%B9%20100%25")
         // only our five parameters, in order
         assertThat(link.uri.substringAfter('?').split('&').map { it.substringBefore('=') }).containsExactly("pa", "pn", "am", "cu", "tn").inOrder()

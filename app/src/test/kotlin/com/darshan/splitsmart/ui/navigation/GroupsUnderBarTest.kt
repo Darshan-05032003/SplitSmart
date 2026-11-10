@@ -2,8 +2,7 @@ package com.darshan.splitsmart.ui.navigation
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -18,6 +17,7 @@ import com.darshan.splitsmart.ui.LoadState
 import com.darshan.splitsmart.ui.SplitSmartTestTags
 import com.darshan.splitsmart.ui.designsystem.setDs
 import com.darshan.splitsmart.ui.groups.GroupCard
+import com.darshan.splitsmart.ui.groups.GroupsCallbacks
 import com.darshan.splitsmart.ui.groups.GroupsScreen
 import com.darshan.splitsmart.ui.groups.GroupsUiState
 import com.darshan.splitsmart.ui.groups.HomeOverview
@@ -42,14 +42,15 @@ class GroupsUnderBarTest {
     fun `the newest group card is on the first screen above the bar, named`() {
         val cards = listOf(GroupCard(GroupSummary(testGroup("bt", "Benchmark trip"), 4, 200), listOf("Asha Rao", "Vikram Shah", "Neha Menon", "Rahul Verma"), outstandingPaise = 1_000_000))
         rule.setDs {
-            Box(Modifier.fillMaxSize()) {
-                Box(Modifier.fillMaxSize().padding(bottom = BottomBarInset)) {
+            // As in the shell: the list draws under the floating bar and keeps its end clear through LocalBottomBarInset.
+            CompositionLocalProvider(LocalBottomBarInset provides BottomBarInset) {
+                Box(Modifier.fillMaxSize()) {
                     GroupsScreen(
                         state = GroupsUiState(LoadState.Content(cards), overview = HomeOverview(null, outstandingPaise = 1_000_000, groupCount = 1)),
-                        snackbar = SnackbarHostState(), onOpenGroup = {}, onAdd = {}, onDismiss = {}, onNameChange = {}, onConfirm = {}, onRetry = {},
+                        callbacks = GroupsCallbacks(),
                     )
+                    ShellBottomBar(selectedIndex = 0, onSelect = {}, onReselect = {}, modifier = Modifier.align(Alignment.BottomCenter).testTag(ShellTags.BAR))
                 }
-                ShellBottomBar(selectedIndex = 0, onSelect = {}, onReselect = {}, modifier = Modifier.align(Alignment.BottomCenter).testTag(ShellTags.BAR))
             }
         }
         val card = rule.onNodeWithTag(SplitSmartTestTags.GROUP_ITEM)
@@ -57,5 +58,8 @@ class GroupsUnderBarTest {
         card.assertContentDescriptionContains("Benchmark trip", substring = true)
         val cardBottom = card.fetchSemanticsNode().boundsInRoot.bottom
         assertThat(cardBottom).isAtMost(rule.onNodeWithTag(ShellTags.BAR).fetchSemanticsNode().boundsInRoot.top)
+        // The FAB floats above the bar, not under it.
+        val fab = rule.onNodeWithTag(SplitSmartTestTags.FAB_ADD_GROUP).fetchSemanticsNode().boundsInRoot
+        assertThat(fab.bottom).isAtMost(rule.onNodeWithTag(ShellTags.BAR).fetchSemanticsNode().boundsInRoot.top)
     }
 }

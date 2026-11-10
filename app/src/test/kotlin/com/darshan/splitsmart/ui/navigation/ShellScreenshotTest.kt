@@ -2,8 +2,6 @@ package com.darshan.splitsmart.ui.navigation
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
@@ -12,23 +10,17 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.darshan.splitsmart.domain.model.BillSource
 import com.darshan.splitsmart.domain.model.GroupSummary
 import com.darshan.splitsmart.domain.model.NameError
-import com.darshan.splitsmart.testutil.testBill
 import com.darshan.splitsmart.testutil.testGroup
-import com.darshan.splitsmart.testutil.testMember
 import com.darshan.splitsmart.ui.LoadState
 import com.darshan.splitsmart.ui.designsystem.captureNode
 import com.darshan.splitsmart.ui.designsystem.components.SsBottomSheet
 import com.darshan.splitsmart.ui.designsystem.effects.ThemeMode
 import com.darshan.splitsmart.ui.designsystem.effects.UiSettings
 import com.darshan.splitsmart.ui.designsystem.setDs
-import com.darshan.splitsmart.ui.groupdetail.GroupDetail
-import com.darshan.splitsmart.ui.groupdetail.GroupDetailCallbacks
-import com.darshan.splitsmart.ui.groupdetail.GroupDetailScreen
-import com.darshan.splitsmart.ui.groupdetail.GroupDetailUiState
 import com.darshan.splitsmart.ui.groups.GroupCard
+import com.darshan.splitsmart.ui.groups.GroupsCallbacks
 import com.darshan.splitsmart.ui.groups.GroupsScreen
 import com.darshan.splitsmart.ui.groups.GroupsUiState
 import com.darshan.splitsmart.ui.groups.HomeOverview
@@ -43,8 +35,8 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * The shell as people see it: Me, the bar over the groups list, the bar's scan sheets, and the screens not rebuilt yet now
- * drawn with Marigold's Material slots (checked for readability until rows 10 to 13 rebuild them).
+ * The shell as people see it: Me, the bar over the groups list and the bar's scan sheets. The group screen's baselines moved to
+ * `GroupDetailScreenshotTest` when it was rebuilt (row 10).
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -90,31 +82,14 @@ class ShellScreenshotTest {
         Box(Modifier.fillMaxSize()) {
             GroupsScreen(
                 state = GroupsUiState(LoadState.Content(cards), overview = HomeOverview("Darshan", 111_870, 60_000, 171_870, groupsWithYou = 2, groupCount = 2)),
-                snackbar = SnackbarHostState(), onOpenGroup = {}, onAdd = {}, onDismiss = {}, onNameChange = {}, onConfirm = {}, onRetry = {},
+                callbacks = GroupsCallbacks(),
             )
         }
     }
 
-    /** The groups list is not rebuilt yet: it keeps its own Scaffold and ends above the bar, as in the shell. */
-    @Test fun groups_with_bar_light() = shot("groups_with_bar", dark = false) { WithBar(0) { Box(Modifier.fillMaxSize().paddedForBar()) { Groups() } } }
-    @Test fun groups_with_bar_dark() = shot("groups_with_bar", dark = true) { WithBar(0) { Box(Modifier.fillMaxSize().paddedForBar()) { Groups() } } }
-
-    @Test
-    fun legacy_group_detail_light() = shot("legacy_group_detail", dark = false) { DetailScreen() }
-
-    @Test
-    fun legacy_group_detail_dark() = shot("legacy_group_detail", dark = true) { DetailScreen() }
-
-    @Composable
-    private fun DetailScreen() {
-        val asha = testMember("m1", "goa", "Asha")
-        val ravi = testMember("m2", "goa", "Ravi")
-        val bills = listOf(
-            testBill(id = "ai", groupId = "goa", title = "Beach shack dinner", source = BillSource.SCAN_LLM, paidByMemberId = "m1"),
-            testBill(id = "manual", groupId = "goa", title = "Cab", source = BillSource.MANUAL),
-        )
-        GroupDetailScreen(GroupDetailUiState(LoadState.Content(GroupDetail(goa, listOf(asha, ravi), bills))), SnackbarHostState(), detailCallbacks())
-    }
+    /** The groups list draws under the floating bar, as in the shell. */
+    @Test fun groups_with_bar_light() = shot("groups_with_bar", dark = false) { WithBar(0) { Groups() } }
+    @Test fun groups_with_bar_dark() = shot("groups_with_bar", dark = true) { WithBar(0) { Groups() } }
 
     @Test
     fun scan_picker_light() = shot("scan_picker", dark = false) {
@@ -133,16 +108,7 @@ class ShellScreenshotTest {
         }
     }
 
-    private fun detailCallbacks() = GroupDetailCallbacks(
-        onBack = {}, onRetry = {}, onOpenBill = {}, onScan = {}, onSettleUp = {}, onDeleteGroup = {}, onAddMember = {}, onDismissMember = {},
-        onMemberName = {}, onMemberVpa = {}, onSubmitMember = {}, onRemoveMember = {}, onAddBill = {}, onDismissBill = {}, onBillTitle = {},
-        onBillAmount = {}, onBillPayer = {}, onSubmitBill = {}, onScanFromGallery = {},
-    )
-
     private companion object {
         const val ROOT = "root"
     }
 }
-
-/** Same padding the shell gives the groups list. */
-private fun Modifier.paddedForBar(): Modifier = padding(bottom = BottomBarInset)

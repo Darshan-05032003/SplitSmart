@@ -56,7 +56,7 @@ object SyntheticReceipts {
 
     fun ocrText(random: Random): String {
         val sb = StringBuilder()
-        sb.append("  Hotel Saravana Bhavan \n")
+        sb.append("  Hotel Marigold Bhavan \n")
         repeat(random.nextInt(2, 15)) {
             val qty = random.nextInt(1, 5)
             val unit = random.nextInt(2_000, 60_000)

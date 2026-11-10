@@ -207,7 +207,10 @@ enum class IconButtonSize(val diameter: Dp, val iconSize: Dp) {
     Fab(Sizes.fab, Sizes.iconLarge),
 }
 
-/** A round chunky button around one icon. [contentDescription] is required: an icon alone says nothing to TalkBack. */
+/**
+ * A round chunky button around one icon. [contentDescription] is required: an icon alone says nothing to TalkBack.
+ * [iconModifier] reaches the glyph only, e.g. a FAB's plus turning into a cross while its base stays put.
+ */
 @Composable
 fun ChunkyIconButton(
     icon: ImageVector,
@@ -219,6 +222,7 @@ fun ChunkyIconButton(
     enabled: Boolean = true,
     debounceMs: Int = MotionDurations.TapDebounce,
     press: PressFeedback = rememberPressFeedback(),
+    iconModifier: Modifier = Modifier,
 ) {
     val colors = buttonColors(style, enabled).let { if (style == ButtonStyle.Ghost) it.copy(border = null) else it }
     TactileSurface(
@@ -238,7 +242,7 @@ fun ChunkyIconButton(
         modifier = modifier.semantics { this.contentDescription = contentDescription },
     ) {
         Box(Modifier.size(size.diameter), contentAlignment = Alignment.Center) {
-            Image(rememberVectorPainter(icon), contentDescription = null, colorFilter = ColorFilter.tint(colors.content), modifier = Modifier.size(size.iconSize))
+            Image(rememberVectorPainter(icon), contentDescription = null, colorFilter = ColorFilter.tint(colors.content), modifier = iconModifier.size(size.iconSize))
         }
     }
 }

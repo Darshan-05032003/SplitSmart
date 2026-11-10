@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.darshan.splitsmart.R
 import com.darshan.splitsmart.ui.ErrorReason
+import com.darshan.splitsmart.ui.messageRes
 import com.darshan.splitsmart.ui.SplitSmartTestTags
 
 @Composable
@@ -88,8 +89,3 @@ fun ErrorView(reason: ErrorReason, onRetry: () -> Unit, modifier: Modifier = Mod
     }
 }
 
-fun ErrorReason.messageRes(): Int = when (this) {
-    ErrorReason.NOT_FOUND -> R.string.error_not_found
-    ErrorReason.STORAGE -> R.string.error_storage
-    ErrorReason.UNKNOWN -> R.string.error_unknown
-}

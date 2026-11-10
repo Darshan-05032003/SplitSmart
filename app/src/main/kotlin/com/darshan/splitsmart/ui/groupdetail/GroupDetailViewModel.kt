@@ -63,12 +63,17 @@ data class GroupDetailUiState(
     val detail: LoadState<GroupDetail> = LoadState.Loading,
     val memberDraft: MemberDraft? = null,
     val billDraft: BillDraft? = null,
+    /** A delete is in flight: the confirmation shows it and takes no second tap. */
+    val deleting: Boolean = false,
 )
 
 sealed interface GroupDetailEvent {
     data class BillCreated(val billId: String) : GroupDetailEvent
     data object GroupDeleted : GroupDetailEvent
     data object Failed : GroupDetailEvent
+
+    /** The group was put away from its own screen; the screen offers Undo. */
+    data class GroupArchived(val name: String) : GroupDetailEvent
 }
 
 /** Dialog drafts live in [SavedStateHandle] so an open dialog survives rotation and process death. */
@@ -99,6 +104,16 @@ class GroupDetailViewModel @Inject constructor(
     // Transient validation state
     private val memberErrors = MutableStateFlow(MemberDraft())
     private val billErrors = MutableStateFlow(BillDraft())
+    private val deleting = MutableStateFlow(false)
+    private var archiving = false
+
+    init {
+        // Opened from the home's "Add an expense": offer the bill sheet once, not again after a restore.
+        if (savedStateHandle.get<Boolean>(ARG_ADD_BILL) == true && savedStateHandle.get<Boolean>(KEY_ADD_BILL_OFFERED) != true) {
+            savedStateHandle[KEY_ADD_BILL_OFFERED] = true
+            openAddBill()
+        }
+    }
 
     private val detail: Flow<LoadState<GroupDetail>> = reload.flatMapLatest {
         combine(groupRepository.observeGroup(groupId), groupRepository.observeMembers(groupId), billRepository.observeBills(groupId)) { g, m, b ->
@@ -113,7 +128,7 @@ class GroupDetailViewModel @Inject constructor(
         if (open) errors.copy(title = title, amount = amount, payerId = payer) else null
     }
 
-    val uiState: StateFlow<GroupDetailUiState> = combine(detail, memberDraft, billDraft) { d, m, b -> GroupDetailUiState(d, m, b) }
+    val uiState: StateFlow<GroupDetailUiState> = combine(detail, memberDraft, billDraft, deleting) { d, m, b, del -> GroupDetailUiState(d, m, b, del) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GroupDetailUiState(memberDraft = initialMemberDraft(), billDraft = initialBillDraft()))
 
     /** Balances are a pure function of the bills; a corrupt split must never take the whole screen down. */
@@ -169,16 +184,41 @@ class GroupDetailViewModel @Inject constructor(
         }
     }
 
+    /** Archive (true) or bring back (false). Archiving tells the screen, which offers Undo. One write at a time. */
+    fun setArchived(archived: Boolean) {
+        if (archiving) return
+        archiving = true
+        val name = (uiState.value.detail as? LoadState.Content)?.data?.group?.name.orEmpty()
+        viewModelScope.launch {
+            try {
+                runCatching { groupRepository.setArchived(groupId, archived) }
+                    .onSuccess { if (archived) _events.send(GroupDetailEvent.GroupArchived(name)) }
+                    .onFailure { _events.send(GroupDetailEvent.Failed) }
+            } finally {
+                archiving = false
+            }
+        }
+    }
+
+    /** Called from the confirmation only. The first confirmation wins; a failure unlocks it again. */
     fun deleteGroup() {
+        if (deleting.value) return
+        deleting.value = true
         viewModelScope.launch {
             runCatching { groupRepository.deleteGroup(groupId) }
                 .onSuccess { _events.send(GroupDetailEvent.GroupDeleted) }
-                .onFailure { _events.send(GroupDetailEvent.Failed) }
+                .onFailure {
+                    deleting.value = false
+                    _events.send(GroupDetailEvent.Failed)
+                }
         }
     }
 
     companion object {
         const val ARG_GROUP_ID = "groupId"
+        /** Navigation argument: open with the add-bill sheet up. */
+        const val ARG_ADD_BILL = "addBill"
+        private const val KEY_ADD_BILL_OFFERED = "addBillOffered"
         private const val KEY_MEMBER_OPEN = "memberDialogOpen"
         private const val KEY_MEMBER_NAME = "memberName"
         private const val KEY_MEMBER_VPA = "memberVpa"

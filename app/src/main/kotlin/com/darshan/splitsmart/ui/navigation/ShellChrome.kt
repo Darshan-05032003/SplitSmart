@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -38,6 +39,19 @@ val LocalBottomBarInset = staticCompositionLocalOf { 0.dp }
 
 /** The bar's own height plus its margins: what `SsBottomBar` occupies above the navigation bar. */
 val BottomBarInset: Dp = Sizes.bottomBarHeight + Spacing.xs * 2 + Depth.card
+
+/** The shell's bar state; null outside the shell. */
+val LocalShellBar = staticCompositionLocalOf<ShellBarState?> { null }
+
+/** While [active], the floating bar steps aside: for a sheet or menu drawn inside a tab screen. No-op outside the shell. */
+@Composable
+fun HideShellBarWhile(active: Boolean) {
+    val bar = LocalShellBar.current ?: return
+    DisposableEffect(bar, active) {
+        if (active) bar.push()
+        onDispose { if (active) bar.pop() }
+    }
+}
 
 /** Carries "the current tab was tapped again". */
 val LocalTabReselects = staticCompositionLocalOf<Flow<ShellRoute>?> { null }

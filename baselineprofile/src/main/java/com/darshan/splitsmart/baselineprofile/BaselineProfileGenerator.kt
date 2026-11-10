@@ -10,7 +10,8 @@ import org.junit.runner.RunWith
 
 /**
  * Generates `app/src/main/generated/baselineProfiles/baseline-prof.txt` by driving the critical user journey:
- * cold start → (skip the intro) → groups list → create a group → open it → open the scan screen (permission rationale) → back.
+ * cold start → (skip the intro) → groups list → create a group from the empty page → open it → open the scan screen (permission
+ * rationale) → back.
  *
  * Run on a device / emulator: `./gradlew :app:generateBaselineProfile`
  * Status in this build: not run (no device); compiles and lints.
@@ -36,19 +37,21 @@ class BaselineProfileGenerator {
             device.waitForIdle()
         }
 
-        // Create a group if the list is empty, then open the first group.
-        device.findObject(By.desc("Create group"))?.let { fab ->
-            fab.click()
-            device.wait(Until.hasObject(By.text("Group name")), 3_000)
-            device.findObject(By.text("Group name"))?.parent?.setText("Baseline trip")
-            device.findObject(By.text("Create"))?.click()
+        // A fresh install has no groups: the empty page's button opens the New group sheet. Then open the group (its card reads
+        // its name through its description).
+        device.findObject(By.textContains("Create your first group"))?.let { button ->
+            button.click()
+            device.wait(Until.hasObject(By.clazz("android.widget.EditText")), 3_000)
+            device.findObject(By.clazz("android.widget.EditText"))?.setText("Baseline trip")
+            device.findObject(By.textContains("Create group"))?.click()
             device.waitForIdle()
         }
-        device.findObject(By.textContains("Baseline trip"))?.click()
-        device.wait(Until.hasObject(By.text("Members")), 3_000)
+        device.wait(Until.hasObject(By.descContains("Baseline trip")), 3_000)
+        device.findObject(By.descContains("Baseline trip"))?.click()
+        device.wait(Until.hasObject(By.textContains("Members")), 3_000)
 
-        // Scroll the group screen and open the scan entry point (permission rationale, no camera needed).
-        device.findObject(By.text("Scan receipt"))?.click()
+        // Open the scan entry point from the group's add-a-bill tiles (permission rationale, no camera needed).
+        device.findObject(By.textContains("Scan receipt"))?.click()
         device.wait(Until.hasObject(By.text("Allow camera")), 3_000)
         device.pressBack()
         device.waitForIdle()

@@ -194,7 +194,7 @@ object RollingAmountLogic {
     }
 }
 
-/** Blinkit-cart style counters: small, capped, and they know which way to slide. */
+/** Cart-style counters: small, capped, and they know which way to slide. */
 object CounterLogic {
     const val MAX_SHOWN = 99
 

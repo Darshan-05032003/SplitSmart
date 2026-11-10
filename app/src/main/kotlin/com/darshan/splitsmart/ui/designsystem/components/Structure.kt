@@ -151,9 +151,19 @@ fun SsListRow(
     }
 }
 
-/** A section title with an optional emoji and one text action on the right ("See all"). Marked as a heading for TalkBack. */
+/**
+ * A section title with an optional emoji and one text action on the right ("See all"). Marked as a heading for TalkBack.
+ * [actionModifier] reaches the action (a test tag, a content description).
+ */
 @Composable
-fun SsSectionHeader(title: String, modifier: Modifier = Modifier, emoji: String? = null, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
+fun SsSectionHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    emoji: String? = null,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+    actionModifier: Modifier = Modifier,
+) {
     val type = SplitSmartTheme.type
     val colors = SplitSmartTheme.colors
     Row(
@@ -168,7 +178,7 @@ fun SsSectionHeader(title: String, modifier: Modifier = Modifier, emoji: String?
             BasicText(title, style = type.title.copy(color = colors.text), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (actionLabel != null && onAction != null) {
-            TextAction(actionLabel, onAction)
+            TextAction(actionLabel, onAction, actionModifier)
         }
     }
 }

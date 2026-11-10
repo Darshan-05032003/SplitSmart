@@ -101,6 +101,9 @@ object Sizes {
     val skeletonTitle = 18.dp
     val illustration = 148.dp
     val illustrationSmall = 96.dp
+    /** Loading placeholders the size of a hero card and of a group card. */
+    val heroSkeleton = 168.dp
+    val cardSkeleton = 128.dp
     val loader = 48.dp
     val loaderSmall = 24.dp
     val loadingDot = 6.dp

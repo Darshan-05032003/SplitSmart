@@ -10,6 +10,13 @@ sealed interface LoadState<out T> {
 
 enum class ErrorReason { NOT_FOUND, STORAGE, UNKNOWN }
 
+/** What to tell people for each reason, in plain words. */
+fun ErrorReason.messageRes(): Int = when (this) {
+    ErrorReason.NOT_FOUND -> com.darshan.splitsmart.R.string.error_not_found
+    ErrorReason.STORAGE -> com.darshan.splitsmart.R.string.error_storage
+    ErrorReason.UNKNOWN -> com.darshan.splitsmart.R.string.error_unknown
+}
+
 fun Throwable.toErrorReason(): ErrorReason = when (this) {
     is android.database.sqlite.SQLiteException, is java.io.IOException -> ErrorReason.STORAGE
     else -> ErrorReason.UNKNOWN

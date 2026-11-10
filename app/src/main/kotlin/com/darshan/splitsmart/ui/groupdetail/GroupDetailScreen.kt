@@ -1,92 +1,79 @@
 package com.darshan.splitsmart.ui.groupdetail
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.darshan.splitsmart.R
-import com.darshan.splitsmart.core.Money
-import com.darshan.splitsmart.domain.model.Bill
-import com.darshan.splitsmart.domain.model.BillSource
-import com.darshan.splitsmart.domain.model.BillStatus
-import com.darshan.splitsmart.domain.model.Debt
 import com.darshan.splitsmart.domain.model.Member
 import com.darshan.splitsmart.ui.LoadState
 import com.darshan.splitsmart.ui.SplitSmartTestTags
-import com.darshan.splitsmart.ui.components.AiBadge
-import com.darshan.splitsmart.ui.components.AppIcons
-import com.darshan.splitsmart.ui.components.BannerTone
-import com.darshan.splitsmart.ui.components.ContentCard
-import com.darshan.splitsmart.ui.components.EmptyView
-import com.darshan.splitsmart.ui.components.ErrorView
-import com.darshan.splitsmart.ui.components.GroupAvatar
-import com.darshan.splitsmart.ui.components.HeroCard
-import com.darshan.splitsmart.ui.components.IconBubble
-import com.darshan.splitsmart.ui.components.InfoBanner
-import com.darshan.splitsmart.ui.components.InitialAvatar
-import com.darshan.splitsmart.ui.components.LoadingView
-import com.darshan.splitsmart.ui.components.SectionHeader
-import com.darshan.splitsmart.ui.components.appIcon
-import com.darshan.splitsmart.ui.components.formatShortDate
 import com.darshan.splitsmart.ui.components.label
+import com.darshan.splitsmart.ui.designsystem.components.ButtonStyle
+import com.darshan.splitsmart.ui.designsystem.components.ChunkyButton
+import com.darshan.splitsmart.ui.designsystem.components.ChunkyIconButton
+import com.darshan.splitsmart.ui.designsystem.components.DisplayText
+import com.darshan.splitsmart.ui.designsystem.components.EmojiChip
+import com.darshan.splitsmart.ui.designsystem.components.ErrorState
+import com.darshan.splitsmart.ui.designsystem.components.Illustration
+import com.darshan.splitsmart.ui.designsystem.components.IllustrationKind
+import com.darshan.splitsmart.ui.designsystem.components.MemberAvatar
+import com.darshan.splitsmart.ui.designsystem.components.SkeletonBlock
+import com.darshan.splitsmart.ui.designsystem.components.SkeletonGroup
+import com.darshan.splitsmart.ui.designsystem.components.SkeletonList
+import com.darshan.splitsmart.ui.designsystem.components.SnackbarResult
+import com.darshan.splitsmart.ui.designsystem.components.SsBottomSheet
+import com.darshan.splitsmart.ui.designsystem.components.SsListRow
+import com.darshan.splitsmart.ui.designsystem.components.SsSectionHeader
+import com.darshan.splitsmart.ui.designsystem.components.SsSnackbarHost
+import com.darshan.splitsmart.ui.designsystem.components.SsSnackbarState
+import com.darshan.splitsmart.ui.designsystem.components.SsTextField
+import com.darshan.splitsmart.ui.designsystem.components.SsTopBar
+import com.darshan.splitsmart.ui.designsystem.components.StatusKind
+import com.darshan.splitsmart.ui.designsystem.components.StatusPill
+import com.darshan.splitsmart.ui.designsystem.effects.LocalHaptics
+import com.darshan.splitsmart.ui.designsystem.effects.heavy
+import com.darshan.splitsmart.ui.designsystem.tokens.Radii
+import com.darshan.splitsmart.ui.designsystem.tokens.Sizes
+import com.darshan.splitsmart.ui.designsystem.tokens.Spacing
+import com.darshan.splitsmart.ui.messageRes
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
+import kotlinx.coroutines.launch
 
 @Composable
 fun GroupDetailRoute(
@@ -98,14 +85,21 @@ fun GroupDetailRoute(
     onScanFromGallery: (String) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val snackbar = remember { SnackbarHostState() }
+    val snackbar = remember { SsSnackbarState() }
+    val scope = rememberCoroutineScope()
     val failedText = stringResource(R.string.error_unknown)
+    val archivedTemplate = stringResource(R.string.groups_archived_message)
+    val undo = stringResource(R.string.action_undo)
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
                 is GroupDetailEvent.BillCreated -> onOpenBill(event.billId)
                 GroupDetailEvent.GroupDeleted -> onBack()
-                GroupDetailEvent.Failed -> snackbar.showSnackbar(failedText)
+                GroupDetailEvent.Failed -> scope.launch { snackbar.show(failedText, emoji = "😕") }
+                is GroupDetailEvent.GroupArchived -> scope.launch {
+                    val message = String.format(archivedTemplate, DisplayText.safe(event.name))
+                    if (snackbar.show(message, emoji = "📦", actionLabel = undo) == SnackbarResult.Undo) viewModel.setArchived(false)
+                }
             }
         }
     }
@@ -132,6 +126,7 @@ fun GroupDetailRoute(
             onBillPayer = viewModel::onBillPayerChange,
             onSubmitBill = viewModel::submitBill,
             onScanFromGallery = { onScanFromGallery(viewModel.groupId) },
+            onArchive = viewModel::setArchived,
         ),
     )
 }
@@ -142,6 +137,7 @@ data class GroupDetailCallbacks(
     val onOpenBill: (String) -> Unit,
     val onScan: () -> Unit,
     val onSettleUp: () -> Unit,
+    /** Runs only after the delete confirmation. */
     val onDeleteGroup: () -> Unit,
     val onAddMember: () -> Unit,
     val onDismissMember: () -> Unit,
@@ -156,329 +152,376 @@ data class GroupDetailCallbacks(
     val onBillPayer: (String?) -> Unit,
     val onSubmitBill: () -> Unit,
     val onScanFromGallery: () -> Unit = {},
+    /** true archives, false brings the group back. */
+    val onArchive: (Boolean) -> Unit = {},
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** Which in-window sheet is up besides the add-member and add-bill drafts (those live in the view model). */
+private enum class DetailSheet { None, Options, Delete, Member }
+
+/**
+ * The group screen on Marigold: the hero (spent together, still to move, Settle up when anyone owes anyone), the members as a
+ * row of faces, three ways to add a bill, who owes whom and the bills. The one primary action is Settle up when there is money
+ * to move, otherwise the Scan tile. Destructive and rare actions (archive, delete) sit behind the top bar's options, and delete
+ * asks first. Every form is an in-window sheet.
+ */
 @Composable
-fun GroupDetailScreen(state: GroupDetailUiState, snackbar: SnackbarHostState, callbacks: GroupDetailCallbacks) {
-    val content = state.detail as? LoadState.Content
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(content?.data?.group?.name ?: stringResource(R.string.group_title), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = {
-                    IconButton(onClick = callbacks.onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back)) }
-                },
+fun GroupDetailScreen(state: GroupDetailUiState, snackbar: SsSnackbarState, callbacks: GroupDetailCallbacks) {
+    val content = (state.detail as? LoadState.Content)?.data
+    var sheet by rememberSaveable { mutableStateOf(DetailSheet.None) }
+    var memberId by rememberSaveable { mutableStateOf<String?>(null) }
+    val anySheet = sheet != DetailSheet.None || state.memberDraft != null || state.billDraft != null
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().then(if (anySheet) Modifier.clearAndSetSemantics {} else Modifier)) {
+            SsTopBar(
+                title = content?.group?.name ?: stringResource(R.string.group_title),
+                onBack = callbacks.onBack,
+                backLabel = stringResource(R.string.action_back),
+                subtitle = if (content?.group?.isArchived == true) stringResource(R.string.group_archived_label) else null,
                 actions = {
                     if (content != null) {
-                        IconButton(onClick = callbacks.onDeleteGroup, modifier = Modifier.testTag(SplitSmartTestTags.DELETE_GROUP_BUTTON)) {
-                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.group_delete))
-                        }
+                        ChunkyIconButton(
+                            Icons.Filled.MoreVert,
+                            stringResource(R.string.group_options),
+                            { sheet = DetailSheet.Options },
+                            Modifier.testTag(GroupDetailTags.OPTIONS),
+                            style = ButtonStyle.Ghost,
+                        )
                     }
                 },
             )
-        },
-        snackbarHost = { SnackbarHost(snackbar) },
-    ) { padding ->
-        when (val detail = state.detail) {
-            LoadState.Loading -> LoadingView(Modifier.padding(padding))
-            LoadState.Empty -> EmptyView(stringResource(R.string.error_not_found), Modifier.padding(padding))
-            is LoadState.Error -> ErrorView(detail.reason, callbacks.onRetry, Modifier.padding(padding))
-            is LoadState.Content -> GroupDetailContent(detail.data, callbacks, Modifier.padding(padding))
+            when (val detail = state.detail) {
+                LoadState.Loading -> DetailLoading()
+                LoadState.Empty -> DetailError(stringResource(R.string.error_not_found), callbacks.onRetry)
+                is LoadState.Error -> DetailError(stringResource(detail.reason.messageRes()), callbacks.onRetry)
+                is LoadState.Content -> GroupDetailContent(detail.data, callbacks, onOpenMember = { memberId = it.id; sheet = DetailSheet.Member })
+            }
         }
+        SsSnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
+        if (content != null) {
+            OptionsSheet(
+                visible = sheet == DetailSheet.Options,
+                archived = content.group.isArchived,
+                onDismiss = { sheet = DetailSheet.None },
+                onArchive = { sheet = DetailSheet.None; callbacks.onArchive(!content.group.isArchived) },
+                onDelete = { sheet = DetailSheet.Delete },
+            )
+            DeleteSheet(
+                visible = sheet == DetailSheet.Delete || state.deleting,
+                detail = content,
+                deleting = state.deleting,
+                onDismiss = { sheet = DetailSheet.None },
+                onConfirm = callbacks.onDeleteGroup,
+            )
+            MemberSheet(
+                member = content.members.firstOrNull { it.id == memberId }.takeIf { sheet == DetailSheet.Member },
+                onDismiss = { sheet = DetailSheet.None },
+                onRemove = { id -> sheet = DetailSheet.None; callbacks.onRemoveMember(id) },
+            )
+        }
+        AddMemberSheet(state.memberDraft, callbacks)
+        AddBillSheet(state.billDraft, content?.members.orEmpty(), callbacks)
     }
-    state.memberDraft?.let { MemberDialog(it, callbacks) }
-    state.billDraft?.let { BillDialog(it, content?.data?.members.orEmpty(), callbacks) }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun GroupDetailContent(detail: GroupDetail, callbacks: GroupDetailCallbacks, modifier: Modifier) {
+private fun GroupDetailContent(detail: GroupDetail, callbacks: GroupDetailCallbacks, onOpenMember: (Member) -> Unit) {
     val unknown = stringResource(R.string.member_unknown)
-    val nameOf = { id: String? -> detail.members.find { it.id == id }?.name }
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item(key = "summary") { SummaryCard(detail, callbacks.onSettleUp) }
-        item(key = "members") {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionHeader(stringResource(R.string.members_title)) {
-                    TextButton(onClick = callbacks.onAddMember, modifier = Modifier.testTag(SplitSmartTestTags.ADD_MEMBER_BUTTON)) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(stringResource(R.string.members_add))
-                    }
-                }
+    val names = remember(detail.members) { detail.members.associate { it.id to it.name } }
+    val primary = GroupDetailLogic.primaryAction(detail)
+    val addMemberLabel = stringResource(R.string.members_add)
+    val colors = SplitSmartTheme.colors
+    val type = SplitSmartTheme.type
+    LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        item(key = "hero", contentType = "hero") {
+            GroupHero(detail, primary, callbacks.onSettleUp, Modifier.padding(horizontal = Spacing.screen, vertical = Spacing.xxs))
+        }
+        item(key = "members", contentType = "members") {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                SsSectionHeader(
+                    stringResource(R.string.members_title),
+                    emoji = "👯",
+                    actionLabel = stringResource(R.string.members_add_short),
+                    onAction = callbacks.onAddMember,
+                    actionModifier = Modifier.testTag(SplitSmartTestTags.ADD_MEMBER_BUTTON).semantics { contentDescription = addMemberLabel },
+                )
                 if (detail.members.isEmpty()) {
-                    Text(stringResource(R.string.members_empty), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                    BasicText(
+                        stringResource(R.string.members_empty),
+                        Modifier.padding(horizontal = Spacing.screen),
+                        style = type.body.copy(color = colors.textSecondary),
+                    )
                 } else {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        detail.members.forEach { member -> MemberChip(member, onRemove = { callbacks.onRemoveMember(member.id) }) }
-                    }
+                    MembersRow(detail.members, onOpenMember)
                 }
             }
         }
-        item(key = "add") { AddBillCard(callbacks) }
-        if (detail.bills.isNotEmpty()) {
-            item(key = "balances") {
-                SectionHeader(stringResource(R.string.group_balances_title))
+        item(key = "add", contentType = "add") {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                SsSectionHeader(stringResource(R.string.group_add_bill_title), emoji = "🧾")
+                AddBillRow(primary, callbacks.onScan, callbacks.onScanFromGallery, callbacks.onAddBill)
             }
+        }
+        if (detail.bills.isNotEmpty()) {
+            item(key = "balances", contentType = "header") { SsSectionHeader(stringResource(R.string.group_balances_title), emoji = "🤝") }
             if (detail.debts.isEmpty()) {
-                item(key = "settled") {
-                    InfoBanner(BannerTone.SUCCESS, icon = rememberVectorPainter(Icons.Default.CheckCircle)) {
-                        Text(stringResource(R.string.group_all_settled), style = MaterialTheme.typography.bodyMedium)
+                item(key = "settled", contentType = "settled") {
+                    Box(Modifier.fillMaxWidth().padding(horizontal = Spacing.screen).testTag(GroupDetailTags.SETTLED)) {
+                        StatusPill(StatusKind.Settled, stringResource(R.string.group_all_square), animate = false)
                     }
                 }
             }
-            items(detail.debts, key = { "d" + it.fromMemberId + it.toMemberId }) { debt ->
-                DebtRow(debt, nameOf(debt.fromMemberId) ?: unknown, nameOf(debt.toMemberId) ?: unknown)
+            items(detail.debts, key = { "d" + it.fromMemberId + ">" + it.toMemberId }, contentType = { "debt" }) { debt ->
+                DebtRow(names[debt.fromMemberId] ?: unknown, names[debt.toMemberId] ?: unknown, debt.amountPaise, Modifier.padding(horizontal = Spacing.screen))
             }
             if (detail.unsettledBills > 0) {
-                item(key = "unsettled") {
-                    Text(
+                item(key = "unsettled", contentType = "note") {
+                    BasicText(
                         pluralStringResource(R.plurals.group_unsettled, detail.unsettledBills, detail.unsettledBills),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        Modifier.padding(horizontal = Spacing.screen),
+                        style = type.label.copy(color = colors.textSecondary),
                     )
                 }
             }
         }
-        item(key = "billsHeader") { SectionHeader(stringResource(R.string.bills_title)) }
+        item(key = "billsHeader", contentType = "header") { SsSectionHeader(stringResource(R.string.bills_title), emoji = "📒") }
         if (detail.bills.isEmpty()) {
-            item(key = "noBills") {
-                Text(stringResource(R.string.bills_empty), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-            }
+            item(key = "noBills", contentType = "empty") { NoBills() }
         }
-        items(detail.bills, key = { "b" + it.id }) { bill ->
-            BillRow(bill, payerName = nameOf(bill.paidByMemberId), onClick = { callbacks.onOpenBill(bill.id) })
+        items(detail.bills, key = { "b" + it.id }, contentType = { "bill" }) { bill ->
+            BillRow(bill, payerName = bill.paidByMemberId?.let { names[it] }, onClick = { callbacks.onOpenBill(bill.id) }, modifier = Modifier.padding(horizontal = Spacing.screen))
+        }
+        item(key = "end", contentType = "end") { Spacer(Modifier.navigationBarsPadding().height(Spacing.xxl)) }
+    }
+}
+
+@Composable
+private fun NoBills() {
+    val colors = SplitSmartTheme.colors
+    val type = SplitSmartTheme.type
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = Spacing.xl, vertical = Spacing.md).testTag(GroupDetailTags.NO_BILLS),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+    ) {
+        Illustration(IllustrationKind.Bills, size = Sizes.illustrationSmall)
+        BasicText(stringResource(R.string.group_no_bills_title), Modifier.semantics { heading() }, style = type.title.copy(color = colors.text, textAlign = TextAlign.Center))
+        BasicText(stringResource(R.string.group_no_bills_body), style = type.body.copy(color = colors.textSecondary, textAlign = TextAlign.Center))
+    }
+}
+
+@Composable
+private fun DetailLoading() {
+    Column(Modifier.fillMaxSize().padding(horizontal = Spacing.screen).testTag(SplitSmartTestTags.LOADING), verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+        SkeletonGroup { SkeletonBlock(Modifier.fillMaxWidth().height(Sizes.heroSkeleton), Radii.largeShape) }
+        SkeletonList(count = DETAIL_SKELETON_ROWS, label = stringResource(R.string.groups_loading))
+    }
+}
+
+private const val DETAIL_SKELETON_ROWS = 4
+
+@Composable
+private fun DetailError(message: String, onRetry: () -> Unit) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        ErrorState(
+            title = stringResource(R.string.group_title),
+            message = message,
+            onRetry = onRetry,
+            retryLabel = stringResource(R.string.retry_label),
+            modifier = Modifier.testTag(SplitSmartTestTags.ERROR),
+        )
+    }
+}
+
+@Composable
+private fun SheetTitle(text: String) {
+    BasicText(text, Modifier.semantics { heading() }, style = SplitSmartTheme.type.title.copy(color = SplitSmartTheme.colors.text))
+}
+
+@Composable
+private fun OptionsSheet(visible: Boolean, archived: Boolean, onDismiss: () -> Unit, onArchive: () -> Unit, onDelete: () -> Unit) {
+    val type = SplitSmartTheme.type
+    val colors = SplitSmartTheme.colors
+    SsBottomSheet(visible = visible, onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().padding(bottom = Spacing.md).testTag(GroupDetailTags.OPTIONS_SHEET)) {
+            BasicText(stringResource(R.string.group_options), Modifier.padding(horizontal = Spacing.screen).semantics { heading() }, style = type.title.copy(color = colors.text))
+            SsListRow(
+                title = stringResource(if (archived) R.string.group_unarchive else R.string.group_archive),
+                subtitle = stringResource(if (archived) R.string.group_unarchive_hint else R.string.group_archive_hint),
+                leading = { BasicText(if (archived) "↩️" else "📦", style = type.title.copy(color = colors.text)) },
+                onClick = onArchive,
+                modifier = Modifier.testTag(GroupDetailTags.ARCHIVE),
+            )
+            SsListRow(
+                title = stringResource(R.string.group_delete),
+                subtitle = stringResource(R.string.group_delete_hint),
+                leading = { BasicText("🗑️", style = type.title.copy(color = colors.text)) },
+                onClick = onDelete,
+                modifier = Modifier.testTag(SplitSmartTestTags.DELETE_GROUP_BUTTON),
+            )
         }
     }
 }
 
 @Composable
-private fun SummaryCard(detail: GroupDetail, onSettleUp: () -> Unit) {
-    val onHero = SplitSmartTheme.legacy.onHero
-    val spent = detail.bills.sumOf { it.totalPaise }
-    val outstanding = detail.debts.sumOf { it.amountPaise }
-    HeroCard {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            GroupAvatar(detail.group.name, size = 44.dp)
-            Spacer(Modifier.width(12.dp))
-            Text(
+private fun DeleteSheet(visible: Boolean, detail: GroupDetail, deleting: Boolean, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    val haptics = LocalHaptics.current
+    val colors = SplitSmartTheme.colors
+    SsBottomSheet(visible = visible, onDismissRequest = onDismiss, dismissible = !deleting) {
+        Column(
+            Modifier.fillMaxWidth().padding(start = Spacing.screen, end = Spacing.screen, top = Spacing.xs, bottom = Spacing.lg).testTag(GroupDetailTags.DELETE_SHEET),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            SheetTitle(stringResource(R.string.group_delete_title, DisplayText.safe(detail.group.name)))
+            BasicText(
                 stringResource(
-                    R.string.group_summary_meta,
-                    pluralStringResource(R.plurals.member_count, detail.members.size, detail.members.size),
+                    R.string.group_delete_body,
                     pluralStringResource(R.plurals.bill_count, detail.bills.size, detail.bills.size),
+                    pluralStringResource(R.plurals.member_count, detail.members.size, detail.members.size),
                 ),
-                style = MaterialTheme.typography.labelLarge, color = onHero.copy(alpha = 0.9f),
+                style = SplitSmartTheme.type.body.copy(color = colors.textSecondary),
+            )
+            ChunkyButton(
+                stringResource(R.string.group_delete),
+                {
+                    haptics.heavy()
+                    onConfirm()
+                },
+                Modifier.fillMaxWidth().testTag(GroupDetailTags.DELETE_CONFIRM),
+                style = ButtonStyle.Danger,
+                loading = deleting,
+            )
+            ChunkyButton(
+                stringResource(R.string.group_delete_keep),
+                onDismiss,
+                Modifier.fillMaxWidth().testTag(GroupDetailTags.DELETE_KEEP),
+                style = ButtonStyle.Ghost,
+                enabled = !deleting,
             )
         }
-        Text(
-            buildAnnotatedString {
-                withStyle(MaterialTheme.typography.headlineLarge.toSpanStyle()) { append(Money.formatInr(spent)) }
-                withStyle(MaterialTheme.typography.titleMedium.toSpanStyle()) { append(" " + stringResource(R.string.group_summary_spent)) }
-            },
-            color = onHero,
-        )
-        Text(
-            if (outstanding > 0) {
-                pluralStringResource(R.plurals.group_summary_outstanding, detail.debts.size, Money.formatInr(outstanding), detail.debts.size)
-            } else {
-                stringResource(if (detail.bills.isEmpty()) R.string.group_summary_no_bills else R.string.group_all_settled)
-            },
-            style = MaterialTheme.typography.bodyMedium, color = onHero.copy(alpha = 0.9f),
-        )
-        if (detail.debts.isNotEmpty()) {
-            Button(
-                onClick = onSettleUp,
-                colors = ButtonDefaults.buttonColors(containerColor = onHero, contentColor = SplitSmartTheme.legacy.heroAction),
-                modifier = Modifier.fillMaxWidth().padding(top = 6.dp).testTag(SplitSmartTestTags.SETTLE_UP_BUTTON),
-            ) {
-                Icon(appIcon(AppIcons.Wallet), contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.group_settle_up))
-            }
-        }
     }
 }
 
 @Composable
-private fun AddBillCard(callbacks: GroupDetailCallbacks) {
-    ContentCard {
-        Text(stringResource(R.string.bills_add), style = MaterialTheme.typography.titleMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            AddBillAction(appIcon(AppIcons.Camera), stringResource(R.string.scan_receipt), SplitSmartTestTags.SCAN_BUTTON, callbacks.onScan, primary = true)
-            AddBillAction(appIcon(AppIcons.Gallery), stringResource(R.string.add_bill_gallery), SplitSmartTestTags.GALLERY_ADD_BUTTON, callbacks.onScanFromGallery)
-            AddBillAction(appIcon(AppIcons.EditNote), stringResource(R.string.add_bill_manual), SplitSmartTestTags.ADD_BILL_BUTTON, callbacks.onAddBill)
-        }
-    }
-}
-
-@Composable
-private fun RowScope.AddBillAction(icon: Painter, label: String, tag: String, onClick: () -> Unit, primary: Boolean = false) {
-    val scheme = MaterialTheme.colorScheme
-    Surface(
-        onClick = onClick,
-        color = if (primary) scheme.primary else scheme.surfaceContainerHighest,
-        contentColor = if (primary) scheme.onPrimary else scheme.onSurface,
-        shape = MaterialTheme.shapes.small,
-        modifier = Modifier.weight(1f).testTag(tag),
-    ) {
-        Column(Modifier.padding(vertical = 14.dp, horizontal = 6.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
-            Text(label, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center, maxLines = 2)
-        }
-    }
-}
-
-@Composable
-private fun MemberChip(member: Member, onRemove: () -> Unit) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerLow, shape = CircleShape,
-        modifier = Modifier.testTag(SplitSmartTestTags.MEMBER_ITEM),
-    ) {
-        Row(Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            InitialAvatar(member.name, size = 32.dp)
-            Column(Modifier.padding(start = 8.dp)) {
-                Text(member.name, style = MaterialTheme.typography.labelLarge)
-                member.vpa?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            }
-            IconButton(onClick = onRemove, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.members_remove, member.name), modifier = Modifier.size(16.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun DebtRow(debt: Debt, from: String, to: String) {
-    ContentCard(Modifier.testTag(SplitSmartTestTags.DEBT_ITEM), padding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            InitialAvatar(from, size = 32.dp)
-            Icon(
-                Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp).size(16.dp),
+private fun MemberSheet(member: Member?, onDismiss: () -> Unit, onRemove: (String) -> Unit) {
+    val colors = SplitSmartTheme.colors
+    val type = SplitSmartTheme.type
+    val shown = remember { arrayOfNulls<Member>(1) }
+    if (member != null) shown[0] = member
+    val current = member ?: shown[0]
+    SsBottomSheet(visible = member != null, onDismissRequest = onDismiss) {
+        if (current == null) return@SsBottomSheet
+        Column(
+            Modifier.fillMaxWidth().padding(start = Spacing.screen, end = Spacing.screen, top = Spacing.xs, bottom = Spacing.lg).testTag(GroupDetailTags.MEMBER_SHEET),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            MemberAvatar(current.name, size = Sizes.avatarHero, contentDescription = null)
+            SheetTitle(DisplayText.safe(current.name))
+            BasicText(
+                current.vpa ?: stringResource(R.string.member_upi_missing),
+                style = type.body.copy(color = colors.textSecondary, textAlign = TextAlign.Center),
             )
-            InitialAvatar(to, size = 32.dp)
-            Spacer(Modifier.width(12.dp))
-            Text(stringResource(R.string.debt_row, from, to), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            Text(Money.formatInr(debt.amountPaise), style = MaterialTheme.typography.titleMedium, color = SplitSmartTheme.legacy.owe.content)
-        }
-    }
-}
-
-/** One bill in a group's history: date, payer, amount and an AI badge when Gemini read the receipt. */
-@Composable
-fun BillRow(bill: Bill, payerName: String? = null, onClick: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    Card(
-        onClick = onClick, shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = scheme.surfaceContainerLow),
-        modifier = Modifier.fillMaxWidth().testTag(SplitSmartTestTags.BILL_ITEM),
-    ) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            val scanned = bill.source != BillSource.MANUAL
-            IconBubble(
-                appIcon(if (scanned) AppIcons.Receipt else AppIcons.EditNote),
-                container = if (bill.source == BillSource.SCAN_LLM) scheme.secondaryContainer else scheme.primaryContainer,
-                content = if (bill.source == BillSource.SCAN_LLM) scheme.onSecondaryContainer else scheme.onPrimaryContainer,
+            BasicText(stringResource(R.string.member_remove_hint), style = type.label.copy(color = colors.textSecondary, textAlign = TextAlign.Center))
+            ChunkyButton(
+                stringResource(R.string.member_remove),
+                { onRemove(current.id) },
+                Modifier.fillMaxWidth().testTag(GroupDetailTags.MEMBER_REMOVE),
+                style = ButtonStyle.Ghost,
             )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(bill.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                    if (bill.source == BillSource.SCAN_LLM) {
-                        Spacer(Modifier.width(6.dp))
-                        AiBadge(Modifier.testTag(SplitSmartTestTags.AI_BADGE))
-                    }
-                }
-                Text(
-                    stringResource(
-                        R.string.bill_row_meta, formatShortDate(bill.createdAt),
-                        payerName?.let { stringResource(R.string.bill_paid_by_value, it) } ?: stringResource(R.string.bill_no_payer),
-                    ),
-                    style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                )
-                Text(bill.status.label(), style = MaterialTheme.typography.labelSmall, color = if (bill.status == BillStatus.DRAFT) scheme.tertiary else scheme.primary)
-            }
-            Spacer(Modifier.width(8.dp))
-            Text(Money.formatInr(bill.totalPaise), style = MaterialTheme.typography.titleMedium)
         }
     }
 }
 
 @Composable
-private fun MemberDialog(draft: MemberDraft, callbacks: GroupDetailCallbacks) {
-    AlertDialog(
-        onDismissRequest = callbacks.onDismissMember,
-        title = { Text(stringResource(R.string.members_add)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = draft.name, onValueChange = callbacks.onMemberName, singleLine = true,
-                    label = { Text(stringResource(R.string.member_name_label)) },
-                    isError = draft.nameError != null || draft.duplicate || draft.groupFull,
-                    supportingText = when {
-                        draft.nameError != null -> { { Text(draft.nameError.label()) } }
-                        draft.duplicate -> { { Text(stringResource(R.string.error_member_duplicate)) } }
-                        draft.groupFull -> { { Text(stringResource(R.string.error_group_full)) } }
-                        else -> null
-                    },
-                    modifier = Modifier.fillMaxWidth().testTag(SplitSmartTestTags.MEMBER_NAME_FIELD),
-                )
-                OutlinedTextField(
-                    value = draft.vpa, onValueChange = callbacks.onMemberVpa, singleLine = true,
-                    label = { Text(stringResource(R.string.member_vpa_label)) },
-                    isError = draft.vpaError != null,
-                    supportingText = draft.vpaError?.let { { Text(it.label()) } } ?: { Text(stringResource(R.string.member_vpa_hint)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    modifier = Modifier.fillMaxWidth().testTag(SplitSmartTestTags.MEMBER_VPA_FIELD),
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = callbacks.onSubmitMember, enabled = !draft.submitting, modifier = Modifier.testTag(SplitSmartTestTags.DIALOG_CONFIRM)) { Text(stringResource(R.string.action_add)) }
-        },
-        dismissButton = { TextButton(onClick = callbacks.onDismissMember) { Text(stringResource(R.string.action_cancel)) } },
-    )
+private fun AddMemberSheet(draft: MemberDraft?, callbacks: GroupDetailCallbacks) {
+    val shown = remember { arrayOfNulls<MemberDraft>(1) }
+    if (draft != null) shown[0] = draft
+    val current = draft ?: shown[0] ?: MemberDraft()
+    SsBottomSheet(visible = draft != null, onDismissRequest = callbacks.onDismissMember, dismissible = !current.submitting) {
+        Column(Modifier.fillMaxWidth().padding(start = Spacing.screen, end = Spacing.screen, top = Spacing.xs, bottom = Spacing.lg), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            SheetTitle(stringResource(R.string.members_add))
+            SsTextField(
+                value = current.name,
+                onValueChange = callbacks.onMemberName,
+                label = stringResource(R.string.member_name_label),
+                error = when {
+                    current.nameError != null -> current.nameError.label()
+                    current.duplicate -> stringResource(R.string.error_member_duplicate)
+                    current.groupFull -> stringResource(R.string.error_group_full)
+                    else -> null
+                },
+                emoji = "🙂",
+                modifier = Modifier.testTag(SplitSmartTestTags.MEMBER_NAME_FIELD),
+            )
+            SsTextField(
+                value = current.vpa,
+                onValueChange = callbacks.onMemberVpa,
+                label = stringResource(R.string.member_vpa_label),
+                error = current.vpaError?.label(),
+                supporting = stringResource(R.string.member_vpa_hint),
+                emoji = "₹",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                modifier = Modifier.testTag(SplitSmartTestTags.MEMBER_VPA_FIELD),
+            )
+            ChunkyButton(
+                stringResource(R.string.members_add),
+                callbacks.onSubmitMember,
+                Modifier.fillMaxWidth().testTag(SplitSmartTestTags.DIALOG_CONFIRM),
+                loading = current.submitting,
+            )
+        }
+    }
 }
 
 @Composable
-private fun BillDialog(draft: BillDraft, members: List<Member>, callbacks: GroupDetailCallbacks) {
-    AlertDialog(
-        onDismissRequest = callbacks.onDismissBill,
-        title = { Text(stringResource(R.string.bills_add)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = draft.title, onValueChange = callbacks.onBillTitle, singleLine = true,
-                    label = { Text(stringResource(R.string.bill_title_label)) },
-                    isError = draft.titleError != null,
-                    supportingText = draft.titleError?.let { { Text(it.label()) } },
-                    modifier = Modifier.fillMaxWidth().testTag(SplitSmartTestTags.BILL_TITLE_FIELD),
-                )
-                OutlinedTextField(
-                    value = draft.amount, onValueChange = callbacks.onBillAmount, singleLine = true,
-                    label = { Text(stringResource(R.string.bill_amount_label)) },
-                    isError = draft.amountError,
-                    supportingText = if (draft.amountError) { { Text(stringResource(R.string.error_amount_invalid)) } } else null,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth().testTag(SplitSmartTestTags.BILL_AMOUNT_FIELD),
-                )
-                if (members.isNotEmpty()) {
-                    Text(stringResource(R.string.bill_paid_by), style = MaterialTheme.typography.labelLarge)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        members.forEach { m ->
-                            FilterChip(selected = draft.payerId == m.id, onClick = { callbacks.onBillPayer(if (draft.payerId == m.id) null else m.id) }, label = { Text(m.name) })
-                        }
+private fun AddBillSheet(draft: BillDraft?, members: List<Member>, callbacks: GroupDetailCallbacks) {
+    val type = SplitSmartTheme.type
+    val colors = SplitSmartTheme.colors
+    val shown = remember { arrayOfNulls<BillDraft>(1) }
+    if (draft != null) shown[0] = draft
+    val current = draft ?: shown[0] ?: BillDraft()
+    SsBottomSheet(visible = draft != null, onDismissRequest = callbacks.onDismissBill, dismissible = !current.submitting) {
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(start = Spacing.screen, end = Spacing.screen, top = Spacing.xs, bottom = Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            SheetTitle(stringResource(R.string.bills_add))
+            SsTextField(
+                value = current.title,
+                onValueChange = callbacks.onBillTitle,
+                label = stringResource(R.string.bill_title_label),
+                error = current.titleError?.label(),
+                emoji = "🧾",
+                modifier = Modifier.testTag(SplitSmartTestTags.BILL_TITLE_FIELD),
+            )
+            SsTextField(
+                value = current.amount,
+                onValueChange = callbacks.onBillAmount,
+                label = stringResource(R.string.bill_amount_label),
+                error = if (current.amountError) stringResource(R.string.error_amount_invalid) else null,
+                emoji = "₹",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.testTag(SplitSmartTestTags.BILL_AMOUNT_FIELD),
+            )
+            if (members.isNotEmpty()) {
+                BasicText(stringResource(R.string.bill_paid_by), style = type.labelStrong.copy(color = colors.textSecondary))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.xs), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                    members.forEach { m ->
+                        EmojiChip(
+                            DisplayText.safe(m.name),
+                            selected = current.payerId == m.id,
+                            onClick = { callbacks.onBillPayer(if (current.payerId == m.id) null else m.id) },
+                        )
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = callbacks.onSubmitBill, enabled = !draft.submitting, modifier = Modifier.testTag(SplitSmartTestTags.DIALOG_CONFIRM)) { Text(stringResource(R.string.action_add)) }
-        },
-        dismissButton = { TextButton(onClick = callbacks.onDismissBill) { Text(stringResource(R.string.action_cancel)) } },
-    )
+            ChunkyButton(
+                stringResource(R.string.bills_add),
+                callbacks.onSubmitBill,
+                Modifier.fillMaxWidth().testTag(SplitSmartTestTags.DIALOG_CONFIRM),
+                loading = current.submitting,
+            )
+        }
+    }
 }

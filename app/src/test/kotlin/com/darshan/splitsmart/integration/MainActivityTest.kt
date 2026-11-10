@@ -6,7 +6,9 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.darshan.splitsmart.MainActivity
@@ -15,6 +17,9 @@ import com.darshan.splitsmart.ui.SplitSmartTestTags
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import dagger.hilt.android.testing.HiltTestApplication
+import com.darshan.splitsmart.ui.designsystem.effects.UiPreferences
+import javax.inject.Inject
+import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -29,13 +34,20 @@ class MainActivityTest {
     @get:Rule(order = 0) val hilt = HiltAndroidRule(this)
     @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
 
+    @Inject lateinit var uiPreferences: UiPreferences
+
     @Before
-    fun setUp() = hilt.inject()
+    fun setUp() {
+        hilt.inject()
+        // App-level tests run with reduced motion: the empty page's illustration bobs forever under full motion.
+        runBlocking { uiPreferences.setReduceMotion(true) }
+    }
 
     @Test
     fun `launches, creates a group and navigates into it`() {
         compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.EMPTY) }
-        compose.onNodeWithTag(SplitSmartTestTags.FAB_ADD_GROUP).performClick()
+        // On Robolectric's 470dp screen the button sits under the floating bar: press it the way TalkBack would.
+        compose.onNodeWithText("Create your first group").performSemanticsAction(SemanticsActions.OnClick)
         compose.onNodeWithTag(SplitSmartTestTags.GROUP_NAME_FIELD).performTextInput("Flatmates")
         compose.onNodeWithTag(SplitSmartTestTags.DIALOG_CONFIRM).performClick()
         compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.HOME_BALANCE) }

@@ -34,7 +34,7 @@ Taken on the emulator during the end-to-end run (light theme; two dark-theme sho
 | ![Pick group](docs/screenshots/pick-group.png) | ![Dark home](docs/screenshots/dark-home.png) | ![Dark split](docs/screenshots/dark-split.png) | |
 
 The "UPI app" on the emulator is [PayFlow](https://github.com/Darshan-05032003/PayFlow) (it registers for `upi://pay`); on a phone the
-same link offers GPay / PhonePe / Paytm / BHIM.
+same link offers every UPI app installed.
 
 ## Design
 Coral primary with an indigo accent reserved for anything AI-made and a saffron accent for warnings; money direction has its own

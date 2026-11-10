@@ -47,6 +47,7 @@ import com.darshan.splitsmart.ui.designsystem.components.StatusPill
 import com.darshan.splitsmart.ui.designsystem.effects.ThemeMode
 import com.darshan.splitsmart.ui.designsystem.tokens.Sizes
 import com.darshan.splitsmart.ui.designsystem.tokens.Spacing
+import com.darshan.splitsmart.ui.navigation.HideShellBarWhile
 import com.darshan.splitsmart.ui.navigation.LocalBottomBarInset
 import com.darshan.splitsmart.ui.navigation.ScrollToTopOnReselect
 import com.darshan.splitsmart.ui.navigation.ShellRoute
@@ -102,6 +103,8 @@ fun MeRoute(onReplayIntro: () -> Unit, viewModel: MeViewModel = hiltViewModel())
 fun MeScreen(state: MeUiState, callbacks: MeCallbacks, scroll: ScrollState = rememberScrollState()) {
     val colors = SplitSmartTheme.colors
     ScrollToTopOnReselect(ShellRoute.Me, scroll)
+    // The name sheet is drawn inside this screen: the floating bar steps aside so it does not cover the sheet's button.
+    HideShellBarWhile(state.nameDraft != null)
     Box(Modifier.fillMaxSize().testTag(MeTags.ROOT)) {
         Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
             SsTopBar(stringResource(R.string.me_title), large = true)

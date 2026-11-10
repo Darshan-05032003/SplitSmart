@@ -21,7 +21,7 @@ class FakeLlmExtractor(var response: String = SAMPLE_LLM_JSON) : LlmExtractor {
 
 const val SAMPLE_LLM_JSON = """{"items":[{"name":"Paneer Tikka","qty":1,"unitPaise":25000,"totalPaise":25000},{"name":"Butter Naan","qty":2,"unitPaise":4500,"totalPaise":9000}],"taxPaise":1700,"tipPaise":0,"totalPaise":35700}"""
 
-const val SAMPLE_OCR_TEXT = """Hotel Saravana Bhavan
+const val SAMPLE_OCR_TEXT = """Hotel Marigold Bhavan
 Paneer Tikka 250.00
 Butter Naan x2 90.00
 Sub Total 340.00

@@ -3,8 +3,6 @@
 app/src/main/kotlin/com/darshan/splitsmart/ui/bill/BillDetailScreen.kt 8
 app/src/main/kotlin/com/darshan/splitsmart/ui/components/Brand.kt 34
 app/src/main/kotlin/com/darshan/splitsmart/ui/components/StateViews.kt 10
-app/src/main/kotlin/com/darshan/splitsmart/ui/groupdetail/GroupDetailScreen.kt 32
-app/src/main/kotlin/com/darshan/splitsmart/ui/groups/GroupsScreen.kt 20
 app/src/main/kotlin/com/darshan/splitsmart/ui/review/ReviewScreen.kt 28
 app/src/main/kotlin/com/darshan/splitsmart/ui/review/ReviewViewModel.kt 1
 app/src/main/kotlin/com/darshan/splitsmart/ui/scan/ScanScreen.kt 34

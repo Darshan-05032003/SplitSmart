@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
-    <!-- Android 11+ package visibility: without this, queryIntentActivities() never sees GPay/PhonePe/Paytm/BHIM and
+    <!-- Android 11+ package visibility: without this, queryIntentActivities() never sees the installed UPI apps and
          every "Pay via UPI" tap would report "no UPI app". Scheme AND host, like the links we build (upi://pay). -->
     <queries>
         <intent>

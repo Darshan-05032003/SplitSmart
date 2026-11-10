@@ -1,5 +1,7 @@
 package com.darshan.splitsmart.ui.components
 
+import com.darshan.splitsmart.ui.groups.groupEmoji
+
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -110,25 +112,6 @@ fun GroupAvatar(name: String, modifier: Modifier = Modifier, size: Dp = 52.dp) {
     Box(modifier.size(size).clip(RoundedCornerShape(16.dp)).background(bg).clearAndSetSemantics { }, contentAlignment = Alignment.Center) {
         Text(groupEmoji(name), style = MaterialTheme.typography.headlineSmall)
     }
-}
-
-private val EMOJI_KEYWORDS = listOf(
-    listOf("trip", "travel", "goa", "manali", "vacation", "holiday", "tour") to "✈️",
-    listOf("beach") to "🏖️",
-    listOf("flat", "home", "house", "room", "pg", "rent") to "🏠",
-    listOf("dinner", "lunch", "food", "brunch", "party", "restaurant") to "🍽️",
-    listOf("coffee", "cafe", "chai") to "☕",
-    listOf("office", "work", "team") to "💼",
-    listOf("movie", "film") to "🎬",
-    listOf("birthday", "bday") to "🎂",
-    listOf("grocer", "market") to "🛒",
-)
-private val FALLBACK_EMOJI = listOf("🎉", "🍕", "🌴", "🎲", "⭐", "🧾")
-
-fun groupEmoji(name: String): String {
-    val lower = name.lowercase()
-    return EMOJI_KEYWORDS.firstOrNull { (keys, _) -> keys.any { it in lower } }?.second
-        ?: FALLBACK_EMOJI[abs(lower.hashCode()) % FALLBACK_EMOJI.size]
 }
 
 /** Small indigo pill marking anything the AI produced. */

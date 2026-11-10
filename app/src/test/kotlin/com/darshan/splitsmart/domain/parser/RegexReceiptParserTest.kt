@@ -48,7 +48,7 @@ class RegexReceiptParserTest {
     @Test
     fun `skips headers, ids, dates, phone numbers and discount lines`() {
         val r = RegexReceiptParser.parse(
-            "Cafe Coffee Day\nGSTIN 27AAAAA0000A1Z5\nBill No 4521 Date 12/03/2026\nPh 9876543210\nItem Qty Rate Amount\nCappuccino 180.00\nDiscount -20.00\nRound off 0.40\nTotal 160.40\nThank you visit again",
+            "Cafe Marigold Beans\nGSTIN 27AAAAA0000A1Z5\nBill No 4521 Date 12/03/2026\nPh 9876543210\nItem Qty Rate Amount\nCappuccino 180.00\nDiscount -20.00\nRound off 0.40\nTotal 160.40\nThank you visit again",
         )
         assertThat(r.items).containsExactly(ExtractedItem("Cappuccino", 1, 18_000, 18_000))
         assertThat(r.totalPaise).isEqualTo(16_040)
