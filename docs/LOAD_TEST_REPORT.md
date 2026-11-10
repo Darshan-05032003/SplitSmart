@@ -304,3 +304,27 @@ To keep these benchmarks working as the UI changes:
 - Failure flow (step by step): `runBlocking { provisional(text) }` → `withContext(test dispatcher)` → nobody advances that dispatcher → the test thread waits. Not an app path.
 - Fix applied / recommendation:
   - The live analyzer's real cost (frames per second, CPU, battery, heat) and the shutter-to-review time need a device; both are on the batched device list after row 14.
+
+## UI Feature: Assign, split, bill and simplify debts
+- Scenario and scale (JVM, Robolectric, `./gradlew stressTest` → `SplitUiStressTest`, plus `SplitScreenTest`, `BillDetailScreenTest`, `SimplifyTest` and the view-model tests; not a device):
+  - A ₹1 crore bill (the cap) with 200 lines split by item between 200 people: first frame, 300 jumps through the list, the donut's layout.
+  - 1,000 drops and mode changes on that bill through the view model; 100 real drags on the screen, one after another.
+  - 1,000 saves, 1,000 bill deletes; 10,000 random bills over 3 and 7 people, equally and by even percentages.
+  - The simplify picture for 200 people and 10,000 bills.
+- Results (numbers):
+  - Split screen, 200 people × 200 lines by item: first frame 173 to 242 ms; 300 jumps in 4,317 to 5,000 ms with 0 recomposer cycles from scrolling; 1,000 donut layouts in 2.0 to 2.2 ms (one reused array, no allocation per frame).
+  - Donut morph between modes: at most 6 recomposer cycles over 30 frames (the rolling amounts settling), the arcs move in draw.
+  - 1,000 drops and mode changes: 1,241 to 1,259 ms, worst single operation 15.7 to 30.9 ms (a full by-item split of 200 lines over 200 people each time), every preview exactly ₹1,00,00,000.00; 1,000 light haptics nobody collected left 16 effects buffered (the channel's cap).
+  - 100 drags in 741 ms → 100 assignments, no drag pill left behind.
+  - 1,000 saves → 1 write and 1 confirm haptic; 1,000 rapid taps on Save → 1 save; 1,000 bill deletes → 1 delete.
+  - 10,000 random bills over 3 and 7 people in 122 to 128 ms: every split exact, equal shares at most 1 paisa apart (₹100.00 over 3 = 33.34 + 33.33 + 33.33).
+  - Bill screen with 200 shares and 200 lines: first frame 847 to 963 ms on Robolectric (only a screenful is composed).
+  - Simplify, 200 people and 10,000 bills: 16,382 IOUs bill by bill → 198 payments, drawn as 8 faces (+193 folded), 35 to 43 ms per graph; the picture's animation causes at most 3 recomposer cycles over 60 frames.
+  - Release APK: 46,697,606 bytes, +50,384 bytes (+0.11 %) against row 11's 46,647,222 (two rebuilt screens and the graph).
+- What broke:
+  - Nothing in the app at these scales.
+  - Test environment: with a paused test clock, a drag injected as one batch reaches the gesture detector only partly (it resumes on frames), so mid-drag screenshots send one event per frame. The sticky row of faces covers a line that a test scrolls to the very top, so tests scroll to the section header instead.
+- Failure flow (step by step): `performTouchInput { down; moveBy × 10 }` with the clock paused → events queued in one batch → the detector's coroutine waits for a frame → most moves arrive before it resumes → no drag starts. Not an app path.
+- Fix applied / recommendation:
+  - The drag's feel (hover growth, gulp, haptic), the donut morph and the graph's two phases at 60/120 Hz need a device; they are on the batched device list after row 14.
+  - A bill holds at most 200 lines, so a 500-line receipt arrives here as 200 lines (row 11 shows the note).

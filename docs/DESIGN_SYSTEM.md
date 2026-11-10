@@ -66,6 +66,7 @@ Bricolage Grotesque for headlines and numbers, Figtree for everything else and f
 - Depth is a solid offset, not a blur: chip 2, card 3, button 4, FAB 5 dp. Pressing closes the gap.
 - Touch targets are at least 48dp everywhere.
 - The camera has its own sizes: a 76dp shutter (58dp disc), 36dp viewfinder corners drawn with a 5dp stroke, a 3dp scan line, 6dp corners on the outlines around live text.
+- The split donut is 148dp with a 22dp ring (96dp with 12dp on a bill); the simplify-debts graph is 300dp tall with 2dp arrows for IOUs and 4dp for payments.
 
 ## Motion
 | Spring | Stiffness / damping | Use |

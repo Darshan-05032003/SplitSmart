@@ -258,3 +258,27 @@ One entry per feature, written after attacking the feature as a pentester. Sever
   - Live recognition's frame rate and battery cost need a device measurement (batched after row 14).
   - `filterTouchesWhenObscured` on Save bill is not set; saving a draft bill moves no money (row 13 handles settle actions).
   - Gemini still runs with the key in the APK; a backend proxy remains the real fix (unchanged from feature 3).
+
+## UI Feature: Assign, split, bill and simplify debts
+- Attacks tried:
+  - Destructive actions: one tap on the bill's delete icon (before this row it deleted the bill, its lines and its split at once); Keep it then delete again; 1,000 taps on the confirmation with the clock paused; 1,000 `deleteBill()` calls on the view model (`BillDetailScreenTest`, `SplitUiStressTest`).
+  - Rapid saves: 1,000 taps on Save split while the first save is in flight, and 1,000 `save()` calls on the view model (`SplitScreenTest`, `SplitUiStressTest`).
+  - Saving a split that does not add up: percentages totalling 116 % or 80 % (the ratio would still split the bill, quietly wrong), all-zero shares, nobody in the split. Save stays off on the screen and the view model refuses with a reject haptic (`SplitViewModelTest`).
+  - Drops onto the wrong target: a line dropped on nobody, on a face of someone outside the split (a stale or forged id), the same line on the same face twice (`SplitViewModelTest`, `SplitScreenTest`).
+  - Stale state after process death: picked lines saved as ids are filtered against the bill's real lines on restore, so a removed line cannot be assigned (`SplitViewModelTest`).
+  - Hostile names and lines: member and line names pass through `DisplayText.safe` in the faces, the rows, the drag pill, the receipt and the graph; share and percent fields hold six digits at most.
+  - Money integrity of the picture: bill-by-bill IOUs and the simplified payments give every person the same net balance (`DebtGraphLogicTest`), and folding 200 people into "+N" changes the picture only, not the listed payments.
+  - TalkBack and reduced motion: assigning without dragging (long-press pick or the Pick action, then tap a face), one sentence for the graph, confetti never the only signal (the "Every line has an owner" pill says it); the delete confirmation is the same with reduced motion.
+  - Screenshot baselines checked for real names, UPI IDs or keys: the people, the beach shack, the wedding caterer and the trip are invented.
+- What broke:
+  - **Medium (fixed):** deleting a bill was one tap on the trash icon in the top bar, with no confirmation and no undo, and removed its lines and its split. It now opens a confirmation sheet ("Delete Beach shack dinner? Its lines and its split go too."), with a heavy haptic and a busy button; the view model already took only one delete.
+  - **Low (fixed):** percent mode would have saved percentages that do not total 100 as plain weights. The preview is withheld until they total 100, the check says how much is left or over, and save is refused.
+  - **Low (fixed):** an adjustment that was a service charge was labelled "Adjustment" next to discounts; it is now named for what it is (discount, other charges or round-off), so a reader can tell when the printed total is higher than the lines.
+  - Nothing Critical or High.
+- Fixed now:
+  - `BillDetailScreen` delete sheet (`BillDetailTags.DELETE_SHEET/CONFIRM/KEEP`) with UI tests for the first tap, Keep it, the confirmation and 1,000 taps.
+  - `SplitViewModel.save` rejects an incomplete split with a reject haptic; `SplitLogic.percentLeft`; `SplitLogic.assign` ignores non-participants and never toggles off.
+  - `SplitLogic.adjustmentKind` and `BillDetailLogic.extras`.
+- Scope for improvement:
+  - A bill delete could offer Undo like archive does; today it cannot be undone (as for groups, a soft delete would be a second archive).
+  - Settle-up (row 13) should check that a bill's split still matches its members before offering payments, as people can be removed after a split.
