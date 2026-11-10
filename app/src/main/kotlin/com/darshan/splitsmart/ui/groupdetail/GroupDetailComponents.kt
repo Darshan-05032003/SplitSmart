@@ -82,6 +82,7 @@ object GroupDetailTags {
     const val MEMBERS_ROW = "group_members_row"
     const val NO_BILLS = "group_no_bills"
     const val SETTLED = "group_settled"
+    const val HISTORY = "group_history"
 }
 
 /**

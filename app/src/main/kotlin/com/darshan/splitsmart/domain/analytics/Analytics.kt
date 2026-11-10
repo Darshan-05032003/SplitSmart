@@ -2,6 +2,7 @@ package com.darshan.splitsmart.domain.analytics
 
 import com.darshan.splitsmart.domain.model.LlmFailure
 import com.darshan.splitsmart.domain.model.ScanError
+import com.darshan.splitsmart.domain.model.SettlementMethod
 import com.darshan.splitsmart.domain.model.SplitMode
 
 enum class ScanSource { CAMERA, GALLERY }
@@ -21,6 +22,10 @@ sealed class AnalyticsEvent(val name: String, val params: Map<String, Any>) {
     class SplitCreated(mode: SplitMode, memberCount: Int, itemCount: Int) :
         AnalyticsEvent("split_created", mapOf("mode" to mode, "member_count" to memberCount, "item_count" to itemCount))
     class SettleUpTap(method: SettleUpMethod, payeeHasVpa: Boolean) : AnalyticsEvent("settle_up_tap", mapOf("method" to method, "payee_has_id" to payeeHasVpa))
+
+    /** Someone said a payment went through and it was recorded; [allSquare] when it was the group's last one. */
+    class SettlementMarked(method: SettlementMethod, allSquare: Boolean) :
+        AnalyticsEvent("settlement_marked", mapOf("method" to method, "all_square" to allSquare))
 }
 
 interface AnalyticsTracker {

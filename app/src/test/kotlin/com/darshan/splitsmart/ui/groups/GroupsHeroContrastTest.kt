@@ -20,6 +20,10 @@ class GroupsHeroContrastTest {
             ) + HeroMood.entries.map { ContrastPair("amount $it", heroTint(it), surface) } + listOf(
                 ContrastPair("owed pill", ink.success.content, ink.success.container),
                 ContrastPair("owe pill", ink.failed.content, ink.failed.container),
+                // Settle-up's heroes: the total to settle, the all-square stamp, and See history on marigold.
+                ContrastPair("settle-up total", ink.primary, surface),
+                ContrastPair("all-square stamp", ink.success.content, surface),
+                ContrastPair("hero button", ink.onPrimary, ink.primary),
             )
             for (pair in pairs) {
                 assertWithMessage("${if (page.isDark) "dark" else "light"} ${pair.name}: ${"%.2f".format(pair.ratio)}:1")

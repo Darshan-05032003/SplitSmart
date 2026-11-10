@@ -1,5 +1,3 @@
 # Screens built before the design system, with the raw values each still has (scripts/token_audit.py --counts).
-# A count may only go down. Rows 9-13 rebuild these screens on the design system and delete their lines; a file not listed must be clean.
-app/src/main/kotlin/com/darshan/splitsmart/ui/components/Brand.kt 25
-app/src/main/kotlin/com/darshan/splitsmart/ui/components/StateViews.kt 10
-app/src/main/kotlin/com/darshan/splitsmart/ui/settleup/SettleUpScreen.kt 13
+# A count may only go down. Rows 9-13 rebuilt these screens on the design system and deleted their lines; a file not listed must be clean.
+# Empty since row 13: every screen is on the design system. Keep the file (the audit reads it) and keep it empty.

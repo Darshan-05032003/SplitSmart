@@ -17,6 +17,7 @@ class AnalyticsPolicyTest {
             AnalyticsEvent.LlmParseFailure(LlmFailure.RATE_LIMITED, fallbackUsed = true, fallbackItemCount = 3) to "llm_parse_failure",
             AnalyticsEvent.SplitCreated(SplitMode.BY_ITEM, memberCount = 4, itemCount = 9) to "split_created",
             AnalyticsEvent.SettleUpTap(SettleUpMethod.UPI, payeeHasVpa = true) to "settle_up_tap",
+            AnalyticsEvent.SettlementMarked(com.darshan.splitsmart.domain.model.SettlementMethod.UPI_APP, allSquare = true) to "settlement_marked",
         )
         events.forEach { (event, name) ->
             assertThat(event.name).isEqualTo(name)

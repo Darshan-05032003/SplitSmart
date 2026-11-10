@@ -8,7 +8,7 @@ import com.darshan.splitsmart.domain.model.Group
 import com.darshan.splitsmart.ui.designsystem.tokens.contrastRatio
 
 /** Every place the app can be. The shell's rules are written against this, so they are tested without a NavController. */
-enum class ShellRoute { Groups, Me, GroupDetail, BillDetail, Scan, Review, Split, SettleUp }
+enum class ShellRoute { Groups, Me, GroupDetail, BillDetail, Scan, Review, Split, SettleUp, History }
 
 /** How one screen replaces another. One vocabulary for the whole app; see docs/DECISIONS.md. */
 enum class ScreenTransition {
@@ -58,6 +58,7 @@ object ShellLogic {
             // A scanned receipt moves forward into review; only entering and leaving the camera itself is the mode change.
             pair == setOf(ShellRoute.Scan, ShellRoute.Review) -> ScreenTransition.SharedAxis
             ShellRoute.Scan in pair -> ScreenTransition.Rise
+            // Settle-up and history are further pages of a group's flow; a bill opened from them has no row to grow from.
             else -> ScreenTransition.SharedAxis
         }
     }

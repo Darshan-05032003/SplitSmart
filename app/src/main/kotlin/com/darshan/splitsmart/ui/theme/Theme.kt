@@ -23,7 +23,6 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.unit.dp
 import com.darshan.splitsmart.ui.designsystem.effects.AndroidHaptics
 import com.darshan.splitsmart.ui.designsystem.effects.GuardedHaptics
 import com.darshan.splitsmart.ui.designsystem.effects.GuardedUiSound
@@ -87,9 +86,8 @@ fun SplitSmartTheme(
  * The one theme. Dynamic colour is deliberately off so SplitSmart looks the same on every phone.
  *
  * Provides the Marigold Mela tokens ([SplitSmartTheme.colors], [SplitSmartTheme.type]), [LocalMotion] (reduced when the
- * in-app setting is on or the system animator scale is 0), [LocalHaptics] and [LocalUiSound] behind the in-app switches, and
- * the old semantic roles as [SplitSmartTheme.legacy] (derived from Marigold). Material slots carry Marigold too, so screens that
- * still use Material widgets match the palette. Tests pass a fake [haptics] and set [reduceMotion] directly.
+ * in-app setting is on or the system animator scale is 0), [LocalHaptics] and [LocalUiSound] behind the in-app switches.
+ * Material slots carry Marigold too, so the few Material pieces left (text selection, the IME's handles) match the palette. Tests pass a fake [haptics] and set [reduceMotion] directly.
  */
 @Composable
 fun SplitSmartTheme(
@@ -111,13 +109,11 @@ fun SplitSmartTheme(
     val guardedHaptics = remember(view, haptics) { GuardedHaptics(haptics ?: AndroidHaptics(view)) { hapticsOn } }
     val guardedSound = remember(sound) { GuardedUiSound(sound) { soundOn } }
     val colorScheme = remember(colors) { colors.toColorScheme() }
-    val legacy = remember(colors) { colors.toLegacyColors() }
     val typography = remember { DefaultSplitSmartType.toMaterialTypography() }
 
     CompositionLocalProvider(
         LocalMarigoldColors provides colors,
         LocalSplitSmartType provides DefaultSplitSmartType,
-        LocalSplitSmartColors provides legacy,
         LocalMotion provides motion,
         LocalHaptics provides guardedHaptics,
         LocalUiSound provides guardedSound,
@@ -213,11 +209,4 @@ object SplitSmartTheme {
 
     val haptics: Haptics
         @Composable @ReadOnlyComposable get() = LocalHaptics.current
-
-    /** Old semantic roles (hero card, owed/owe) for screens not rebuilt yet, now drawn from Marigold. Removed once rows 10-13 are done. */
-    val legacy: SplitSmartColors
-        @Composable @ReadOnlyComposable get() = LocalSplitSmartColors.current
 }
-
-/** Standard screen padding of the pre-overhaul screens. New code uses `Spacing.screen`. */
-val ScreenPadding = 16.dp

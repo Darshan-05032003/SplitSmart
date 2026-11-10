@@ -39,6 +39,7 @@ import com.darshan.splitsmart.ui.me.MeRoute
 import com.darshan.splitsmart.ui.review.ReviewRoute
 import com.darshan.splitsmart.ui.scan.ScanRoute
 import com.darshan.splitsmart.ui.settleup.SettleUpRoute
+import com.darshan.splitsmart.ui.history.HistoryRoute
 import com.darshan.splitsmart.ui.split.SplitRoute
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
 import kotlinx.coroutines.channels.BufferOverflow
@@ -56,6 +57,7 @@ import kotlinx.serialization.Serializable
 @Serializable data class ReviewDestination(val draftId: String)
 @Serializable data class SplitDestination(val billId: String)
 @Serializable data class SettleUpDestination(val groupId: String)
+@Serializable data class HistoryDestination(val groupId: String)
 
 /** The destination as the shell's rules see it. */
 fun NavDestination.shellRoute(): ShellRoute? = when {
@@ -67,6 +69,7 @@ fun NavDestination.shellRoute(): ShellRoute? = when {
     hasRoute<ReviewDestination>() -> ShellRoute.Review
     hasRoute<SplitDestination>() -> ShellRoute.Split
     hasRoute<SettleUpDestination>() -> ShellRoute.SettleUp
+    hasRoute<HistoryDestination>() -> ShellRoute.History
     else -> null
 }
 
@@ -158,6 +161,7 @@ fun SplitSmartNavHost(
                                     onOpenBill = { navController.push(BillDetailDestination(it)) },
                                     onScanReceipt = { navController.push(ScanDestination(it)) },
                                     onSettleUp = { navController.push(SettleUpDestination(it)) },
+                                    onHistory = { navController.push(HistoryDestination(it)) },
                                     onScanFromGallery = { navController.push(ScanDestination(it, gallery = true)) },
                                 )
                             }
@@ -169,7 +173,14 @@ fun SplitSmartNavHost(
                             }
                         }
                         screen<SettleUpDestination> {
-                            SettleUpRoute(onBack = { navController.popBackStack() })
+                            SettleUpRoute(
+                                onBack = { navController.popBackStack() },
+                                onOpenBill = { navController.push(BillDetailDestination(it)) },
+                                onHistory = { navController.push(HistoryDestination(it)) },
+                            )
+                        }
+                        screen<HistoryDestination> {
+                            HistoryRoute(onBack = { navController.popBackStack() }, onOpenBill = { navController.push(BillDetailDestination(it)) })
                         }
                         screen<SplitDestination> {
                             SplitRoute(onBack = { navController.popBackStack() }, onSaved = { navController.popBackStack() })

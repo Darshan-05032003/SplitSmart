@@ -72,6 +72,12 @@ object Strokes {
     /** Arrows on the simplify-debts graph: the IOUs before, the payments after. */
     val graphEdge = 2.dp
     val graphEdgeBold = 4.dp
+
+    /** The border of the "Settled" stamp. */
+    val stamp = 3.dp
+
+    /** The history timeline's rail. */
+    val rail = 2.dp
 }
 
 /** Fixed component sizes. */
@@ -138,6 +144,15 @@ object Sizes {
 
     /** Height of the simplify-debts graph: eight faces on a ring with room for their names. */
     val debtGraph = 300.dp
+
+    /** A UPI QR code: big enough for a phone held at arm's length to read. */
+    val qrCode = 232.dp
+
+    /** Height of one bar on the insights card. */
+    val insightBar = 12.dp
+
+    /** The dot on the history timeline's rail. */
+    val railDot = 12.dp
 }
 
 /**

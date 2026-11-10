@@ -62,6 +62,12 @@ class ShellLogicTest {
         assertThat(ShellLogic.transition(ShellRoute.GroupDetail, ShellRoute.BillDetail)).isEqualTo(ScreenTransition.ContainerTransform)
         assertThat(ShellLogic.transition(ShellRoute.BillDetail, ShellRoute.GroupDetail)).isEqualTo(ScreenTransition.ContainerTransform)
         assertThat(ShellLogic.transition(ShellRoute.GroupDetail, ShellRoute.SettleUp)).isEqualTo(ScreenTransition.SharedAxis)
+        // Row 13: the history is a page further along the same flow, from settle-up or the group.
+        assertThat(ShellLogic.transition(ShellRoute.SettleUp, ShellRoute.History)).isEqualTo(ScreenTransition.SharedAxis)
+        assertThat(ShellLogic.transition(ShellRoute.GroupDetail, ShellRoute.History)).isEqualTo(ScreenTransition.SharedAxis)
+        assertThat(ShellLogic.transition(ShellRoute.History, ShellRoute.BillDetail)).isEqualTo(ScreenTransition.SharedAxis)
+        assertThat(ShellLogic.transition(ShellRoute.SettleUp, ShellRoute.BillDetail)).isEqualTo(ScreenTransition.SharedAxis)
+        assertThat(ShellLogic.barVisible(ShellRoute.History)).isFalse()
         assertThat(ShellLogic.transition(ShellRoute.BillDetail, ShellRoute.Split)).isEqualTo(ScreenTransition.SharedAxis)
         assertThat(ShellLogic.transition(ShellRoute.GroupDetail, ShellRoute.Scan)).isEqualTo(ScreenTransition.Rise)
         assertThat(ShellLogic.transition(ShellRoute.Groups, ShellRoute.Scan)).isEqualTo(ScreenTransition.Rise)

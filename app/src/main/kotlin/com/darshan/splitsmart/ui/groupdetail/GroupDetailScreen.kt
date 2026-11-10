@@ -87,6 +87,7 @@ fun GroupDetailRoute(
     onScanReceipt: (String) -> Unit,
     onSettleUp: (String) -> Unit = {},
     onScanFromGallery: (String) -> Unit = {},
+    onHistory: (String) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbar = remember { SsSnackbarState() }
@@ -131,6 +132,7 @@ fun GroupDetailRoute(
             onSubmitBill = viewModel::submitBill,
             onScanFromGallery = { onScanFromGallery(viewModel.groupId) },
             onArchive = viewModel::setArchived,
+            onHistory = { onHistory(viewModel.groupId) },
         ),
     )
 }
@@ -158,6 +160,7 @@ data class GroupDetailCallbacks(
     val onScanFromGallery: () -> Unit = {},
     /** true archives, false brings the group back. */
     val onArchive: (Boolean) -> Unit = {},
+    val onHistory: () -> Unit = {},
 )
 
 /** Which in-window sheet is up besides the add-member and add-bill drafts (those live in the view model). */
@@ -299,7 +302,16 @@ private fun GroupDetailContent(detail: GroupDetail, callbacks: GroupDetailCallba
                 }
             }
         }
-        item(key = "billsHeader", contentType = "header") { SsSectionHeader(stringResource(R.string.bills_title), emoji = "📒") }
+        item(key = "billsHeader", contentType = "header") {
+            val hasHistory = detail.bills.isNotEmpty() || detail.settlements.isNotEmpty()
+            SsSectionHeader(
+                stringResource(R.string.bills_title),
+                emoji = "📒",
+                actionLabel = if (hasHistory) stringResource(R.string.group_history) else null,
+                onAction = if (hasHistory) callbacks.onHistory else null,
+                actionModifier = Modifier.testTag(GroupDetailTags.HISTORY),
+            )
+        }
         if (detail.bills.isEmpty()) {
             item(key = "noBills", contentType = "empty") { NoBills() }
         }

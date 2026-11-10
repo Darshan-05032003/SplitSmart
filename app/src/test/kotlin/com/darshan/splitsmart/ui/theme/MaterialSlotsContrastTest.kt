@@ -2,7 +2,6 @@ package com.darshan.splitsmart.ui.theme
 
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
 import com.darshan.splitsmart.ui.designsystem.tokens.ContrastPair
 import com.darshan.splitsmart.ui.designsystem.tokens.MarigoldDark
 import com.darshan.splitsmart.ui.designsystem.tokens.MarigoldLight
@@ -11,8 +10,9 @@ import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Test
 
 /**
- * The screens that are not rebuilt yet draw with Material widgets and `SplitSmartTheme.legacy`. Since the shell switched the app
- * to Marigold, those read Marigold colours: every pair they put text on must still pass WCAG AA in both themes.
+ * Every screen is on the design system now, but Material pieces still read the Material slots (text selection, IME handles, any
+ * future Material widget), and the aubergine heroes that replaced the old hero card write in the night palette. Every pair they
+ * put text on must pass WCAG AA in both themes.
  */
 class MaterialSlotsContrastTest {
     private val themes = listOf("light" to MarigoldLight, "dark" to MarigoldDark)
@@ -55,23 +55,21 @@ class MaterialSlotsContrastTest {
     }
 
     @Test
-    fun `old hero cards stay readable on the aubergine hero, including their 90 percent labels and the name prompt`() {
+    fun `heroes that replaced the old hero card stay readable on the aubergine, including their secondary labels and the stamp`() {
+        val ink = com.darshan.splitsmart.ui.groups.HeroPalette
         for ((mode, colors) in themes) {
-            val legacy = colors.toLegacyColors()
-            for (stop in legacy.heroStops) {
-                val label = legacy.onHero.copy(alpha = 0.9f).compositeOver(stop)
-                val prompt = legacy.onHero.copy(alpha = 0.18f).compositeOver(stop)
-                assertWithMessage("$mode onHero on $stop").that(contrastRatio(legacy.onHero, stop)).isAtLeast(ContrastPair.TEXT_MINIMUM)
-                assertWithMessage("$mode 90 percent label on $stop").that(contrastRatio(label, stop)).isAtLeast(ContrastPair.TEXT_MINIMUM)
-                assertWithMessage("$mode name prompt on $stop").that(contrastRatio(legacy.onHero, prompt)).isAtLeast(ContrastPair.TEXT_MINIMUM)
-            }
-            assertWithMessage("$mode hero button").that(contrastRatio(legacy.heroAction, legacy.onHero)).isAtLeast(ContrastPair.TEXT_MINIMUM)
+            val hero = colors.bar
+            assertWithMessage("$mode text on hero").that(contrastRatio(ink.text, hero)).isAtLeast(ContrastPair.TEXT_MINIMUM)
+            assertWithMessage("$mode secondary on hero").that(contrastRatio(ink.textSecondary, hero)).isAtLeast(ContrastPair.TEXT_MINIMUM)
+            assertWithMessage("$mode amount on hero").that(contrastRatio(ink.primary, hero)).isAtLeast(ContrastPair.TEXT_MINIMUM)
+            assertWithMessage("$mode stamp on hero").that(contrastRatio(ink.success.content, hero)).isAtLeast(ContrastPair.TEXT_MINIMUM)
+            assertWithMessage("$mode hero button").that(contrastRatio(ink.onPrimary, ink.primary)).isAtLeast(ContrastPair.TEXT_MINIMUM)
             for (page in listOf(colors.bg, colors.surface)) {
-                assertWithMessage("$mode owed on page").that(contrastRatio(legacy.owed.content, page)).isAtLeast(ContrastPair.TEXT_MINIMUM)
-                assertWithMessage("$mode owe on page").that(contrastRatio(legacy.owe.content, page)).isAtLeast(ContrastPair.TEXT_MINIMUM)
+                assertWithMessage("$mode owed on page").that(contrastRatio(colors.success.content, page)).isAtLeast(ContrastPair.TEXT_MINIMUM)
+                assertWithMessage("$mode owe on page").that(contrastRatio(colors.failed.content, page)).isAtLeast(ContrastPair.TEXT_MINIMUM)
             }
-            assertWithMessage("$mode owed chip").that(contrastRatio(legacy.owed.content, legacy.owed.container)).isAtLeast(ContrastPair.TEXT_MINIMUM)
-            assertWithMessage("$mode owe chip").that(contrastRatio(legacy.owe.content, legacy.owe.container)).isAtLeast(ContrastPair.TEXT_MINIMUM)
+            assertWithMessage("$mode owed chip").that(contrastRatio(colors.success.content, colors.success.container)).isAtLeast(ContrastPair.TEXT_MINIMUM)
+            assertWithMessage("$mode owe chip").that(contrastRatio(colors.failed.content, colors.failed.container)).isAtLeast(ContrastPair.TEXT_MINIMUM)
         }
     }
 
@@ -81,7 +79,7 @@ class MaterialSlotsContrastTest {
         for ((_, colors) in themes) {
             val scheme = colors.toColorScheme()
             assertWithMessage("primary").that(scheme.primary).isNotEqualTo(coral)
-            assertWithMessage("hero").that(colors.toLegacyColors().heroStops).doesNotContain(coral)
+            assertWithMessage("hero").that(colors.bar).isNotEqualTo(coral)
         }
     }
 }
