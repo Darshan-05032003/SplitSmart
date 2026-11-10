@@ -66,22 +66,37 @@ data class HomeOverview(
     val groupCount: Int = 0,
 )
 
+/** One emission of the home data: the list state, the header numbers and the archived groups. */
+private data class HomeSnapshot(
+    val groups: LoadState<List<GroupCard>>,
+    val overview: HomeOverview = HomeOverview(),
+    val archived: List<GroupCard> = emptyList(),
+)
+
 data class GroupsUiState(
     val groups: LoadState<List<GroupCard>> = LoadState.Loading,
     val draft: GroupDraft? = null,
     val overview: HomeOverview = HomeOverview(),
     val nameDraft: NameDraft? = null,
+    /** Archived groups, newest activity first: shown folded away at the end of the list. */
+    val archived: List<GroupCard> = emptyList(),
 )
 
 sealed interface GroupsEvent {
     data class GroupCreated(val groupId: String) : GroupsEvent
     data object CreateFailed : GroupsEvent
+
+    /** A group was put away; the screen offers Undo. */
+    data class GroupArchived(val groupId: String, val name: String) : GroupsEvent
+
+    /** Archive or unarchive could not be saved. */
+    data object ActionFailed : GroupsEvent
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class GroupsViewModel @Inject constructor(
-    repository: GroupRepository,
+    private val repository: GroupRepository,
     billRepository: BillRepository,
     private val profile: ProfileRepository,
     private val createGroup: CreateGroupUseCase,
@@ -93,18 +108,24 @@ class GroupsViewModel @Inject constructor(
     private val _events = Channel<GroupsEvent>(Channel.BUFFERED)
     val events: Flow<GroupsEvent> = _events.receiveAsFlow()
 
-    private val home: Flow<Pair<LoadState<List<GroupCard>>, HomeOverview>> = reload.flatMapLatest {
+    private val home: Flow<HomeSnapshot> = reload.flatMapLatest {
         combine(repository.observeGroupSummaries(), repository.observeAllMembers(), billRepository.observeAllBills(), profile.yourName) { summaries, members, bills, me ->
             val cards = buildCards(summaries, members, bills, me)
-            val state: LoadState<List<GroupCard>> = if (cards.isEmpty()) LoadState.Empty else LoadState.Content(cards)
-            state to overviewOf(cards, me)
+            val (archived, active) = cards.partition { it.group.isArchived }
+            // Empty means "no groups at all" (the first-run screen); with everything archived the list is content, just short.
+            val state: LoadState<List<GroupCard>> = if (cards.isEmpty()) LoadState.Empty else LoadState.Content(active)
+            // Money in an archived group is still money: the overview counts every group.
+            HomeSnapshot(state, overviewOf(cards, me), archived)
         }
-            .onStart { emit(LoadState.Loading to HomeOverview()) }
-            .catch { emit(LoadState.Error(it.toErrorReason()) to HomeOverview()) }
+            .onStart { emit(HomeSnapshot(LoadState.Loading)) }
+            .catch { emit(HomeSnapshot(LoadState.Error(it.toErrorReason()))) }
     }.flowOn(dispatchers.default)
 
-    val uiState: StateFlow<GroupsUiState> = combine(home, draft, nameDraft) { (g, o), d, n -> GroupsUiState(g, d, o, n) }
+    val uiState: StateFlow<GroupsUiState> = combine(home, draft, nameDraft) { h, d, n -> GroupsUiState(h.groups, d, h.overview, n, h.archived) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GroupsUiState())
+
+    /** Groups with an archive or unarchive write in flight: a burst of swipes or taps writes once. */
+    private val pendingArchive = mutableSetOf<String>()
 
     // ----- your name -----
     fun openNameDialog(current: String?) = nameDraft.update { it ?: NameDraft(current.orEmpty()) }
@@ -123,6 +144,29 @@ class GroupsViewModel @Inject constructor(
     }
 
     fun retry() = reload.update { it + 1 }
+
+    /** Puts a group away and tells the screen, which offers Undo. Nothing is deleted. */
+    fun archive(groupId: String) = setArchived(groupId, archived = true)
+
+    /** Undo, or "Unarchive" on an archived row. */
+    fun unarchive(groupId: String) = setArchived(groupId, archived = false)
+
+    private fun setArchived(groupId: String, archived: Boolean) {
+        if (!pendingArchive.add(groupId)) return
+        val state = uiState.value
+        val name = ((state.groups as? LoadState.Content)?.data.orEmpty() + state.archived).firstOrNull { it.group.id == groupId }?.group?.name.orEmpty()
+        viewModelScope.launch {
+            try {
+                val result = runCatching { repository.setArchived(groupId, archived) }
+                when {
+                    result.isFailure -> _events.send(GroupsEvent.ActionFailed)
+                    archived -> _events.send(GroupsEvent.GroupArchived(groupId, name))
+                }
+            } finally {
+                pendingArchive.remove(groupId)
+            }
+        }
+    }
 
     fun openCreateDialog() = draft.update { it ?: GroupDraft() }
 

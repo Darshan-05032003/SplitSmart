@@ -11,11 +11,11 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
-/** What the shell itself needs: the groups the bar's Scan can open the camera for (null until loaded). */
+/** What the shell itself needs: the groups the bar's Scan can open the camera for (null until loaded; archived groups only when nothing else is left). */
 @HiltViewModel
 class ShellViewModel @Inject constructor(groups: GroupRepository) : ViewModel() {
     val scanChoices: StateFlow<List<ScanChoice>?> = groups.observeGroupSummaries()
-        .map { summaries -> summaries.map { ScanChoice(it.group.id, it.group.name) } }
+        .map { summaries -> scanChoicesOf(summaries.map { it.group }) }
         .catch { emit(emptyList()) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 }

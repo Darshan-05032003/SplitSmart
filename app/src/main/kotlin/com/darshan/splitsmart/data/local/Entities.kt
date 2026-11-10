@@ -25,6 +25,8 @@ data class GroupEntity(
     @PrimaryKey val id: String,
     val name: String,
     @ColumnInfo(name = "created_at") val createdAt: Long,
+    /** DB v4: epoch millis when the group was archived, null while active. */
+    @ColumnInfo(name = "archived_at") val archivedAt: Long? = null,
 )
 
 @Entity(
@@ -114,8 +116,8 @@ data class GroupSummaryRow(
 
 // ----- mappers -----
 
-fun Group.toEntity() = GroupEntity(id, name, createdAt.toEpochMilli())
-fun GroupEntity.toDomain() = Group(id, name, Instant.ofEpochMilli(createdAt))
+fun Group.toEntity() = GroupEntity(id, name, createdAt.toEpochMilli(), archivedAt?.toEpochMilli())
+fun GroupEntity.toDomain() = Group(id, name, Instant.ofEpochMilli(createdAt), archivedAt?.let(Instant::ofEpochMilli))
 fun GroupSummaryRow.toDomain() = GroupSummary(group.toDomain(), memberCount, billCount)
 
 fun Member.toEntity() = MemberEntity(id, groupId, name, vpa, createdAt.toEpochMilli())

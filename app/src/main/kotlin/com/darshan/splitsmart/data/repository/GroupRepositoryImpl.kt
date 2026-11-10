@@ -42,6 +42,10 @@ class GroupRepositoryImpl @Inject constructor(
 
     override suspend fun deleteGroup(groupId: String) = withContext(dispatchers.io) { groupDao.deleteById(groupId) }
 
+    override suspend fun setArchived(groupId: String, archived: Boolean) = withContext(dispatchers.io) {
+        groupDao.setArchivedAt(groupId, if (archived) clock.instant().toEpochMilli() else null)
+    }
+
     override fun observeMembers(groupId: String): Flow<List<Member>> =
         memberDao.observeByGroup(groupId).map { list -> list.map { it.toDomain() } }.flowOn(dispatchers.io)
 

@@ -93,7 +93,8 @@ fun GroupsRoute(viewModel: GroupsViewModel = hiltViewModel(), onOpenGroup: (Stri
         viewModel.events.collect { event ->
             when (event) {
                 is GroupsEvent.GroupCreated -> Unit
-                GroupsEvent.CreateFailed -> snackbar.showSnackbar(failedText)
+                GroupsEvent.CreateFailed, GroupsEvent.ActionFailed -> snackbar.showSnackbar(failedText)
+                is GroupsEvent.GroupArchived -> Unit
             }
         }
     }

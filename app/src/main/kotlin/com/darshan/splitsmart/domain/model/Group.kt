@@ -6,7 +6,11 @@ data class Group(
     val id: String,
     val name: String,
     val createdAt: Instant,
-)
+    /** When the group was archived (put away, never deleted); null while it is active. */
+    val archivedAt: Instant? = null,
+) {
+    val isArchived: Boolean get() = archivedAt != null
+}
 
 /** A group as shown in the list: the group plus the counts that come from Room joins. */
 data class GroupSummary(

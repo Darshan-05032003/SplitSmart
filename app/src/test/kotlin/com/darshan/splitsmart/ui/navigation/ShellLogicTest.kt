@@ -20,6 +20,17 @@ class ShellLogicTest {
     }
 
     @Test
+    fun `scan offers active groups only, unless every group is archived`() {
+        val goa = com.darshan.splitsmart.testutil.testGroup("goa", "Goa trip")
+        val old = com.darshan.splitsmart.testutil.testGroup("old", "Old trip").copy(archivedAt = java.time.Instant.EPOCH)
+        assertThat(scanChoicesOf(listOf(goa, old))).containsExactly(ScanChoice("goa", "Goa trip"))
+        assertThat(scanChoicesOf(listOf(old))).containsExactly(ScanChoice("old", "Old trip"))
+        assertThat(scanChoicesOf(emptyList())).isEmpty()
+        // One active group still goes straight to the camera, however many are archived.
+        assertThat(ScanTarget.resolve(scanChoicesOf(listOf(goa, old)))).isEqualTo(ScanTarget.Direct("goa"))
+    }
+
+    @Test
     fun `scan is an action in the bar, never the selected tab`() {
         assertThat(ShellLogic.isAction(ShellRoute.Scan)).isTrue()
         assertThat(ShellLogic.selectedIndex(ShellRoute.Groups, lastTab = ShellRoute.Me)).isEqualTo(0)

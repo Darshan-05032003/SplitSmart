@@ -13,6 +13,8 @@ interface GroupRepository {
     suspend fun createGroup(name: String): Group
     suspend fun renameGroup(groupId: String, name: String)
     suspend fun deleteGroup(groupId: String)
+    /** Puts a group away (its members, bills and balances stay) or brings it back. */
+    suspend fun setArchived(groupId: String, archived: Boolean)
     fun observeMembers(groupId: String): Flow<List<Member>>
     /** Every member of every group (home screen avatars and balances). */
     fun observeAllMembers(): Flow<List<Member>>

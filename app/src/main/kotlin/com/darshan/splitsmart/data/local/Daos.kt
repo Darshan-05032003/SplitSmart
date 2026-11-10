@@ -19,6 +19,10 @@ interface GroupDao {
     @Query("DELETE FROM split_groups WHERE id = :id")
     suspend fun deleteById(id: String)
 
+    /** Archive with a timestamp, or bring back with null. A missing id changes nothing. */
+    @Query("UPDATE split_groups SET archived_at = :archivedAt WHERE id = :id")
+    suspend fun setArchivedAt(id: String, archivedAt: Long?)
+
     @Query("SELECT * FROM split_groups WHERE id = :id")
     fun observeById(id: String): Flow<GroupEntity?>
 

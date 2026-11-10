@@ -200,6 +200,87 @@ class GroupsViewModelTest {
         }
     }
 
+    // ----- archive -----
+    @Test
+    fun `archived groups leave the list for their own section and still count in your balance`() = runTest(dispatcher) {
+        seedTwoGroups()
+        profile.setYourName("Darshan")
+        repo.groups.value = repo.groups.value.map { if (it.id == "flat") it.copy(archivedAt = java.time.Instant.EPOCH) else it }
+        val vm = vm()
+        vm.uiState.test {
+            awaitItem()
+            val state = awaitItem()
+            assertThat((state.groups as LoadState.Content).data.map { it.group.id }).containsExactly("goa")
+            assertThat(state.archived.map { it.group.id }).containsExactly("flat")
+            // Money you owe in an archived group is still money you owe.
+            assertThat(state.overview.youOwePaise).isEqualTo(10_000)
+            assertThat(state.overview.groupCount).isEqualTo(2)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `with every group archived the home is content with an empty list, not the first-run empty state`() = runTest(dispatcher) {
+        repo.groups.value = listOf(testGroup("a", "Old").copy(archivedAt = java.time.Instant.EPOCH))
+        vm().uiState.test {
+            awaitItem()
+            val state = awaitItem()
+            assertThat((state.groups as LoadState.Content).data).isEmpty()
+            assertThat(state.archived.single().group.name).isEqualTo("Old")
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `archive emits an undoable event with the name, and unarchive brings the card back`() = runTest(dispatcher) {
+        repo.groups.value = listOf(testGroup("goa", "Goa trip"))
+        val vm = vm()
+        vm.uiState.test { awaitItem(); awaitItem(); cancelAndIgnoreRemainingEvents() }
+        vm.events.test {
+            vm.archive("goa")
+            assertThat(awaitItem()).isEqualTo(GroupsEvent.GroupArchived("goa", "Goa trip"))
+        }
+        assertThat(repo.groups.value.single().isArchived).isTrue()
+        vm.unarchive("goa")
+        dispatcher.scheduler.advanceUntilIdle()
+        assertThat(repo.groups.value.single().isArchived).isFalse()
+    }
+
+    @Test
+    fun `a burst of archive requests for one group archives it once`() = runTest(dispatcher) {
+        repo.groups.value = listOf(testGroup("goa", "Goa trip"))
+        var writes = 0
+        val counting = object : FakeGroupRepository() {
+            override suspend fun setArchived(groupId: String, archived: Boolean) {
+                writes++
+                super.setArchived(groupId, archived)
+            }
+        }
+        counting.groups.value = repo.groups.value
+        val vm = vm(counting)
+        vm.uiState.test { awaitItem(); awaitItem(); cancelAndIgnoreRemainingEvents() }
+        vm.events.test {
+            repeat(1_000) { vm.archive("goa") }
+            dispatcher.scheduler.advanceUntilIdle()
+            assertThat(awaitItem()).isInstanceOf(GroupsEvent.GroupArchived::class.java)
+            expectNoEvents()
+        }
+        assertThat(writes).isEqualTo(1)
+    }
+
+    @Test
+    fun `a failed archive reports it and leaves the group where it was`() = runTest(dispatcher) {
+        repo.groups.value = listOf(testGroup("goa", "Goa trip"))
+        val vm = vm()
+        vm.uiState.test { awaitItem(); awaitItem(); cancelAndIgnoreRemainingEvents() }
+        repo.failWith = IllegalStateException("disk full")
+        vm.events.test {
+            vm.archive("goa")
+            assertThat(awaitItem()).isEqualTo(GroupsEvent.ActionFailed)
+        }
+        assertThat(repo.groups.value.single().isArchived).isFalse()
+    }
+
     @Test
     fun `an invalid name keeps the dialog open and dismiss closes it`() = runTest(dispatcher) {
         val vm = vm()

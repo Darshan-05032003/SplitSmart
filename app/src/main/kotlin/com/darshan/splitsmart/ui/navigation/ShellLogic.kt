@@ -2,6 +2,7 @@ package com.darshan.splitsmart.ui.navigation
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import com.darshan.splitsmart.domain.model.Group
 import com.darshan.splitsmart.ui.designsystem.tokens.contrastRatio
 
 /** Every place the app can be. The shell's rules are written against this, so they are tested without a NavController. */
@@ -58,6 +59,15 @@ object ShellLogic {
 /** A group the bar's Scan can open the camera for. */
 @Immutable
 data class ScanChoice(val groupId: String, val name: String)
+
+/**
+ * The groups a receipt can be scanned into: the active ones, so an old trip never stands between Scan and the camera. When every
+ * group is archived they are all offered, rather than claiming there is no group.
+ */
+fun scanChoicesOf(groups: List<Group>): List<ScanChoice> {
+    val active = groups.filterNot { it.isArchived }
+    return (active.ifEmpty { groups }).map { ScanChoice(it.id, it.name) }
+}
 
 /** What Scan in the bar does, given the groups (null while they load). */
 sealed interface ScanTarget {

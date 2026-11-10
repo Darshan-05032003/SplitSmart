@@ -48,6 +48,11 @@ open class FakeGroupRepository(private val clock: Clock = fixedClock) : GroupRep
         members.update { list -> list.filterNot { it.groupId == groupId } }
     }
 
+    override suspend fun setArchived(groupId: String, archived: Boolean) {
+        maybeFail()
+        groups.update { list -> list.map { if (it.id == groupId) it.copy(archivedAt = if (archived) clock.instant() else null) else it } }
+    }
+
     override fun observeMembers(groupId: String): Flow<List<Member>> =
         members.map { list -> list.filter { it.groupId == groupId }.sortedBy { it.createdAt } }
 
