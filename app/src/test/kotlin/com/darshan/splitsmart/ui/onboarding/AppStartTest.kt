@@ -47,8 +47,9 @@ class AppStartLogicTest {
     }
 
     @Test
-    fun `the intro can be replayed from the app and finished again`() {
-        assertThat(AppStart.Ready.after(AppStartEvent.Replay)).isEqualTo(AppStart.Onboarding)
+    fun `the intro can be replayed over the app and finished again`() {
+        assertThat(AppStart.Ready.after(AppStartEvent.Replay)).isEqualTo(AppStart.Replaying)
+        assertThat(AppStart.Replaying.after(AppStartEvent.Stored(false), AppStartEvent.TimedOut)).isEqualTo(AppStart.Replaying)
         assertThat(AppStart.Ready.after(AppStartEvent.Replay, AppStartEvent.Finished)).isEqualTo(AppStart.Ready)
         // Replay is only offered inside the app: it means nothing before the first answer.
         assertThat(AppStart.Loading.after(AppStartEvent.Replay)).isEqualTo(AppStart.Loading)
@@ -115,7 +116,7 @@ class AppStartViewModelTest {
         vm.start.test {
             skipItems(2)
             vm.replay()
-            assertThat(awaitItem()).isEqualTo(AppStart.Onboarding)
+            assertThat(awaitItem()).isEqualTo(AppStart.Replaying)
             runCurrent()
             assertThat(repo.completed.first()).isTrue()
             vm.finish()

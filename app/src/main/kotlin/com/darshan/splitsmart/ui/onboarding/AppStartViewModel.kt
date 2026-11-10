@@ -14,8 +14,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** Where a launch begins. [Loading] keeps the splash up. */
-enum class AppStart { Loading, Onboarding, Ready }
+/** Where a launch begins. [Loading] keeps the splash up; [Replaying] is the intro shown again over the app from the Me tab. */
+enum class AppStart { Loading, Onboarding, Ready, Replaying }
 
 sealed interface AppStartEvent {
     /** The stored flag, as first read. */
@@ -40,7 +40,7 @@ object AppStartLogic {
         is AppStartEvent.Stored -> if (state == AppStart.Loading) (if (event.completed) AppStart.Ready else AppStart.Onboarding) else state
         AppStartEvent.TimedOut -> if (state == AppStart.Loading) AppStart.Ready else state
         AppStartEvent.Finished -> AppStart.Ready
-        AppStartEvent.Replay -> if (state == AppStart.Ready) AppStart.Onboarding else state
+        AppStartEvent.Replay -> if (state == AppStart.Ready) AppStart.Replaying else state
     }
 }
 

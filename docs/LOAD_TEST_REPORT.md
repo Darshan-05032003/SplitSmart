@@ -234,3 +234,25 @@ To keep these benchmarks working as the UI changes:
 - Failure flow (step by step): not reached. The breaking point for the stack is the description, which names at most four people, so it stays constant; the list is bounded by Compose's lazy layout, not by the row.
 - Fix applied / recommendation:
   - Frame timing on a device (Macrobenchmark) waits for the screens to use the design system (rows 9-13) and the QA row; numbers above are JVM only.
+
+## UI Feature: Shell, splash and intro
+- Scenario and scale (JVM, Robolectric, `./gradlew stressTest` → `ShellStressTest`, `AppStartStressTest`; not a device):
+  - 1,000 taps on Skip; 1,000 taps on Next (one per frame, 600 ms apart on the click clock); a 40-frame drag across the intro.
+  - 1,000 cold starts of the start ViewModel (half fresh installs, half returning), each finished 10 times.
+  - 1,000 tab switches through the real `NavHost` with the shell's `openTab`.
+  - 10,000 status-bar surfaces registered, settled and removed; 1,000 resolutions over 10,000 entries.
+  - Bar Scan routing over 10,000 groups (1,000 resolutions); every one of the 64 route pairs through the transition rule.
+- Results (numbers):
+  - Skip: 1,000 taps → 1 finish (1,599 ms). Next: 1,000 taps → last page and 1 finish (607 ms), because the rising "Let's split a bill" button covers the spot where Next was; never twice.
+  - Swipe: 40 frames of drag plus settle → 3 recomposer cycles (the layers, words and indicator pill read the pager position in layer and draw lambdas).
+  - Start: 1,000 launches → 500 intro, 500 app, every stored flag written once (110 ms).
+  - Tabs: 1,000 switches → 1 destination above the graph root on the back stack (5,171 ms, Robolectric).
+  - Status bar: 0 entries left after 10,000 cycles (19 ms); 1,000 resolutions over 10,000 entries in 2 ms.
+  - Scan routing: 1,000 resolutions over 10,000 groups in 3 ms; the picker sheet is a lazy list capped at 360dp (`Sizes.sheetListMax`).
+  - Release APK: 46,535,708 bytes, −20,179 bytes (−0.04 %) against row 8's 46,555,887 (the coral palette and system typography went, the splash, intro, shell and Me came in).
+- What broke:
+  - Nothing in the app at these scales.
+  - Test environment: Robolectric screens taller than its default 320×470dp made two not-yet-rebuilt Material screens loop in layout (typing in the New group dialog, opening the group screen) until the test JVM ran out of heap; reproduced with the old navigation host and old groups screen too, so it is not shell code. App-level tests stay on the default screen; the "newest card on the first screen" benchmark rule is checked at phone size by `GroupsUnderBarTest`. Row 10 rebuilds both screens; worth re-checking there.
+- Failure flow (step by step): typing into the dialog field on a 411×891dp Robolectric screen → text re-measured every frame → the trace buffer grows → `OutOfMemoryError` after about 70 s → the rest of that JVM's tests fail with looper errors. Not seen at 320×470.
+- Fix applied / recommendation:
+  - Frame timing of the splash exit, intro swipe, container transform and predictive back on a device belongs to the batched device session after row 14 (memory rule: no emulator in this row).

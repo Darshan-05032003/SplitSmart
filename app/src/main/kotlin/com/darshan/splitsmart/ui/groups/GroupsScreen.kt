@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -73,6 +74,12 @@ import com.darshan.splitsmart.ui.components.appIcon
 import com.darshan.splitsmart.ui.components.label
 import com.darshan.splitsmart.ui.components.relativeDate
 import com.darshan.splitsmart.ui.components.yourBalanceLabel
+import com.darshan.splitsmart.ui.navigation.ScrollToTopOnReselect
+import com.darshan.splitsmart.ui.navigation.ShellRequest
+import com.darshan.splitsmart.ui.navigation.ShellRequestEffect
+import com.darshan.splitsmart.ui.navigation.ShellRoute
+import com.darshan.splitsmart.ui.navigation.containerTransform
+import com.darshan.splitsmart.ui.navigation.groupContainerKey
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
 
 @Composable
@@ -80,6 +87,8 @@ fun GroupsRoute(viewModel: GroupsViewModel = hiltViewModel(), onOpenGroup: (Stri
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val failedText = stringResource(R.string.error_unknown)
+    // Scan in the bar with no groups yet asks for "New group" here.
+    ShellRequestEffect(ShellRequest.NewGroup) { viewModel.openCreateDialog() }
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
@@ -128,6 +137,8 @@ fun GroupsScreen(
     onScanReceipt: (String) -> Unit = {},
 ) {
     var pickingGroup by rememberSaveable { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    ScrollToTopOnReselect(ShellRoute.Groups, listState)
     val cards = (state.groups as? LoadState.Content)?.data.orEmpty()
     val scan = {
         when (cards.size) {
@@ -161,6 +172,7 @@ fun GroupsScreen(
                 is LoadState.Error -> ErrorView(groups.reason, onRetry)
                 is LoadState.Content -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
+                    state = listState,
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
@@ -342,7 +354,11 @@ private fun GroupCardView(card: GroupCard, onClick: () -> Unit) {
         onClick = onClick,
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        modifier = Modifier.fillMaxWidth().testTag(SplitSmartTestTags.GROUP_ITEM).semantics(mergeDescendants = true) { contentDescription = description },
+        modifier = Modifier
+            .fillMaxWidth()
+            .containerTransform(groupContainerKey(card.group.id))
+            .testTag(SplitSmartTestTags.GROUP_ITEM)
+            .semantics(mergeDescendants = true) { contentDescription = description },
     ) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
             GroupAvatar(card.group.name)

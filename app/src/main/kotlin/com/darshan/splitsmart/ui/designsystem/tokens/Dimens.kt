@@ -91,6 +91,8 @@ object Sizes {
     val bottomBarHeight = 68.dp
     val bottomBarBlobHeight = 40.dp
     val bottomBarInset = 12.dp
+    /** Tallest a list inside a bottom sheet grows before it scrolls (the bar's group picker). */
+    val sheetListMax = 360.dp
     val sheetHandleWidth = 44.dp
     val sheetHandleHeight = 5.dp
     val snackbarMinHeight = 56.dp

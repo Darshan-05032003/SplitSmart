@@ -186,3 +186,26 @@ One entry per feature, written after attacking the feature as a pentester. Sever
 - Scope for improvement:
   - Settle and Pay actions in later rows should also refuse touches while the window is obscured (`filterTouchesWhenObscured` on the root view); the design system does not set it globally because most taps are harmless.
   - `DisplayText` keeps zero-width joiners for emoji sequences, so a name can still contain invisible joiners between letters; harmless for layout, noted for search.
+
+## UI Feature: Shell, splash and intro
+- Attacks tried:
+  - A crafted launch intent: `MainActivity` is exported, so another app started it with `ACTION_VIEW`, a `data` URI and Navigation's own explicit deep-link extras (`deepLinkIds` naming the review screen by its route-hash id, empty `deepLinkArgs`, a nested `deepLinkIntent`) to open a screen out of order or crash it with missing arguments (`ShellFlowTest`, `LaunchIntentPolicyTest`).
+  - Tampering with the intro flag: a string and an int written under `onboarding_done`, an unreadable store, a store that never answers, a late answer arriving after the app is already open (`OnboardingRepositoryTest`, `AppStartTest`).
+  - Skipping the intro to reach anything protected: SplitSmart has no lock or protected screen, and the intro gates nothing; checked that a deep link cannot skip it either (the launch intent is cleaned first, and the app is not composed while the intro shows).
+  - Rapid taps: 10 and 1,000 taps on Skip and on "Let's split a bill" (one finish, one stored write), 1,000 taps on Next (lands on the last page, never finishes), 1,000 `finish()` calls on the start ViewModel (one write) (`OnboardingScreenTest`, `ShellStressTest`, `AppStartTest`).
+  - Back and predictive back mid-intro: back walks pages and leaves the app only from page one; a cancelled predictive gesture stays on its page (`OnboardingScreenTest`). Replaying the intro from Me and leaving it returns to Me with the app's state intact (`ShellFlowTest`).
+  - Process death during the intro: the stored flag is written only on finish, so a killed intro simply shows again; the pager page is saveable.
+  - The name editor on Me: bidi override in the name, a 10,000-character paste, blank names (`MeViewModelTest`); names are shown through `DisplayText.safe` by the design-system rows.
+  - Honesty: the intro and Me say AI reading needs a Gemini key, a built-in parser covers without one, scanned text is sent to Gemini only when a key is present, and Pay opens the UPI app without SplitSmart marking anything paid (`OnboardingScreenTest`, `MeScreenTest`). Me shows whether a key exists, never the key.
+  - Screenshot baselines checked for real names, UPI IDs or keys: sample people and groups are invented.
+- What broke:
+  - **Medium (fixed):** before this row Navigation would act on a crafted launch intent's explicit deep-link extras. With no lock in SplitSmart the worst case was opening a screen out of order or crashing it with missing arguments (a nuisance, not a data leak). The launch intent is now replaced by a plain launcher intent before Navigation reads it, and later intents are cleaned the same way.
+  - **Low (fixed):** a stored intro flag of the wrong type could have crashed a typed read; the raw map is read and only a real `true` counts.
+  - Nothing Critical or High.
+- Fixed now:
+  - `LaunchIntentPolicy` (component kept, action MAIN, no data, no extras) in `onCreate` and `onNewIntent`, with a Robolectric attack test on the real activity.
+  - `DataStoreOnboardingRepository`: tolerant read, IOException = done, failed write dropped. `AppStartLogic`: only the first answer decides, 2 s cap.
+  - One finish per intro (screen guard + ViewModel guard); bar Scan ignores taps until groups are known rather than guessing.
+- Scope for improvement:
+  - `filterTouchesWhenObscured` for settle actions (row 13), as the design-system review noted.
+  - If SplitSmart ever adds deep links (a shared settle-up link), they should be parsed by a dedicated allow-list like PayFlow's `IncomingIntentPolicy`, not by Navigation's generic deep-link handling.

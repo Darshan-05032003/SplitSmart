@@ -13,11 +13,21 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
+import javax.inject.Qualifier
 import javax.inject.Singleton
+
+/** True when this build carries a Gemini API key, so scanned receipts are read by AI. Never the key itself. */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class AiReceiptReading
 
 @Module
 @InstallIn(SingletonComponent::class)
 object LlmModule {
+    @Provides
+    @AiReceiptReading
+    fun aiReceiptReading(): Boolean = BuildConfig.LLM_API_KEY.isNotBlank()
+
     @Provides
     @Singleton
     fun okHttpClient(): OkHttpClient = LlmHttpClient.create(GeminiPins.pinner())

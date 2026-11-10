@@ -1,6 +1,9 @@
 package com.darshan.splitsmart.integration
 
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -35,7 +38,10 @@ class MainActivityTest {
         compose.onNodeWithTag(SplitSmartTestTags.FAB_ADD_GROUP).performClick()
         compose.onNodeWithTag(SplitSmartTestTags.GROUP_NAME_FIELD).performTextInput("Flatmates")
         compose.onNodeWithTag(SplitSmartTestTags.DIALOG_CONFIRM).performClick()
-        compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.GROUP_ITEM) }
+        compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.HOME_BALANCE) }
+        // Robolectric's default 320×470dp screen: under the floating bar the card sits just below the fold (on a phone it is on
+        // the first screen, see GroupsUnderBarTest).
+        compose.onNode(hasScrollAction()).performScrollToNode(hasTestTag(SplitSmartTestTags.GROUP_ITEM))
         compose.onNodeWithTag(SplitSmartTestTags.GROUP_ITEM).performClick()
         compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.ADD_MEMBER_BUTTON) }
         compose.onNodeWithText("Flatmates").assertExists()

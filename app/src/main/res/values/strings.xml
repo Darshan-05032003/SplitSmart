@@ -276,4 +276,35 @@
     <string name="onboarding_2_body">Equally, by item or by share. Tax and tip are shared fairly, and the shares always add up to the bill, to the paisa.</string>
     <string name="onboarding_3_title">Settle up over UPI</string>
     <string name="onboarding_3_body">Tap Pay and your UPI app opens with the amount filled in. SplitSmart never touches your money and never marks a debt paid by itself.</string>
+
+    <!-- Shell -->
+    <string name="nav_groups">Groups</string>
+    <string name="nav_scan">Scan</string>
+    <string name="nav_me">Me</string>
+    <string name="scan_needs_group_title">Scanning needs a group</string>
+    <string name="scan_needs_group_body">A receipt is split between the people in a group. Make one, add who was there, then scan.</string>
+
+    <!-- Me -->
+    <string name="me_title">Me</string>
+    <string name="me_name_empty">Add your name</string>
+    <string name="me_name_hint">Matched to your name in each group, so you see what you owe and are owed. Stays on this phone.</string>
+    <string name="me_name_edit">Edit your name</string>
+    <string name="me_feel">How it feels</string>
+    <string name="me_haptics">Haptics</string>
+    <string name="me_haptics_hint">Little taps when you press, switch tabs or settle up</string>
+    <string name="me_reduce_motion">Reduce motion</string>
+    <string name="me_reduce_motion_hint">Short fades instead of bounces, and no confetti</string>
+    <string name="me_theme">Theme</string>
+    <string name="me_theme_system">System</string>
+    <string name="me_theme_light">Light</string>
+    <string name="me_theme_dark">Dark</string>
+    <string name="me_facts">Good to know</string>
+    <string name="me_ai_title">AI receipt reading</string>
+    <string name="me_ai_on">This build has a Gemini API key: the text of a scanned receipt is sent to Gemini to pick out the items.</string>
+    <string name="me_ai_off">This build has no Gemini API key, so a built-in parser on your phone reads receipts.</string>
+    <string name="me_ai_on_pill">On</string>
+    <string name="me_ai_off_pill">Off</string>
+    <string name="me_upi_title">UPI settle-up</string>
+    <string name="me_upi_body">Pay opens your UPI app with the amount filled in. SplitSmart never moves money.</string>
+    <string name="me_intro">Show the intro again</string>
 </resources>

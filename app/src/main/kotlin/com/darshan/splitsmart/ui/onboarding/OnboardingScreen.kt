@@ -65,6 +65,7 @@ import com.darshan.splitsmart.ui.designsystem.tokens.Radii
 import com.darshan.splitsmart.ui.designsystem.tokens.Sizes
 import com.darshan.splitsmart.ui.designsystem.tokens.Spacing
 import com.darshan.splitsmart.ui.designsystem.tokens.Tone
+import com.darshan.splitsmart.ui.navigation.StatusBarSurface
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.drop
@@ -122,6 +123,8 @@ fun OnboardingScreen(onFinish: () -> Unit, modifier: Modifier = Modifier, initia
     }
 
     LaunchedEffect(pager, haptics) { snapshotFlow { pager.settledPage }.drop(1).collect { haptics.tick() } }
+    // The status bar sits on the stage of whichever page has settled.
+    StatusBarSurface(Pages[pager.settledPage.coerceIn(0, Pages.lastIndex)].stage(colors).container)
 
     PredictiveBackHandler(enabled = OnboardingPages.backTarget(pager.currentPage) != null) { progress ->
         val from = pager.currentPage
