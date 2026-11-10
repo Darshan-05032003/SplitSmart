@@ -207,6 +207,7 @@ To keep these benchmarks working as the UI changes:
 - Groups home and group detail stay vertically scrollable: the benchmark picks the tallest scrollable node, whichever component draws it.
 - No new first-launch screen may block a fresh install. The planned onboarding must be marked done by `SeedDataReceiver`, or the benchmarks will time out.
 - `SeedDataReceiver` keeps writing through the repositories; update it if the models or Room schema change.
+- The journeys (`JourneyBenchmark`, `BaselineProfileGenerator`, row 14) find their way by words on screen: the group tiles "Scan receipt" and "Enter manually", the shutter's description "Take photo", "Allow camera", "Save bill", "Split this bill" / "Edit split", "Save split", "Settle up", "Paid another way", "Yes, mark as paid", the top bar's "History", the sheets' "Create group", "Add member" (also the description of the members heading's Add) and "Add bill", and "Skip" on the intro. Rename one and the journey must follow.
 
 
 ## UI Feature: Design system + catalog
@@ -351,3 +352,10 @@ To keep these benchmarks working as the UI changes:
 - Fix applied / recommendation:
   - The glint at 60/120 Hz, the stamp's slam, the bars growing, confetti over a long list and the haptics need a device; they are on the batched device list after row 14.
   - History holds the whole group in memory (as the group screen does); paging is the next step past tens of thousands of rows per group.
+
+## UI Feature: Whole-app design QA (row 14)
+- Scenario and scale: no new load scenario; this row changed copy, emoji, error pages and list-row animation specs. The existing stress suite (`stressTest`) re-ran on the final tree.
+- Results: see the row 14 entry in the private build history for the stress run; the token audit is clean (50 files, 0 legacy budget); `MotionAuditTest` and `EmojiAuditTest` join `TokenAuditTest` as source audits that run in milliseconds.
+- What broke: nothing under load. Two benchmark gaps were closed: the Baseline Profile journey stopped at the camera's permission page, and no benchmark measured the scan → split → settle flow.
+- Failure flow: n/a.
+- Fix applied / recommendation: `BaselineProfileGenerator` now drives the whole first evening (intro, group, two members, the camera page, a typed bill, split, Paid another way, "Yes, mark as paid", history), idempotent across iterations; `JourneyBenchmark` (FrameTimingMetric, `None` and `Partial`, 3 iterations) runs groups → scan (falls back to a seeded bill when the photo has no text) → review → split → settle → history on seeded data, with the camera permission granted by `pm grant`. Both compile (`:macrobenchmark:assembleBenchmark`, `:baselineprofile:assemble`); neither has run (no device in this row). Device session pending.
