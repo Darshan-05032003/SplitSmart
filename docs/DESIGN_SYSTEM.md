@@ -106,16 +106,16 @@ Rules for screens:
 | Need | Component | Notes |
 |---|---|---|
 | Main action | `ChunkyButton(text, onClick, style = Primary)` | one Primary per screen; `loading` swaps the label for dots and ignores taps; one action per 500 ms; light haptic |
-| Other actions | `ChunkyButton(style = Secondary/Ghost/Danger)`, `ChunkyIconButton`, `TextAction` | icon buttons need a `contentDescription`; `IconButtonSize.Fab` for the FAB |
+| Other actions | `ChunkyButton(style = Secondary/Ghost/Danger)`, `ChunkyIconButton`, `TextAction` | icon buttons need a `contentDescription`; `IconButtonSize.Fab` for the FAB; `iconModifier` turns or scales the glyph alone (the FAB's plus becoming a cross) |
 | People | `MemberAvatar(name)`, `AvatarStack(names)` | stack fans out on tap; 200 members show four faces and "+196"; one TalkBack sentence |
 | Money | `AmountText`, `AmountPill(paise, AmountTone)`, `RollingAmount(paise)` | Long paise, ₹, Indian grouping, clamps at ₹99,99,99,999.99, shrinks to fit; "minus" spelled out for TalkBack |
 | Counts | `BumpCounter(count)`, `CountBadge(count)` | bump on change, "99+" past 99 |
 | Choices | `EmojiChip(label, selected, onClick, emoji, exclusive)`, `SsSwitchRow` | `exclusive` = radio (split mode), otherwise checkbox |
 | Status | `StatusPill(StatusKind, label)` | Owed, Owe, Settled, Refining, Ai, Neutral; `animate = false` in long lists |
 | Input | `SsTextField(value, onValueChange, label, error)` | focus ring and glow; error wiggles once with a reject haptic |
-| Structure | `SsTopBar`, `SsSectionHeader`, `ChunkyCard`, `SsListRow` | outside text is cleaned with `DisplayText.safe` |
+| Structure | `SsTopBar`, `SsSectionHeader`, `ChunkyCard`, `SsListRow` | outside text is cleaned with `DisplayText.safe`; `SsSectionHeader(actionModifier)` tags or relabels its action |
 | Empty / error / loading | `EmptyState`, `ErrorState`, `Illustration`, `SkeletonList`, `BrandLoader`, `LoadingDots` | illustrations are code-drawn; no grey spinners |
-| Overlays | `SsBottomSheet(visible, onDismissRequest, dismissible)`, `SsSnackbarHost(state)` | sheet is in-window and last in a full-screen `Box`; snackbar `show()` suspends and returns `Undo`/`TimedOut`/`Dismissed`/`Replaced` |
+| Overlays | `SsBottomSheet(visible, onDismissRequest, dismissible)`, `SsSnackbarHost(state)` | sheet is in-window and last in a full-screen `Box`; on a tab screen call `HideShellBarWhile(open)` so the floating bar steps aside; snackbar `show()` suspends and returns `Undo`/`TimedOut`/`Dismissed`/`Replaced` |
 | Navigation | `SsBottomBar(items, selectedIndex, onSelect, onReselect)` | marigold blob stretches as it travels; tick haptic |
 | Delight | `ConfettiBurst(playKey)` | achievements only; off under reduced motion |
 

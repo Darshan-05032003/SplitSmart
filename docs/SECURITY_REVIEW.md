@@ -209,3 +209,27 @@ One entry per feature, written after attacking the feature as a pentester. Sever
 - Scope for improvement:
   - `filterTouchesWhenObscured` for settle actions (row 13), as the design-system review noted.
   - If SplitSmart ever adds deep links (a shared settle-up link), they should be parsed by a dedicated allow-list like PayFlow's `IncomingIntentPolicy`, not by Navigation's generic deep-link handling.
+
+## UI Feature: Groups home and group screen
+- Attacks tried:
+  - Destructive actions: one tap on delete (before this row it deleted the group, its bills and members at once); 5 taps on the confirmation within a second, 1,000 confirmations through the view model, a failed delete followed by a retry (`GroupDetailScreenTest`, `GroupDetailViewModelTest`, `GroupsStressTest`).
+  - Archive storms: a swipe plus stray taps, 1,000 archive requests for one group, 1,000 archive/undo cycles, a failing write mid-swipe (the card must come back), archive through TalkBack's actions menu (`GroupsViewModelTest`, `GroupsScreenTest`, `GroupsFlowIntegrationTest`, `GroupsStressTest`).
+  - Rapid taps on the FAB menu: taps landing on an item while the menu closes (13 to 100 taps landed), 1,000 attempts in the stress run (`GroupsScreenTest`, `GroupsStressTest`).
+  - Hostile names: a bidi override and a 10,000-character group name on the home card and in the hero's greeting; member names in the faces row, the member sheet, the payer chips and the debt sentences all pass through `DisplayText.safe` (`GroupsScreenTest`, plus the design-system attack tests).
+  - Huge amounts: ₹99,99,99,999.99 in the hero at 1.3× text; 2,000 bills or debts at the ₹1 crore cap summed in the group hero (saturates at the odometer's ceiling instead of wrapping negative) (`GroupsScreenTest`, `GroupDetailLogicTest`).
+  - Process death: the add-expense entry offers its bill sheet once and not again after a restore; an archive survives (it is written before the Undo snackbar shows); open sheets keep their drafts in `SavedStateHandle` as before (`GroupDetailViewModelTest`).
+  - Overlays: in-window sheets cannot outlive their screen; with a sheet or the menu up, the page behind is hidden from TalkBack and the floating bar steps aside, so no stray tap reaches the page or the bar.
+  - Migration: a v3 database with groups and members opens on v4 with every group active (`GroupArchiveDaoTest`).
+  - Screenshot baselines checked for real names, UPI IDs or keys: sample people, groups, cafés and UPI IDs are invented.
+- What broke:
+  - **Medium (fixed):** deleting a group took one tap on an icon beside the title, with no confirmation and no undo, and removed every bill in it. Now behind the options, with a confirmation sheet, single-shot in the view model.
+  - **Low (fixed):** the floating bar was drawn over in-window sheets on tab screens, covering their buttons (Me's Save, the New group button); a tap there went to the bar. The bar now hides while a sheet or menu is up.
+  - **Low (fixed):** removing a member was a 36dp × beside their name; it is now inside the member's sheet, with what removal does spelled out.
+  - Nothing Critical or High.
+- Fixed now:
+  - Delete confirmation sheet + `GroupDetailViewModel.deleteGroup` guard (`deleting` state) with tests; archive as the undoable alternative.
+  - `HideShellBarWhile` + `ShellLogic.barVisible(route, modalOpen)` with tests; applied to Groups and Me.
+  - One action per FAB menu opening; one archive write in flight per group.
+- Scope for improvement:
+  - `filterTouchesWhenObscured` for settle actions remains row 13's job; nothing on these two screens moves money.
+  - A pending-delete with undo would need a soft-delete column and a purge job; not worth it while archive exists.

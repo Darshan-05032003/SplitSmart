@@ -170,6 +170,20 @@ class GroupsScreenTest {
         rule.onNodeWithTag(SplitSmartTestTags.FAB_ADD_GROUP).assertIsDisplayed()
     }
 
+    // ----- hostile text -----
+    @Test
+    fun `a bidi override or a novel-length name cannot reorder or flood the card's sentence`() {
+        val evil = "\u202Eevil\u202C" + "x".repeat(10_000)
+        val card = GroupCard(GroupSummary(testGroup("evil", evil), 1, 1), listOf(evil), outstandingPaise = 100, yourBalancePaise = -100)
+        show(GroupsUiState(LoadState.Content(listOf(card)), overview = HomeOverview(evil, 0, 100, 100, 1, 1)))
+        val description = rule.onNodeWithTag(SplitSmartTestTags.GROUP_ITEM).fetchSemanticsNode()
+            .config[androidx.compose.ui.semantics.SemanticsProperties.ContentDescription].single()
+        assertThat(description).doesNotContain("\u202E")
+        assertThat(description.length).isLessThan(400)
+        assertThat(description).endsWith("you owe ₹1.00")
+        rule.onNodeWithTag(SplitSmartTestTags.GROUP_ITEM).assertInside(rule.onRoot())
+    }
+
     // ----- states -----
     @Test
     fun `loading is a skeleton that TalkBack reads once`() {

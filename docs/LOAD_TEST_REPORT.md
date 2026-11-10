@@ -256,3 +256,30 @@ To keep these benchmarks working as the UI changes:
 - Failure flow (step by step): typing into the dialog field on a 411×891dp Robolectric screen → text re-measured every frame → the trace buffer grows → `OutOfMemoryError` after about 70 s → the rest of that JVM's tests fail with looper errors. Not seen at 320×470.
 - Fix applied / recommendation:
   - Frame timing of the splash exit, intro swipe, container transform and predictive back on a device belongs to the batched device session after row 14 (memory rule: no emulator in this row).
+
+## UI Feature: Groups home and group screen
+- Scenario and scale (JVM, Robolectric, `./gradlew stressTest` → `GroupsStressTest`, plus `GroupsHomeLogicTest` and `GroupDetailLogicTest`; not a device):
+  - Home cards for 10,000 groups with 40,000 members and 100,000 split bills, matched against "your name".
+  - The home list with 10,000 cards: 300 jumps to scattered positions, one frame each.
+  - 1,000 taps on the FAB menu's Scan between frames; 1,000 archive-and-undo cycles through the view model, each with three archive requests (a swipe and two stray taps); 1,000 delete confirmations.
+  - The group screen with 200 members and 500 bills.
+  - ₹99,99,99,999.99 in the hero at 1.3× text; 2,000 bills and 2,000 debts at the ₹1 crore cap summed in the group hero.
+  - The opening stagger over 10,000 cards.
+- Results (numbers):
+  - Cards and overview for 10,000 groups / 40,000 members / 100,000 bills: 46 ms, off the main thread (`Dispatchers.Default` in the view model).
+  - 300 jumps over 10,000 cards: 3,402 ms on Robolectric, 0 recomposer cycles from scrolling, 5 cards composed at the end.
+  - Opening the FAB menu: under 6 recomposer cycles over 30 frames (the items, scrim and turning plus read the spring in layer and draw lambdas). Hero colour morph and roll: under 8 cycles over 40 frames, all from the value change itself.
+  - FAB menu: 13 taps landed on Scan while it closed → 1 scan (87 ms).
+  - Archive/undo: 1,000 cycles (3,000 archive requests) → exactly 1,000 writes and 1,000 Undo offers (239 ms); the group ends active, nothing left pending.
+  - Delete: 1,000 confirmations → 1 delete, 1 event (2 ms).
+  - Group screen, 200 members + 500 bills: 5 faces and 1 bill row composed on a 411dp-wide screen, first frame in 81 ms.
+  - Entrance: 10,000 cards → 8 entrance animations (the first screenful); the rest never animate.
+  - Amounts: the largest fits the hero at 1.3×; the group hero saturates at ₹99,99,99,999.99 instead of overflowing.
+  - Release APK: 46,602,040 bytes, +66,332 bytes (+0.14 %) against row 9's 46,535,708 (two screens, the archive migration, the FAB menu and the swipe).
+- What broke:
+  - Nothing in the app at these scales.
+  - Test environment: `performScrollToNode` on a paused test clock keeps requesting scrolls that never land and exhausted the heap in one screenshot test (`OutOfMemoryError`); screenshot tests now scroll by key. The row 9 layout loop on tall Robolectric screens is gone with the old screens: app-level tests can run at phone size (`MainActivityTest`, 7.9 s).
+- Failure flow (step by step): paused clock → `performScrollToNode` asks the lazy list to scroll → the scroll waits for a frame that never comes → the helper asks again → heap grows until the JVM gives up. Not an app path.
+- Fix applied / recommendation:
+  - Key-based scrolling in screenshot tests; behaviour tests keep the auto-advancing clock.
+  - Frame timing of the hero morph, card swipe, FAB burst and the card-to-screen transform on a device belongs to the batched device session after row 14.
