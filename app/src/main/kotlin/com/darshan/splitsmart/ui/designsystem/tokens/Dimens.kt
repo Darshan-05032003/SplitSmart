@@ -64,6 +64,14 @@ object Strokes {
 
     /** The scan line sweeping the viewfinder. */
     val beam = 3.dp
+
+    /** The split donut's ring, on the split screen and (smaller) on a bill. */
+    val donut = 22.dp
+    val donutSmall = 12.dp
+
+    /** Arrows on the simplify-debts graph: the IOUs before, the payments after. */
+    val graphEdge = 2.dp
+    val graphEdgeBold = 4.dp
 }
 
 /** Fixed component sizes. */
@@ -123,6 +131,13 @@ object Sizes {
 
     /** Corner of the outline drawn around a line of text the camera sees (not tappable, so under the 16dp rule). */
     val textOutlineCorner = 6.dp
+
+    /** The split donut on the split screen and on a bill. */
+    val donut = 148.dp
+    val donutSmall = 96.dp
+
+    /** Height of the simplify-debts graph: eight faces on a ring with room for their names. */
+    val debtGraph = 300.dp
 }
 
 /**

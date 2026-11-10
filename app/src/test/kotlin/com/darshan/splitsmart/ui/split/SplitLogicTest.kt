@@ -6,6 +6,7 @@ import com.darshan.splitsmart.domain.model.SplitConfig
 import com.darshan.splitsmart.domain.model.SplitMode
 import com.darshan.splitsmart.testutil.testItem
 import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Test
 import kotlin.random.Random
 
@@ -143,5 +144,26 @@ class SplitLogicTest {
         assertThat(DropTargets.hit(Offset(500f, 500f), targets, slop = 8f)).isNull()
         assertThat(DropTargets.hit(Offset.Unspecified, targets)).isNull()
         assertThat(DropTargets.hit(Offset(1f, 1f), emptyMap())).isNull()
+    }
+
+    @Test
+    fun `what the adjustment line is called depends on its sign and size`() {
+        assertThat(SplitLogic.adjustmentKind(0)).isNull()
+        assertThat(SplitLogic.adjustmentKind(1)).isEqualTo(AdjustmentKind.RoundOff)
+        assertThat(SplitLogic.adjustmentKind(-99)).isEqualTo(AdjustmentKind.RoundOff)
+        assertThat(SplitLogic.adjustmentKind(-100)).isEqualTo(AdjustmentKind.Discount)
+        assertThat(SplitLogic.adjustmentKind(4_496)).isEqualTo(AdjustmentKind.Charges)
+    }
+
+    @Test
+    fun `neighbouring slices never share a colour, the ring's two ends included`() {
+        for (count in 1..DonutLogic.MAX_SLICES) {
+            for (palette in 3..6) {
+                val colours = (0 until count).map { DonutLogic.colorIndex(it, count, palette) }
+                colours.forEach { assertThat(it).isIn(com.google.common.collect.Range.closedOpen(0, palette)) }
+                for (i in 1 until count) assertWithMessage("$count slices, $palette colours, slice $i").that(colours[i]).isNotEqualTo(colours[i - 1])
+                if (count > 2) assertWithMessage("$count slices, $palette colours, ends").that(colours.last()).isNotEqualTo(colours.first())
+            }
+        }
     }
 }

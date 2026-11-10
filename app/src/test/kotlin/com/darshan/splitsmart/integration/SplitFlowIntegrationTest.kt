@@ -33,6 +33,8 @@ import com.darshan.splitsmart.ui.SplitSmartTestTags
 import com.darshan.splitsmart.ui.groupdetail.GroupDetailRoute
 import com.darshan.splitsmart.ui.groupdetail.GroupDetailViewModel
 import com.darshan.splitsmart.ui.split.SplitRoute
+import com.darshan.splitsmart.ui.split.SplitTags
+import androidx.compose.ui.test.performScrollToKey
 import com.darshan.splitsmart.ui.split.SplitViewModel
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
 import com.darshan.splitsmart.testutil.RecordingAnalyticsTracker
@@ -77,12 +79,21 @@ class SplitFlowIntegrationTest {
         compose.setContent { SplitSmartTheme { SplitRoute(viewModel = vm, onBack = {}, onSaved = { saved = it }) } }
         compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.SPLIT_SAVE) }
         compose.onNodeWithTag(SplitSmartTestTags.SPLIT_MODE_BY_SHARE).performClick()
-        compose.waitUntilWithMainLooper { compose.onAllNodesWithTag(SplitSmartTestTags.SPLIT_SHARE_FIELD).fetchSemanticsNodes().size == 2 }
+        // The share fields sit on each person's row, further down the lazy list: both rows get one.
+        compose.onNodeWithTag(SplitTags.LIST).performScrollToKey("person:b")
+        compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.SPLIT_SHARE_FIELD) }
+        compose.onNodeWithContentDescription("One more for Ravi").assertExists()
+        compose.onNodeWithTag(SplitTags.LIST).performScrollToKey("person:a")
+        compose.onNodeWithContentDescription("One more for Asha").assertExists()
         compose.onAllNodesWithTag(SplitSmartTestTags.SPLIT_SHARE_FIELD)[0].performScrollTo().performTextClearance()
         compose.onAllNodesWithTag(SplitSmartTestTags.SPLIT_SHARE_FIELD)[0].performTextInput("2")
-        compose.onAllNodesWithTag(SplitSmartTestTags.SPLIT_PAYER_CHIP)[0].performScrollTo().performClick()
+        compose.onNodeWithTag(SplitTags.LIST).performScrollToKey("payer")
+        compose.onAllNodesWithTag(SplitSmartTestTags.SPLIT_PAYER_CHIP)[0].performClick()
         compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.SPLIT_PREVIEW_ROW) }
-        compose.onNodeWithText("₹200.00").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag(SplitTags.LIST).performScrollToKey("person:a")
+        // Amounts are read out through their description; the row says whose it is.
+        compose.onNodeWithContentDescription("Asha pays ₹200.00").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Ravi pays ₹100.00").assertExists()
         compose.onNodeWithTag(SplitSmartTestTags.SPLIT_SAVE).performClick()
         compose.waitUntilWithMainLooper { saved == "b1" }
         val bill = runOffMain { billRepo.getBill("b1") }!!

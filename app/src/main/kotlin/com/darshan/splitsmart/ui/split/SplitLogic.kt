@@ -86,10 +86,23 @@ object SplitLogic {
         return if (changed) config.copy(itemAssignments = next) else config
     }
 
+    /** Below a rupee, the adjustment is rounding; above it, a discount (negative) or charges the lines don't show (positive). */
+    fun adjustmentKind(paise: Long): AdjustmentKind? = when {
+        paise == 0L -> null
+        kotlin.math.abs(paise) < ROUND_OFF_LIMIT -> AdjustmentKind.RoundOff
+        paise < 0L -> AdjustmentKind.Discount
+        else -> AdjustmentKind.Charges
+    }
+
+    private const val ROUND_OFF_LIMIT = 100L
+
     /** The share text one stepper press away: unreadable text counts as 0, and the result stays in 0..[MAX_SHARE]. */
     fun stepShare(text: String, delta: Int): String =
         ((text.trim().toIntOrNull() ?: 0).toLong() + delta).coerceIn(0L, MAX_SHARE.toLong()).toString()
 }
+
+/** What the "adjustment" part of someone's share is, in words. */
+enum class AdjustmentKind { RoundOff, Discount, Charges }
 
 /** One slice of the share donut: a person (or everyone past the cap) and their part of the bill. */
 @Immutable
@@ -153,6 +166,19 @@ object DonutLogic {
             out[i * 2 + 1] = if (f > 0f) (sweep - gap).coerceAtLeast(0f) else 0f
             cursor += sweep
         }
+    }
+
+    /**
+     * Colour of slice [index] out of [count], from a palette of [paletteSize]: in turn, except that the last slice skips the first
+     * slice's colour (and its neighbour's), because on a ring the last slice touches the first.
+     */
+    fun colorIndex(index: Int, count: Int, paletteSize: Int): Int {
+        if (paletteSize <= 1) return 0
+        val plain = index % paletteSize
+        if (index != count - 1 || count < 3 || plain != 0) return plain
+        // The last slice would repeat the first colour: take one that differs from both neighbours.
+        val previous = (index - 1) % paletteSize
+        return (1 until paletteSize).firstOrNull { it != previous } ?: plain
     }
 
     private fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t

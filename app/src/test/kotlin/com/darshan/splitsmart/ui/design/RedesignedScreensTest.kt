@@ -12,6 +12,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performScrollToKey
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.darshan.splitsmart.domain.model.BillSource
 import com.darshan.splitsmart.domain.model.GroupSummary
@@ -41,6 +42,7 @@ import com.darshan.splitsmart.ui.navigation.ShellTags
 import com.darshan.splitsmart.ui.split.SplitCallbacks
 import com.darshan.splitsmart.ui.split.SplitEditor
 import com.darshan.splitsmart.ui.split.SplitScreen
+import com.darshan.splitsmart.ui.split.SplitTags
 import com.darshan.splitsmart.ui.split.SplitUiState
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
 import com.google.common.truth.Truth.assertThat
@@ -167,12 +169,18 @@ class RedesignedScreensTest {
         val editor = SplitEditor(bill, members, SplitConfig(SplitMode.EQUAL, listOf("a", "b")), "a", emptyMap(), preview, null)
         compose.setContent {
             SplitSmartTheme {
-                SplitScreen(SplitUiState(LoadState.Content(editor)), SnackbarHostState(), SplitCallbacks({}, {}, {}, {}, { _, _ -> }, { _, _ -> }, {}, {}))
+                SplitScreen(SplitUiState(LoadState.Content(editor)), SsSnackbarState(), SplitCallbacks({}, {}, {}, {}, { _, _ -> }, { _, _ -> }, {}, {}))
             }
         }
-        compose.onNodeWithText("Shares add up to ₹300.00, exactly the bill total (paise-exact).").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("paid").performScrollTo().assertIsDisplayed()
+        // The split screen is a lazy list now: rows further down are reached by key.
+        compose.onNodeWithTag(SplitTags.LIST).performScrollToKey("check")
+        compose.onNodeWithText("Shares add up to ₹300.00, exactly the bill total (paise-exact).").assertIsDisplayed()
+        compose.onNodeWithTag(SplitTags.LIST).performScrollToKey("person:a")
+        compose.onNodeWithText("paid").assertIsDisplayed()
+        compose.onNodeWithTag(SplitTags.LIST).performScrollToKey("person:b")
         assertThat(compose.onAllNodesWithTag(SplitSmartTestTags.SPLIT_PREVIEW_ROW).fetchSemanticsNodes()).hasSize(2)
+        compose.onNodeWithContentDescription("Asha pays ₹150.00").assertExists()
+        compose.onNodeWithContentDescription("Ravi pays ₹150.00").assertExists()
     }
 }
 

@@ -146,9 +146,6 @@
     <string name="split_participants">Who is in</string>
     <string name="split_paid_by">Who paid</string>
     <string name="split_items_title">Who had what</string>
-    <string name="split_assign_hint">Nobody selected = shared by everyone</string>
-    <string name="split_shares_label">Shares or percentages</string>
-    <string name="split_share_hint">Share</string>
     <string name="split_preview_title">Each person pays</string>
     <string name="split_save">Save split</string>
     <string name="split_error_no_participants">Pick at least one person.</string>
@@ -265,10 +262,60 @@
     <string name="review_warning_sum">The lines don\'t add up to the printed total.</string>
 
     <!-- Split -->
-    <string name="split_bill_total">Total %1$s</string>
     <string name="split_paid_badge">paid</string>
     <string name="split_total_check_ok">Shares add up to %1$s, exactly the bill total (paise-exact).</string>
     <string name="split_total_check_off">Shares add up to %1$s but the bill says %2$s.</string>
+
+    <!-- Split screen (row 12) -->
+    <string name="split_mode_percent">Percent</string>
+    <string name="split_dock_hint">Drag a line onto a face, or long-press lines to pick several.</string>
+    <plurals name="split_picked">
+        <item quantity="one">%d picked. Tap a face to hand it over.</item>
+        <item quantity="other">%d picked. Tap a face to hand them over.</item>
+    </plurals>
+    <string name="split_picked_clear">Clear</string>
+    <string name="split_everyone">Shared by everyone</string>
+    <string name="split_all_assigned">Every line has an owner</string>
+    <plurals name="split_unassigned">
+        <item quantity="one">%d line is shared by everyone</item>
+        <item quantity="other">%d lines are shared by everyone</item>
+    </plurals>
+    <plurals name="split_face_items">
+        <item quantity="one">%1$s, %2$d line</item>
+        <item quantity="other">%1$s, %2$d lines</item>
+    </plurals>
+    <string name="split_give_picked">Give the picked lines to %1$s</string>
+    <string name="split_drag_handle">Drag %1$s onto a face</string>
+    <string name="split_pick">Pick</string>
+    <string name="split_unpick">Unpick</string>
+    <string name="split_edit_owners">Choose who had it</string>
+    <plurals name="split_dragging">
+        <item quantity="one">%d line</item>
+        <item quantity="other">%d lines</item>
+    </plurals>
+    <string name="split_percent_left">%1$d%% still to give out</string>
+    <string name="split_percent_over">%1$d%% too many</string>
+    <string name="split_share_label">Shares</string>
+    <string name="split_percent_label">Percent</string>
+    <string name="split_step_up">One more for %1$s</string>
+    <string name="split_step_down">One less for %1$s</string>
+    <plurals name="split_ways">
+        <item quantity="one">for %d person</item>
+        <item quantity="other">split %d ways</item>
+    </plurals>
+    <string name="split_payer_hint">Tap the face of whoever paid.</string>
+    <string name="split_in_split">in the split</string>
+    <string name="split_out_of_split">left out</string>
+    <string name="split_person_amount">%1$s pays %2$s</string>
+    <string name="split_breakdown_discount">Discount %1$s</string>
+    <string name="split_breakdown_charges">Other charges %1$s</string>
+    <string name="split_breakdown_round_off">Round-off %1$s</string>
+    <plurals name="split_share_of">
+        <item quantity="one">%1$d of %2$d share</item>
+        <item quantity="other">%1$d of %2$d shares</item>
+    </plurals>
+    <string name="split_percent_of">%1$d%% of the bill</string>
+    <string name="split_legend_more">+%1$d more</string>
 
     <!-- Settle up -->
     <plurals name="settle_summary">

@@ -4,4 +4,3 @@ app/src/main/kotlin/com/darshan/splitsmart/ui/bill/BillDetailScreen.kt 8
 app/src/main/kotlin/com/darshan/splitsmart/ui/components/Brand.kt 34
 app/src/main/kotlin/com/darshan/splitsmart/ui/components/StateViews.kt 10
 app/src/main/kotlin/com/darshan/splitsmart/ui/settleup/SettleUpScreen.kt 13
-app/src/main/kotlin/com/darshan/splitsmart/ui/split/SplitScreen.kt 18
