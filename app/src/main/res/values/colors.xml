@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#FFB5401F</color>
-    <color name="window_background">#FFFFF8F6</color>
+    <!-- Marigold Mela. The launcher icon and the splash are marigold with an aubergine mark in both themes, so a stored app theme
+         that differs from the system's can never flash the wrong one. -->
+    <color name="ic_launcher_background">#FFFFB627</color>
+    <color name="splash_mark">#FF2B1238</color>
+    <color name="splash_mark_lines">#FFFFF6E3</color>
+    <color name="window_background">#FFFFF8E8</color>
 </resources>

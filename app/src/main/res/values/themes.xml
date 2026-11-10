@@ -2,4 +2,11 @@
     <style name="Theme.SplitSmart" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/window_background</item>
     </style>
+    <!-- Marigold in both themes, like the launcher icon. Below API 31 the library draws a static icon, so the animated one is set in
+         values-v31 only. -->
+    <style name="Theme.SplitSmart.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.SplitSmart</item>
+    </style>
 </resources>

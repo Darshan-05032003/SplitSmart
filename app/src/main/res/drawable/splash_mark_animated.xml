@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Splash (API 31+): the receipt pops in on an overshoot, then tears into two shares that lean apart. Ends exactly on the launcher
+     mark (ic_launcher_foreground). Total length = @integer/splash_icon_duration (MotionDurations.ScreenSlow). -->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt">
+    <aapt:attr name="android:drawable">
+        <vector android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+            <group android:name="mark" android:pivotX="54" android:pivotY="54" android:scaleX="0.6" android:scaleY="0.6">
+                <group android:name="left" android:pivotX="47" android:pivotY="72">
+                    <path android:fillColor="@color/splash_mark" android:pathData="M42,33 L54,33 L52,38 L56,43 L52,48 L56,53 L52,58 L56,63 L52,68 L54,72 L50.5,69.5 L47,72 L43.5,69.5 L40,72 L40,35 Q40,33 42,33 Z" />
+                    <path android:strokeColor="@color/splash_mark_lines" android:strokeWidth="2.4" android:strokeLineCap="round" android:pathData="M43.5,41 L49,41 M43.5,47 L48,47 M43.5,53 L49,53" />
+                </group>
+                <group android:name="right" android:pivotX="61" android:pivotY="72">
+                    <path android:fillColor="@color/splash_mark" android:pathData="M54,33 L66,33 Q68,33 68,35 L68,72 L64.5,69.5 L61,72 L57.5,69.5 L54,72 L52,68 L56,63 L52,58 L56,53 L52,48 L56,43 L52,38 Z" />
+                    <path android:strokeColor="@color/splash_mark_lines" android:strokeWidth="2.4" android:strokeLineCap="round" android:pathData="M59,41 L64.5,41 M60,47 L64.5,47 M58.5,61 L64.5,61" />
+                </group>
+            </group>
+        </vector>
+    </aapt:attr>
+    <target android:name="mark">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator android:duration="380" android:interpolator="@android:interpolator/overshoot"
+                    android:propertyName="scaleX" android:valueFrom="0.6" android:valueTo="1.2" />
+                <objectAnimator android:duration="380" android:interpolator="@android:interpolator/overshoot"
+                    android:propertyName="scaleY" android:valueFrom="0.6" android:valueTo="1.2" />
+            </set>
+        </aapt:attr>
+    </target>
+    <target android:name="left">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator android:startOffset="140" android:duration="320" android:interpolator="@android:interpolator/overshoot"
+                    android:propertyName="translateX" android:valueFrom="0" android:valueTo="-3" />
+                <objectAnimator android:startOffset="140" android:duration="320" android:interpolator="@android:interpolator/overshoot"
+                    android:propertyName="rotation" android:valueFrom="0" android:valueTo="-5" />
+            </set>
+        </aapt:attr>
+    </target>
+    <target android:name="right">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator android:startOffset="140" android:duration="320" android:interpolator="@android:interpolator/overshoot"
+                    android:propertyName="translateX" android:valueFrom="0" android:valueTo="3" />
+                <objectAnimator android:startOffset="140" android:duration="320" android:interpolator="@android:interpolator/overshoot"
+                    android:propertyName="rotation" android:valueFrom="0" android:valueTo="5" />
+            </set>
+        </aapt:attr>
+    </target>
+</animated-vector>

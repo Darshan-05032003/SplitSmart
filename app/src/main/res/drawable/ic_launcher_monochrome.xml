@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Themed-icon layer: the two receipt halves only. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-    <group android:translateX="33" android:translateY="28">
-        <path android:fillColor="#FF000000"
-            android:pathData="M0,6 L5.25,0 L10.5,6 L15.75,0 L21,6 L26.25,0 L31.5,6 L36.75,0 L42,6 L42,30 L0,30 Z" />
-        <path android:fillColor="#FF000000"
-            android:pathData="M19,30h4v8l9,9l2.6,-2.6L35,53h-8.6l2.6,-2.6L21,42.5l-8,7.9l2.6,2.6H7l0.4,-8.6L10,46.5l9,-8.5z" />
-    </group>
+        <group android:name="mark" android:pivotX="54" android:pivotY="54" android:scaleX="1.2" android:scaleY="1.2">
+            <group android:name="left" android:pivotX="47" android:pivotY="72" android:translateX="-3" android:rotation="-5">
+                <path android:fillColor="#FF000000" android:pathData="M42,33 L54,33 L52,38 L56,43 L52,48 L56,53 L52,58 L56,63 L52,68 L54,72 L50.5,69.5 L47,72 L43.5,69.5 L40,72 L40,35 Q40,33 42,33 Z" />
+            </group>
+            <group android:name="right" android:pivotX="61" android:pivotY="72" android:translateX="3" android:rotation="5">
+                <path android:fillColor="#FF000000" android:pathData="M54,33 L66,33 Q68,33 68,35 L68,72 L64.5,69.5 L61,72 L57.5,69.5 L54,72 L52,68 L56,63 L52,58 L56,53 L52,48 L56,43 L52,38 Z" />
+            </group>
+        </group>
 </vector>
