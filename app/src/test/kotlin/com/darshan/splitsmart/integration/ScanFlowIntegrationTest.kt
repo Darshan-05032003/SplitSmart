@@ -67,19 +67,23 @@ class ScanFlowIntegrationTest {
     }
 
     @Test
-    fun `capture shows the recognised text and continue hands over the draft id`() {
-        var continued: String? = null
+    fun `capture reads the receipt and hands its draft to the review once, by itself`() {
+        val continued = mutableListOf<String>()
+        val vm = vm()
         compose.setContent {
-            SplitSmartTheme { ScanRoute(viewModel = vm(), onBack = {}, onContinue = { continued = it }, preview = { Box {} }, requestPermission = {}, pickImage = {}) }
+            SplitSmartTheme(reduceMotion = true) { ScanRoute(viewModel = vm, onBack = {}, onContinue = { continued += it }, preview = { Box {} }, requestPermission = {}, pickImage = {}) }
         }
         compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.CAPTURE_BUTTON) }
         compose.onNodeWithTag(SplitSmartTestTags.CAPTURE_BUTTON).performClick()
+        compose.waitUntilWithMainLooper { continued.isNotEmpty() }
+        assertThat(continued).hasSize(1)
+        val stored = runOffMain { db.receiptDraftDao().getById(continued.single()) }!!
+        assertThat(stored.ocrText).contains("Filter Coffee 40.00")
+        // Back from the review: the saved scan shows what the camera read and leads there again, with the same draft.
         compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.OCR_TEXT) }
         compose.onNodeWithText("Masala Dosa 120.00", substring = true).assertIsDisplayed()
         compose.onNodeWithTag(SplitSmartTestTags.CONTINUE_BUTTON).performClick()
-        assertThat(continued).isNotNull()
-        val stored = runOffMain { db.receiptDraftDao().getById(continued!!) }!!
-        assertThat(stored.ocrText).contains("Filter Coffee 40.00")
+        assertThat(continued).containsExactly(stored.id, stored.id)
         assertThat(camera.captures.get()).isEqualTo(1)
     }
 
@@ -89,7 +93,7 @@ class ScanFlowIntegrationTest {
         var asked = 0
         var picked = 0
         compose.setContent {
-            SplitSmartTheme { ScanRoute(viewModel = vm(), onBack = {}, onContinue = {}, preview = { Box {} }, requestPermission = { asked++ }, pickImage = { picked++ }) }
+            SplitSmartTheme(reduceMotion = true) { ScanRoute(viewModel = vm(), onBack = {}, onContinue = {}, preview = { Box {} }, requestPermission = { asked++ }, pickImage = { picked++ }) }
         }
         compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.GRANT_PERMISSION_BUTTON) }
         compose.onNodeWithTag(SplitSmartTestTags.GRANT_PERMISSION_BUTTON).performClick()

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.darshan.splitsmart.core.DispatcherProvider
 import com.darshan.splitsmart.data.ocr.CameraPermission
+import com.darshan.splitsmart.data.ocr.LiveText
 import com.darshan.splitsmart.data.ocr.ReceiptCamera
 import com.darshan.splitsmart.data.ocr.ReceiptImageStore
 import com.darshan.splitsmart.domain.model.ReceiptDraft
@@ -12,11 +13,16 @@ import com.darshan.splitsmart.domain.model.ScanError
 import com.darshan.splitsmart.domain.repository.ReceiptDraftRepository
 import com.darshan.splitsmart.domain.usecase.ScanOutcome
 import com.darshan.splitsmart.domain.usecase.ScanReceiptUseCase
+import com.darshan.splitsmart.ui.designsystem.effects.HapticEvent
+import com.darshan.splitsmart.ui.designsystem.effects.UiEffect
+import com.darshan.splitsmart.ui.designsystem.effects.UiEffectChannel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -35,9 +41,15 @@ sealed interface ScanPhase {
 
 data class ScanUiState(val phase: ScanPhase, val groupId: String)
 
+/** The scan's own one-off effect: the receipt was read, open the review for this draft. Sent once per scan, never on restore. */
+sealed interface ScanEffect : UiEffect {
+    data class OpenReview(val draftId: String) : ScanEffect
+}
+
 /**
- * Camera / gallery → OCR → saved draft. The draft id is kept in [SavedStateHandle], so after process death the
- * recognised text comes back from Room instead of forcing a re-scan.
+ * Camera / gallery → OCR → saved draft → review. The draft id is kept in [SavedStateHandle], so after process death the
+ * recognised text comes back from Room instead of forcing a re-scan. An accepted shutter plays the heavy haptic once; a finished
+ * scan sends [ScanEffect.OpenReview] once (a restored one waits for the user). Live text outlines run only while [ScanPhase.Ready].
  */
 @HiltViewModel
 class ScanViewModel @Inject constructor(
@@ -51,11 +63,22 @@ class ScanViewModel @Inject constructor(
 ) : ViewModel() {
     val groupId: String = checkNotNull(savedStateHandle[ARG_GROUP_ID]) { "groupId missing" }
     private val phase = MutableStateFlow<ScanPhase>(ScanPhase.CheckingPermission)
+    private val effectChannel = UiEffectChannel()
 
     val uiState: StateFlow<ScanUiState> = phase.map { ScanUiState(it, groupId) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ScanUiState(ScanPhase.CheckingPermission, groupId))
 
+    /** Haptics and the hand-off to the review. */
+    val effects: Flow<UiEffect> = effectChannel.effects
+
+    /** What the live preview sees, as rectangles. Read by the overlay in its draw phase only. */
+    val liveText: StateFlow<LiveText> = camera.liveText
+
     init {
+        // Launched first, so it sees the starting phase before the restore below can move it on.
+        viewModelScope.launch {
+            phase.map { it == ScanPhase.Ready }.distinctUntilChanged().collect { camera.setLiveTextEnabled(it) }
+        }
         viewModelScope.launch {
             val restored = savedStateHandle.get<String>(KEY_DRAFT_ID)?.let { id -> runCatching { drafts.get(id) }.getOrNull() }
             if (restored != null) {
@@ -78,6 +101,7 @@ class ScanViewModel @Inject constructor(
     fun capture() {
         if (phase.value != ScanPhase.Ready) return
         phase.value = ScanPhase.Capturing
+        effectChannel.send(UiEffect.Haptic(HapticEvent.Heavy))
         viewModelScope.launch {
             val file = imageStore.newCaptureFile()
             try {
@@ -101,7 +125,11 @@ class ScanViewModel @Inject constructor(
 
     private fun finish(outcome: ScanOutcome) {
         phase.value = when (outcome) {
-            is ScanOutcome.Success -> { savedStateHandle[KEY_DRAFT_ID] = outcome.draft.id; ScanPhase.Result(outcome.draft) }
+            is ScanOutcome.Success -> {
+                savedStateHandle[KEY_DRAFT_ID] = outcome.draft.id
+                effectChannel.send(ScanEffect.OpenReview(outcome.draft.id))
+                ScanPhase.Result(outcome.draft)
+            }
             is ScanOutcome.Failure -> ScanPhase.Error(outcome.error)
         }
     }

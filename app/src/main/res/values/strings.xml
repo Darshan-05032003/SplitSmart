@@ -66,30 +66,28 @@
     <string name="bill_source_llm">Scanned (AI)</string>
     <string name="bill_source_regex">Scanned (on-device)</string>
 
-    <string name="scan_title">Scan receipt</string>
+    <string name="scan_title">Scan a receipt</string>
     <string name="scan_preview_description">Camera preview</string>
-    <string name="scan_permission_title">Camera access needed</string>
-    <string name="scan_permission_body">SplitSmart uses the camera to photograph receipts. Nothing is uploaded; text is recognised on this device.</string>
-    <string name="scan_permission_denied_body">Camera access was turned off. Enable it in Settings, or pick a photo from the gallery instead.</string>
+    <string name="scan_permission_title">Show SplitSmart the bill</string>
+    <string name="scan_permission_body">The camera reads the receipt\'s text right here on your phone, and the photo stays here too. With AI reading on, only that text goes to Gemini to pick out the items.</string>
+    <string name="scan_permission_denied_body">Camera access is off for SplitSmart. Turn it on in Settings, or pick a photo of the receipt instead.</string>
     <string name="scan_grant_permission">Allow camera</string>
     <string name="scan_open_settings">Open settings</string>
     <string name="scan_pick_gallery">Pick from gallery</string>
     <string name="scan_capture">Take photo</string>
-    <string name="scan_capturing">Taking photo…</string>
     <string name="scan_recognizing">Reading the receipt…</string>
-    <string name="scan_result_title">Recognised text</string>
-    <string name="scan_continue">Continue</string>
+    <string name="scan_result_title">Receipt read</string>
+    <string name="scan_continue">Check the items</string>
     <string name="scan_rescan">Scan again</string>
     <string name="scan_error_no_text">No text found. Try better light or move closer.</string>
     <string name="scan_error_recognition">Text recognition failed. Try again.</string>
     <string name="scan_error_image">That image could not be read.</string>
     <string name="scan_error_capture">The camera could not take a photo.</string>
 
-    <string name="review_title">Review receipt</string>
-    <string name="review_extracting">Reading the receipt with AI…</string>
+    <string name="review_title">Check the bill</string>
     <string name="review_default_title">Scanned bill</string>
     <string name="review_title_label">What was it for?</string>
-    <string name="review_warnings">Some values were repaired. Please check them.</string>
+    <string name="review_warnings">Worth a second look</string>
     <string name="review_fallback_key_missing">AI extraction is off: this build has no Gemini API key. Add LLM_API_KEY=your-key to local.properties and rebuild. Items below were read by the on-device parser; check them.</string>
     <string name="review_fallback_unavailable">AI extraction was unavailable (%1$s). Items were read by the on-device parser.</string>
     <string name="review_fallback_unauthorized">Gemini rejected the API key (HTTP 401/403). Check LLM_API_KEY in local.properties and rebuild. Items below were read by the on-device parser.</string>
@@ -103,9 +101,9 @@
     <string name="review_ai_ready">AI result is ready: %1$s, total %2$s.</string>
     <string name="review_ai_apply">Use AI result</string>
     <string name="review_ai_keep">Keep mine</string>
-    <string name="review_source_llm">AI extraction</string>
-    <string name="review_source_regex">On-device parser</string>
-    <string name="review_source_draft">On-device draft</string>
+    <string name="review_source_llm">Read by AI</string>
+    <string name="review_source_regex">Read by the built-in parser</string>
+    <string name="review_source_draft">Built-in parser draft</string>
     <string name="review_rerun">Try AI again</string>
     <string name="review_item_name">Item</string>
     <string name="review_item_qty">Qty</string>
@@ -115,7 +113,6 @@
     <string name="review_tax">Tax (₹)</string>
     <string name="review_tip">Tip (₹)</string>
     <string name="review_total">Total (₹)</string>
-    <string name="review_mismatch">Items + tax + tip differ from the total by %1$s. A discount or round-off? Keep the printed total or use the computed one.</string>
     <string name="review_use_computed">Use computed total</string>
     <string name="review_save">Save bill</string>
     <string name="llm_failure_key_missing">no API key</string>
@@ -216,22 +213,56 @@
     <string name="bill_no_payer">no payer yet</string>
 
     <!-- Scan / review -->
-    <string name="scan_frame_hint">Fit the whole receipt inside the frame</string>
+    <string name="scan_frame_hint">Fit the whole receipt in the frame</string>
     <string name="scan_gallery_short">Gallery</string>
     <plurals name="scan_result_lines">
-        <item quantity="one">%d line recognised on this device. Next, AI turns it into items.</item>
-        <item quantity="other">%d lines recognised on this device. Next, AI turns them into items.</item>
+        <item quantity="one">%d line read on this phone and saved as a draft for this group.</item>
+        <item quantity="other">%d lines read on this phone and saved as a draft for this group.</item>
     </plurals>
     <plurals name="review_items_header">
         <item quantity="one">%d item</item>
         <item quantity="other">%d items</item>
     </plurals>
-    <string name="review_edit_hint">Everything is editable</string>
+    <string name="review_edit_hint">Tap any line to fix it</string>
     <string name="review_totals">Totals</string>
-    <string name="review_items_subtotal">Items subtotal</string>
+    <string name="review_items_subtotal">Items</string>
     <string name="review_adds_up">Items + tax + tip match the total</string>
     <string name="review_tax_label">Tax</string>
     <string name="review_tip_label">Tip</string>
+    <!-- Scan / review: UI overhaul row 11 -->
+    <string name="scan_hint_text_found">Text found · hold steady</string>
+    <string name="scan_hint_hold">Hold still…</string>
+    <string name="scan_reading_body">Text is read on this phone. The photo never leaves it.</string>
+    <string name="scan_error_title">That didn\'t work</string>
+    <plurals name="scan_more_lines">
+        <item quantity="one">and %d more line</item>
+        <item quantity="other">and %d more lines</item>
+    </plurals>
+    <string name="scan_live_text">Lines of text the camera can see</string>
+    <string name="review_reading_title">Reading your bill</string>
+    <string name="review_reading_ai">Asking the AI first. If it can\'t answer, the built-in parser reads it on this phone.</string>
+    <string name="review_reading_items">Reading the items</string>
+    <string name="review_source_detail_llm">Gemini picked these lines out of the receipt\'s text. Nothing was made up: check them against the paper.</string>
+    <string name="review_row_description">%1$s, quantity %2$s, %3$s</string>
+    <string name="review_row_needs_fix">Needs a fix</string>
+    <string name="review_row_edit">Edit</string>
+    <string name="review_row_done">Done</string>
+    <string name="review_row_remove">Remove</string>
+    <string name="review_item_qty_short">× %1$s</string>
+    <string name="review_item_no_name">Unnamed line</string>
+    <string name="review_paid_by">Who paid?</string>
+    <string name="review_qty_invalid">1 to 999</string>
+    <string name="review_mismatch_over">Items, tax and tip come to %1$s more than the printed total. A discount, or a line read twice?</string>
+    <string name="review_mismatch_under">Items, tax and tip come to %1$s less than the printed total. A service charge, or a line the reading missed?</string>
+    <string name="review_ai_offer_title">The AI finished reading</string>
+    <string name="review_warning_negative">A line with a negative amount was left out.</string>
+    <string name="review_warning_absurd">A line with an impossible amount was left out.</string>
+    <string name="review_warning_item_math">A line where quantity × price didn\'t match was corrected.</string>
+    <string name="review_warning_name">A line without a name got a placeholder name.</string>
+    <string name="review_warning_qty">An impossible quantity was corrected.</string>
+    <string name="review_warning_capped">Only the first 200 lines are here: a bill holds at most 200.</string>
+    <string name="review_warning_total">No total was printed, so it was added up from the lines.</string>
+    <string name="review_warning_sum">The lines don\'t add up to the printed total.</string>
 
     <!-- Split -->
     <string name="split_bill_total">Total %1$s</string>

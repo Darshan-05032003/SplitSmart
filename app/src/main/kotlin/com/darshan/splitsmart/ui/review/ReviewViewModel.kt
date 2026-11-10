@@ -88,6 +88,8 @@ data class ReviewUiState(
     val refining: Boolean = false,
     /** The AI answered after the user had already edited the provisional draft: offered, never forced. */
     val pendingAi: ReviewForm? = null,
+    /** Rows a reading just produced, to type in one by one. Null after a restore: nothing new was read. */
+    val reveal: ItemReveal? = null,
 )
 
 sealed interface ReviewEvent {
@@ -115,6 +117,7 @@ class ReviewViewModel @Inject constructor(
     private var draft: ReceiptDraft? = null
     private var extractionJob: Job? = null
     private var editedWhileRefining = false
+    private var revealCount = 0L
 
     init {
         load()
@@ -149,7 +152,10 @@ class ReviewViewModel @Inject constructor(
             delay(PROVISIONAL_DELAY_MS)
             val result = extractReceipt.provisional(draft.ocrText)
             if (_uiState.value.phase == ReviewPhase.EXTRACTING) {
-                setForm(result.toForm(payerId = _uiState.value.form?.payerId, title = _uiState.value.form?.title ?: ""), persist = false, phase = ReviewPhase.EDITING, refining = true)
+                setForm(
+                    result.toForm(payerId = _uiState.value.form?.payerId, title = _uiState.value.form?.title ?: ""),
+                    persist = false, phase = ReviewPhase.EDITING, refining = true, reveal = true,
+                )
             }
         }
         val result = extractReceipt.extract(draft.ocrText)
@@ -166,7 +172,7 @@ class ReviewViewModel @Inject constructor(
                     setForm(current.copy(llmFailure = result.llmFailure, retryAfterSeconds = result.retryAfterSeconds), refining = false)
                 }
             }
-            else -> setForm(aiForm, persist = true, phase = ReviewPhase.EDITING, refining = false)
+            else -> setForm(aiForm, persist = true, phase = ReviewPhase.EDITING, refining = false, reveal = true)
         }
     }
 
@@ -175,10 +181,13 @@ class ReviewViewModel @Inject constructor(
         val pending = _uiState.value.pendingAi ?: return
         val current = _uiState.value.form ?: return
         if (_uiState.value.phase != ReviewPhase.EDITING) return
-        setForm(pending.copy(title = current.title, payerId = current.payerId), phase = ReviewPhase.EDITING, clearPendingAi = true)
+        setForm(pending.copy(title = current.title, payerId = current.payerId), phase = ReviewPhase.EDITING, clearPendingAi = true, reveal = true)
     }
 
     fun dismissAiResult() = _uiState.update { it.copy(pendingAi = null) }
+
+    /** The screen finished playing reveal [id]: forget it, so coming back to the screen never replays it. */
+    fun revealShown(id: Long) = _uiState.update { if (it.reveal?.id == id) it.copy(reveal = null) else it }
 
     private fun fail(reason: ErrorReason) {
         _uiState.update { it.copy(phase = ReviewPhase.ERROR, error = reason) }
@@ -197,15 +206,33 @@ class ReviewViewModel @Inject constructor(
     }
 
     // ----- editing -----
-    private fun setForm(form: ReviewForm, persist: Boolean = true, phase: ReviewPhase? = null, refining: Boolean? = null, clearPendingAi: Boolean = false) {
+    /**
+     * [reveal] marks a form that came from a reading: its new rows type themselves in. Rows the screen already showed (the draft
+     * the AI is refining, the user's own edits) stay put; while extracting nothing is on screen, so every row is new.
+     */
+    private fun setForm(
+        form: ReviewForm,
+        persist: Boolean = true,
+        phase: ReviewPhase? = null,
+        refining: Boolean? = null,
+        clearPendingAi: Boolean = false,
+        reveal: Boolean = false,
+    ) {
         val subtotal = form.items.sumOf { Money.parseInrToPaise(it.amount) ?: 0L }
         val total = Money.parseInrToPaise(form.total)
         val mismatch = total?.let { subtotal + (Money.parseInrToPaise(form.tax) ?: 0L) + (Money.parseInrToPaise(form.tip) ?: 0L) - it }
+        val before = _uiState.value
+        val nextReveal = if (reveal) {
+            val shown = if (before.phase == ReviewPhase.EDITING) before.form?.items.orEmpty() else emptyList()
+            ItemReveal(++revealCount, ItemRevealLogic.changedKeys(shown, form.items))
+        } else {
+            null
+        }
         _uiState.update {
             it.copy(
                 phase = phase ?: it.phase, form = form, subtotalPaise = subtotal, mismatchPaise = mismatch,
                 errors = if (phase != null) ReviewErrors() else it.errors, refining = refining ?: it.refining,
-                pendingAi = if (clearPendingAi) null else it.pendingAi,
+                pendingAi = if (clearPendingAi) null else it.pendingAi, reveal = nextReveal ?: it.reveal,
             )
         }
         if (persist) savedStateHandle[KEY_FORM] = json.encodeToString(ReviewForm.serializer(), form)
@@ -340,6 +367,6 @@ class ReviewViewModel @Inject constructor(
         private const val INPUT_LIMIT = 200
         private const val AMOUNT_LIMIT = 24
         /** A fast AI answer replaces the spinner directly; only a slower one shows the provisional draft first. */
-        const val PROVISIONAL_DELAY_MS = 400L
+        const val PROVISIONAL_DELAY_MS = 400L // token-audit: allow (how long the AI gets before the draft shows: product timing, not motion)
     }
 }

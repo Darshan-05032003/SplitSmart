@@ -15,6 +15,8 @@ import com.darshan.splitsmart.testutil.fixedClock
 import com.darshan.splitsmart.testutil.testDraft
 import com.darshan.splitsmart.testutil.RecordingAnalyticsTracker
 import com.darshan.splitsmart.testutil.RecordingCrashReporter
+import com.darshan.splitsmart.ui.designsystem.effects.HapticEvent
+import com.darshan.splitsmart.ui.designsystem.effects.UiEffect
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -165,5 +167,84 @@ class ScanViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
         assertThat(drafts.get("d9")).isNull()
         assertThat(handle.get<String>("draftId")).isNull()
+    }
+
+    @Test
+    fun `an accepted shutter plays the heavy haptic once, however many taps`() = runTest(dispatcher) {
+        val vm = vm()
+        vm.uiState.test { awaitItem(); awaitItem(); cancelAndIgnoreRemainingEvents() }
+        vm.effects.test {
+            repeat(5) { vm.capture() }
+            assertThat(awaitItem()).isEqualTo(UiEffect.Haptic(HapticEvent.Heavy))
+            dispatcher.scheduler.advanceUntilIdle()
+            // Then the finished scan hands over to the review, and nothing else arrives.
+            assertThat(awaitItem()).isInstanceOf(ScanEffect.OpenReview::class.java)
+            expectNoEvents()
+        }
+        assertThat(camera.captures.get()).isEqualTo(1)
+    }
+
+    @Test
+    fun `a finished scan opens the review once with the saved draft id`() = runTest(dispatcher) {
+        val handle = SavedStateHandle(mapOf("groupId" to "g1"))
+        val vm = vm(handle)
+        vm.uiState.test { awaitItem(); awaitItem(); cancelAndIgnoreRemainingEvents() }
+        vm.effects.test {
+            vm.onImagePicked("content://media/1")
+            dispatcher.scheduler.advanceUntilIdle()
+            val open = awaitItem() as ScanEffect.OpenReview
+            assertThat(open.draftId).isEqualTo(handle.get<String>("draftId"))
+            assertThat(drafts.get(open.draftId)).isNotNull()
+            expectNoEvents()
+        }
+    }
+
+    @Test
+    fun `a scan restored after process death waits for the user instead of opening the review again`() = runTest(dispatcher) {
+        drafts.save(testDraft("d9"))
+        val vm = vm(SavedStateHandle(mapOf("groupId" to "g1", "draftId" to "d9")))
+        vm.effects.test {
+            vm.uiState.test { awaitItem(); assertThat(awaitItem().phase).isInstanceOf(ScanPhase.Result::class.java); cancelAndIgnoreRemainingEvents() }
+            dispatcher.scheduler.advanceUntilIdle()
+            expectNoEvents()
+        }
+    }
+
+    @Test
+    fun `a failed scan opens nothing and plays no shutter after the failure`() = runTest(dispatcher) {
+        recognizer.lines = emptyList()
+        val vm = vm()
+        vm.uiState.test { awaitItem(); awaitItem(); cancelAndIgnoreRemainingEvents() }
+        vm.effects.test {
+            vm.onImagePicked("content://media/1")
+            dispatcher.scheduler.advanceUntilIdle()
+            expectNoEvents()
+        }
+        assertThat(vm.uiState.value.phase).isEqualTo(ScanPhase.Error(ScanError.NO_TEXT))
+    }
+
+    @Test
+    fun `live text runs only while the camera is ready for a picture`() = runTest(dispatcher) {
+        val vm = vm()
+        vm.uiState.test {
+            awaitItem()
+            assertThat(awaitItem().phase).isEqualTo(ScanPhase.Ready)
+            dispatcher.scheduler.advanceUntilIdle()
+            assertThat(camera.liveTextRequests.last()).isTrue()
+            vm.capture()
+            assertThat(awaitItem().phase).isEqualTo(ScanPhase.Capturing)
+            dispatcher.scheduler.advanceUntilIdle()
+            cancelAndIgnoreRemainingEvents()
+        }
+        // Off from the shutter on: the real OCR gets the processor to itself.
+        assertThat(camera.liveTextRequests).containsExactly(false, true, false).inOrder()
+    }
+
+    @Test
+    fun `live text boxes reach the screen untouched`() = runTest(dispatcher) {
+        val vm = vm()
+        val boxes = com.darshan.splitsmart.data.ocr.LiveText.of(listOf(com.darshan.splitsmart.data.ocr.LiveTextBox(1f, 2f, 30f, 12f)), frame = 1)
+        camera.live.value = boxes
+        assertThat(vm.liveText.value).isEqualTo(boxes)
     }
 }

@@ -53,6 +53,9 @@ enum class IllustrationKind {
 
     /** Something broke: a receipt torn in two. */
     Error,
+
+    /** The camera needs a yes: a receipt inside marigold viewfinder corners, a scan line drifting over it. */
+    Camera,
 }
 
 /** How far an illustration bobs, as a fraction of its size, and how much the marigold sways, in degrees. */
@@ -64,6 +67,10 @@ private const val SPRINKLE_ALPHA = 0.85f
 private val ReceiptBox = Rect(24f, 14f, 68f, 84f)
 private val SearchReceiptBox = Rect(22f, 16f, 64f, 82f)
 private val TornReceiptBox = Rect(26f, 12f, 70f, 86f)
+private val CameraReceiptBox = Rect(30f, 20f, 70f, 80f)
+
+/** The viewfinder corners around the camera illustration's receipt: x, y and the direction of both arms, per corner. */
+private val CameraCorners = floatArrayOf(18f, 10f, 1f, 1f, 82f, 10f, -1f, 1f, 18f, 90f, 1f, -1f, 82f, 90f, -1f, -1f)
 
 /**
  * Draws an illustration. It bobs gently and its marigold sways (decorative: still under reduced motion or with [animate] false).
@@ -90,6 +97,7 @@ fun Illustration(kind: IllustrationKind, modifier: Modifier = Modifier, size: Dp
                         when (kind) {
                             IllustrationKind.Search -> SearchReceiptBox
                             IllustrationKind.Error -> TornReceiptBox
+                            IllustrationKind.Camera -> CameraReceiptBox
                             else -> ReceiptBox
                         },
                         u,
@@ -120,6 +128,7 @@ fun Illustration(kind: IllustrationKind, modifier: Modifier = Modifier, size: Dp
                             IllustrationKind.Settled -> drawSettled(parts, art, wave)
                             IllustrationKind.Search -> drawSearch(parts, art)
                             IllustrationKind.Error -> drawTorn(parts, art)
+                            IllustrationKind.Camera -> drawCamera(parts, art, wave)
                         }
                     }
                 }
@@ -271,6 +280,21 @@ private fun DrawScope.drawTorn(parts: IllustrationParts, art: IllustrationColors
     }
     drawCircle(art.chilli, 3f * u, Offset(78f * u, 30f * u))
     drawCircle(art.petal, 2.2f * u, Offset(18f * u, 66f * u))
+}
+
+/** A receipt framed by four marigold corners, with a scan line that drifts with the bob (still when motion is reduced). */
+private fun DrawScope.drawCamera(parts: IllustrationParts, art: IllustrationColors, wave: Float) {
+    val u = parts.u
+    drawReceipt(parts, CameraReceiptBox, art)
+    val arm = 13f * u
+    for (i in 0 until 4) {
+        val corner = Offset(CameraCorners[i * 4] * u, CameraCorners[i * 4 + 1] * u)
+        drawLine(art.petal, corner, Offset(corner.x + CameraCorners[i * 4 + 2] * arm, corner.y), parts.bold.width, StrokeCap.Round)
+        drawLine(art.petal, corner, Offset(corner.x, corner.y + CameraCorners[i * 4 + 3] * arm), parts.bold.width, StrokeCap.Round)
+    }
+    val beamY = (50f + wave * 16f) * u
+    drawRect(art.petal, topLeft = Offset(26f * u, beamY - 7f * u), size = Size(48f * u, 7f * u), alpha = 0.18f)
+    drawLine(art.petalDeep, Offset(24f * u, beamY), Offset(76f * u, beamY), 2.6f * u, StrokeCap.Round)
 }
 
 /**

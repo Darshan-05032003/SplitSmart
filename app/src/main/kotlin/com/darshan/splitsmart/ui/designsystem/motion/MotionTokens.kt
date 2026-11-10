@@ -42,6 +42,9 @@ object MotionDurations {
     /** Gap between the steps of a sequence that plays one item at a time, such as AI lines resolving. */
     const val SequenceStep = 260
 
+    /** One pass of the camera's scan line down the viewfinder (decorative, so it stops under reduced motion). */
+    const val ScanSweep = 1800
+
     /** Two accepted taps on the same button are at least this far apart. */
     const val TapDebounce = 500
 }

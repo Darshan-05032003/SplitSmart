@@ -3,10 +3,12 @@ package com.darshan.splitsmart.integration
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performScrollToKey
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.SavedStateHandle
@@ -32,6 +34,7 @@ import com.darshan.splitsmart.testutil.testGroup
 import com.darshan.splitsmart.testutil.waitUntilWithMainLooper
 import com.darshan.splitsmart.ui.SplitSmartTestTags
 import com.darshan.splitsmart.ui.review.ReviewRoute
+import com.darshan.splitsmart.ui.review.ReviewTags
 import com.darshan.splitsmart.ui.review.ReviewViewModel
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
 import com.darshan.splitsmart.testutil.RecordingAnalyticsTracker
@@ -47,7 +50,7 @@ import org.robolectric.annotation.Config
 
 /** Draft in Room → fake Gemini → review screen → edit → save → Bill with items in Room. */
 @RunWith(AndroidJUnit4::class)
-@Config(sdk = [35])
+@Config(sdk = [35], qualifiers = "w411dp-h891dp-xhdpi")
 class ReviewFlowIntegrationTest {
     @get:Rule val compose = createComposeRule()
     private lateinit var db: SplitSmartDatabase
@@ -75,15 +78,22 @@ class ReviewFlowIntegrationTest {
     @Test
     fun `llm items are shown, editable and saved as a bill`() {
         var savedId: String? = null
-        compose.setContent { SplitSmartTheme { ReviewRoute(viewModel = vm(), onBack = {}, onSaved = { savedId = it }) } }
+        compose.setContent { SplitSmartTheme(reduceMotion = true) { ReviewRoute(viewModel = vm(), onBack = {}, onSaved = { savedId = it }) } }
         compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.REVIEW_SAVE) }
         compose.onAllNodesWithTag(SplitSmartTestTags.REVIEW_ITEM).assertCountEquals(2)
-        compose.onNodeWithText("AI extraction").assertIsDisplayed() // review source label
+        compose.onNodeWithContentDescription("Read by AI").assertIsDisplayed() // who read the bill
+        compose.onNodeWithText("Gemini picked these lines out", substring = true).assertIsDisplayed()
         compose.onNodeWithTag(SplitSmartTestTags.REVIEW_TITLE).performTextInput("Team dinner")
-        compose.onAllNodesWithTag(SplitSmartTestTags.REVIEW_ITEM_AMOUNT)[0].performScrollTo().performTextClearance()
-        compose.onAllNodesWithTag(SplitSmartTestTags.REVIEW_ITEM_AMOUNT)[0].performTextInput("300")
+        // Rows are compact: the editor opens in place on a tap, and only for that row.
+        assertThat(compose.onAllNodesWithTagExists(SplitSmartTestTags.REVIEW_ITEM_AMOUNT)).isFalse()
+        compose.onAllNodesWithTag(ReviewTags.ROW_SUMMARY).onFirst().performClick()
+        compose.onAllNodesWithTag(SplitSmartTestTags.REVIEW_ITEM_AMOUNT).assertCountEquals(1)
+        compose.onNodeWithTag(SplitSmartTestTags.REVIEW_ITEM_AMOUNT).performTextClearance()
+        compose.onNodeWithTag(SplitSmartTestTags.REVIEW_ITEM_AMOUNT).performTextInput("300")
+        compose.onNodeWithTag(ReviewTags.LIST).performScrollToKey("totals")
         compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.MISMATCH_BANNER) }
-        compose.onNodeWithTag(SplitSmartTestTags.USE_COMPUTED_TOTAL).performScrollTo().performClick()
+        compose.onNodeWithText("₹50.00 more than the printed total", substring = true).assertExists()
+        compose.onNodeWithTag(SplitSmartTestTags.USE_COMPUTED_TOTAL).performClick()
         compose.onNodeWithTag(SplitSmartTestTags.REVIEW_SAVE).performClick()
         compose.waitUntilWithMainLooper { savedId != null }
         val bill = runOffMain { BillRepositoryImpl(db.billDao(), dispatchers).getBill(savedId!!) }!!
@@ -97,9 +107,9 @@ class ReviewFlowIntegrationTest {
     @Test
     fun `without an api key the on-device parser result is shown with a notice`() {
         llm.failWith = LlmException.KeyMissing()
-        compose.setContent { SplitSmartTheme { ReviewRoute(viewModel = vm(), onBack = {}, onSaved = {}) } }
+        compose.setContent { SplitSmartTheme(reduceMotion = true) { ReviewRoute(viewModel = vm(), onBack = {}, onSaved = {}) } }
         compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.FALLBACK_BANNER) }
-        compose.onNodeWithText("On-device parser").assertIsDisplayed() // review source label
+        compose.onNodeWithContentDescription("Read by the built-in parser").assertIsDisplayed() // who read the bill
         compose.onAllNodesWithTag(SplitSmartTestTags.REVIEW_ITEM).assertCountEquals(2)
         compose.onNodeWithText("Paneer Tikka", substring = true).assertExists()
         // key missing: no point offering a retry of the AI path, and the banner says how to configure the key
@@ -110,23 +120,23 @@ class ReviewFlowIntegrationTest {
     @Test
     fun `a slow AI shows the editable on-device draft with a refining banner, then the AI result`() {
         llm.delayMs = 1_500
-        compose.setContent { SplitSmartTheme { ReviewRoute(viewModel = vm(), onBack = {}, onSaved = {}) } }
+        compose.setContent { SplitSmartTheme(reduceMotion = true) { ReviewRoute(viewModel = vm(), onBack = {}, onSaved = {}) } }
         // the provisional delay runs on the (paused) Robolectric main looper: advance its clock while waiting
         compose.waitUntil(5_000) {
             org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(100))
             compose.onAllNodesWithTagExists(SplitSmartTestTags.REFINING_BANNER)
         }
-        compose.onNodeWithText("On-device draft").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Built-in parser draft").assertIsDisplayed()
         compose.onAllNodesWithTag(SplitSmartTestTags.REVIEW_ITEM).assertCountEquals(2)
         compose.waitUntilWithMainLooper(timeoutMillis = 10_000) { !compose.onAllNodesWithTagExists(SplitSmartTestTags.REFINING_BANNER) }
-        compose.onNodeWithText("AI extraction").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Read by AI").assertIsDisplayed()
         assertThat(compose.onAllNodesWithTagExists(SplitSmartTestTags.FALLBACK_BANNER)).isFalse()
     }
 
     @Test
     fun `rate limit copy shows the server's wait`() {
         llm.failWith = LlmException.RateLimited(20_000)
-        compose.setContent { SplitSmartTheme { ReviewRoute(viewModel = vm(), onBack = {}, onSaved = {}) } }
+        compose.setContent { SplitSmartTheme(reduceMotion = true) { ReviewRoute(viewModel = vm(), onBack = {}, onSaved = {}) } }
         compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(SplitSmartTestTags.FALLBACK_BANNER) }
         compose.onNodeWithText("Try again in 20 s", substring = true).assertExists()
         compose.onNodeWithTag(SplitSmartTestTags.REVIEW_RERUN).assertExists()

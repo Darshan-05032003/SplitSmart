@@ -58,6 +58,12 @@ object Strokes {
 
     /** The soft glow around a focused field. */
     val focusGlow = 4.dp
+
+    /** The camera's viewfinder corners. */
+    val bracket = 5.dp
+
+    /** The scan line sweeping the viewfinder. */
+    val beam = 3.dp
 }
 
 /** Fixed component sizes. */
@@ -107,6 +113,16 @@ object Sizes {
     val loader = 48.dp
     val loaderSmall = 24.dp
     val loadingDot = 6.dp
+
+    /** The camera's shutter and the disc inside its ring. */
+    val shutter = 76.dp
+    val shutterInner = 58.dp
+
+    /** One arm of a viewfinder corner bracket. */
+    val viewfinderBracket = 36.dp
+
+    /** Corner of the outline drawn around a line of text the camera sees (not tappable, so under the 16dp rule). */
+    val textOutlineCorner = 6.dp
 }
 
 /**

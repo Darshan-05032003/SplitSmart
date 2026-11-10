@@ -14,6 +14,7 @@ import com.darshan.splitsmart.testutil.FakeLlmExtractor
 import com.darshan.splitsmart.testutil.FakeReceiptDraftRepository
 import com.darshan.splitsmart.testutil.FakeReceiptImageStore
 import com.darshan.splitsmart.testutil.MainDispatcherRule
+import com.darshan.splitsmart.testutil.SAMPLE_LLM_JSON
 import com.darshan.splitsmart.testutil.SAMPLE_OCR_TEXT
 import com.darshan.splitsmart.testutil.TestDispatcherProvider
 import com.darshan.splitsmart.testutil.fixedClock
@@ -337,5 +338,76 @@ class ReviewViewModelTest {
         vm.save("d")
         dispatcher.scheduler.advanceUntilIdle()
         assertThat(vm.uiState.value.errors.title).isEqualTo(NameError.TOO_LONG)
+    }
+
+    // ----- the line-by-line reveal (UI overhaul row 11) -----
+
+    @Test
+    fun `a fast AI answer types every row in once`() = runTest(dispatcher) {
+        val state = vm().awaitEditing()
+        val reveal = state.reveal!!
+        assertThat(reveal.keys).containsExactlyElementsIn(state.form!!.items.map { it.key }).inOrder()
+    }
+
+    @Test
+    fun `the on-device draft types in, then the AI retypes only the rows it read differently`() = runTest(dispatcher) {
+        llm.delayMs = 3_000
+        llm.response = SAMPLE_LLM_JSON.replace("Butter Naan", "Garlic Naan")
+        val vm = vm()
+        vm.uiState.test {
+            var provisional = awaitItem()
+            while (!provisional.refining) provisional = awaitItem()
+            val first = provisional.reveal!!
+            assertThat(first.keys).containsExactlyElementsIn(provisional.form!!.items.map { it.key }).inOrder()
+            val refined = awaitItem()
+            assertThat(refined.form!!.source).isEqualTo(ExtractionSource.LLM)
+            val second = refined.reveal!!
+            assertThat(second.id).isGreaterThan(first.id)
+            // Paneer Tikka was read the same both times; only the naan changed.
+            assertThat(second.keys).containsExactly(refined.form!!.items[1].key)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `typing into the form never replays the reveal`() = runTest(dispatcher) {
+        val vm = vm()
+        val before = vm.awaitEditing().reveal
+        vm.uiState.test {
+            awaitItem()
+            vm.onItemNameChange(vm.uiState.value.form!!.items[0].key, "Paneer Tikka (half)")
+            assertThat(awaitItem().reveal).isEqualTo(before)
+            vm.addItem()
+            assertThat(awaitItem().reveal).isEqualTo(before)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `using the offered AI result retypes what differs from the user's draft`() = runTest(dispatcher) {
+        llm.delayMs = 3_000
+        val vm = vm()
+        vm.uiState.test {
+            while (!awaitItem().refining) { /* provisional */ }
+            val key = vm.uiState.value.form!!.items[0].key
+            vm.onItemNameChange(key, "Paneer (mine)")
+            awaitItem()
+            assertThat(awaitItem().pendingAi).isNotNull()
+            val beforeApply = vm.uiState.value.reveal!!
+            vm.applyAiResult()
+            val applied = awaitItem()
+            assertThat(applied.reveal!!.id).isGreaterThan(beforeApply.id)
+            assertThat(applied.reveal!!.keys).containsExactly(applied.form!!.items[0].key)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a form restored after process death appears without a reveal`() = runTest(dispatcher) {
+        val handle = SavedStateHandle(mapOf("draftId" to "d1"))
+        vm(handle).awaitEditing()
+        val restored = vm(handle).awaitEditing()
+        assertThat(restored.form).isNotNull()
+        assertThat(restored.reveal).isNull()
     }
 }
