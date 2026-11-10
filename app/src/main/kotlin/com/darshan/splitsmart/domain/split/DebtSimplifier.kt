@@ -2,6 +2,7 @@ package com.darshan.splitsmart.domain.split
 
 import com.darshan.splitsmart.domain.model.Bill
 import com.darshan.splitsmart.domain.model.Debt
+import com.darshan.splitsmart.domain.model.Settlement
 import java.util.PriorityQueue
 
 /**
@@ -32,14 +33,23 @@ object DebtSimplifier {
         return debts
     }
 
-    /** Net balance per member over all split bills with a known payer (positive = is owed money). */
-    fun balances(bills: List<Bill>): Map<String, Long> {
+    /**
+     * Net balance per member over all split bills with a known payer (positive = is owed money), less the payments already
+     * marked as settled: whoever paid back moves up, whoever was paid moves down. A payment whose member left is skipped.
+     */
+    fun balances(bills: List<Bill>, settlements: List<Settlement> = emptyList()): Map<String, Long> {
         val balances = linkedMapOf<String, Long>()
         for (bill in bills) {
             val split = bill.split ?: continue
             val payer = bill.paidByMemberId ?: continue
             balances[payer] = (balances[payer] ?: 0L) + bill.totalPaise
             for (share in split.shares) balances[share.memberId] = (balances[share.memberId] ?: 0L) - share.totalPaise
+        }
+        for (payment in settlements) {
+            val from = payment.fromMemberId ?: continue
+            val to = payment.toMemberId ?: continue
+            balances[from] = (balances[from] ?: 0L) + payment.amountPaise
+            balances[to] = (balances[to] ?: 0L) - payment.amountPaise
         }
         return balances
     }

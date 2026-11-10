@@ -18,6 +18,7 @@ import com.darshan.splitsmart.core.DefaultDispatcherProvider
 import com.darshan.splitsmart.data.local.SplitSmartDatabase
 import com.darshan.splitsmart.data.repository.BillRepositoryImpl
 import com.darshan.splitsmart.data.repository.GroupRepositoryImpl
+import com.darshan.splitsmart.data.repository.SettlementRepositoryImpl
 import com.darshan.splitsmart.domain.usecase.AddMemberUseCase
 import com.darshan.splitsmart.domain.usecase.CreateGroupUseCase
 import com.darshan.splitsmart.domain.usecase.CreateManualBillUseCase
@@ -64,7 +65,7 @@ class GroupsFlowIntegrationTest {
     @After
     fun tearDown() = db.close()
 
-    private fun homeVm() = GroupsViewModel(groups, bills, com.darshan.splitsmart.data.settings.InMemoryProfileRepository(), CreateGroupUseCase(groups), dispatchers)
+    private fun homeVm() = GroupsViewModel(groups, bills, SettlementRepositoryImpl(db.settlementDao(), fixedClock, dispatchers), com.darshan.splitsmart.data.settings.InMemoryProfileRepository(), CreateGroupUseCase(groups), dispatchers)
 
     @Test
     fun `empty state then create a group from the sheet and open it`() {
@@ -119,7 +120,7 @@ class GroupsFlowIntegrationTest {
     fun `group detail adds a member and a manual bill`() {
         val group = runOffMain { groups.createGroup("Goa trip") }
         val vm = GroupDetailViewModel(
-            SavedStateHandle(mapOf("groupId" to group.id)), groups, bills,
+            SavedStateHandle(mapOf("groupId" to group.id)), groups, bills, SettlementRepositoryImpl(db.settlementDao(), fixedClock, dispatchers),
             AddMemberUseCase(groups), CreateManualBillUseCase(bills, fixedClock), dispatchers,
         )
         var openedBill: String? = null

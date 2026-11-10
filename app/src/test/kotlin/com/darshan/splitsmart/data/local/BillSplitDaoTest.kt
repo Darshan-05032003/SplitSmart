@@ -90,7 +90,7 @@ class BillSplitDaoTest {
             assertThat(bill.shares).isEmpty()
             assertThat(migrated.billDao().countShares()).isEqualTo(0)
             // Room opens at the newest version: v2 → v3 (this test) → v4 (archive) in one go.
-            assertThat(migrated.openHelper.readableDatabase.version).isEqualTo(4)
+            assertThat(migrated.openHelper.readableDatabase.version).isEqualTo(5) // every migration up to the current version ran
         } finally {
             migrated.close()
             context.deleteDatabase(name)

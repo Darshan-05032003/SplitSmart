@@ -243,7 +243,7 @@ private fun GroupDetailContent(detail: GroupDetail, callbacks: GroupDetailCallba
     val addMemberLabel = stringResource(R.string.members_add)
     val colors = SplitSmartTheme.colors
     val type = SplitSmartTheme.type
-    val graph = remember(detail.members, detail.bills) { DebtGraphLogic.graph(detail.members, detail.bills) }
+    val graph = remember(detail.members, detail.bills, detail.settlements) { DebtGraphLogic.graph(detail.members, detail.bills, detail.settlements) }
     LazyColumn(Modifier.fillMaxSize().testTag(GroupDetailTags.LIST), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         item(key = "hero", contentType = "hero") {
             GroupHero(detail, primary, callbacks.onSettleUp, Modifier.padding(horizontal = Spacing.screen, vertical = Spacing.xxs))
@@ -315,7 +315,7 @@ private fun GroupDetailContent(detail: GroupDetail, callbacks: GroupDetailCallba
 private fun SimplifySheet(detail: GroupDetail, visible: Boolean, playKey: Int, onReplay: () -> Unit, onDismiss: () -> Unit) {
     val unknown = stringResource(R.string.member_unknown)
     val names = remember(detail.members) { detail.members.associate { it.id to it.name } }
-    val graph = remember(detail.members, detail.bills) { DebtGraphLogic.graph(detail.members, detail.bills) }
+    val graph = remember(detail.members, detail.bills, detail.settlements) { DebtGraphLogic.graph(detail.members, detail.bills, detail.settlements) }
     SsBottomSheet(visible = visible, onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
             SimplifySheetContent(graph, nameOf = { names[it] ?: unknown }, playKey = playKey, onReplay = onReplay)

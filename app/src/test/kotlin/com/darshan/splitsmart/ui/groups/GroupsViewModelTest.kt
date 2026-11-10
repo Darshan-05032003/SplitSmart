@@ -26,10 +26,11 @@ class GroupsViewModelTest {
     @get:Rule val mainRule = MainDispatcherRule(dispatcher)
     private val repo = FakeGroupRepository()
     private val bills = com.darshan.splitsmart.testutil.FakeBillRepository()
+    private val settlements = com.darshan.splitsmart.testutil.FakeSettlementRepository()
     private val profile = com.darshan.splitsmart.data.settings.InMemoryProfileRepository()
 
     private fun vm(repository: FakeGroupRepository = repo) =
-        GroupsViewModel(repository, bills, profile, CreateGroupUseCase(repository), TestDispatcherProvider(dispatcher))
+        GroupsViewModel(repository, bills, settlements, profile, CreateGroupUseCase(repository), TestDispatcherProvider(dispatcher))
 
     @Test
     fun `starts loading then shows empty when there are no groups`() = runTest(dispatcher) {
@@ -155,6 +156,23 @@ class GroupsViewModelTest {
         assertThat(overview.youOwePaise).isEqualTo(10_000)
         assertThat(overview.outstandingPaise).isEqualTo(25_000)
         assertThat(overview.groupsWithYou).isEqualTo(2)
+    }
+
+    @Test
+    fun `payments marked as settled count in your balance, what is left and the last activity`() {
+        seedTwoGroups()
+        // I paid Ravi back in the flat, later than any bill there.
+        val later = java.time.Instant.EPOCH.plusSeconds(120)
+        val paid = com.darshan.splitsmart.testutil.testSettlement("s1", "flat", from = "f-me", to = "f-ravi", amountPaise = 10_000, createdAt = later)
+        val cards = GroupsViewModel.buildCards(
+            repo.groups.value.map { GroupSummary(it, 2, 1) }, repo.members.value, bills.bills.value, yourName = "Darshan", settlements = listOf(paid),
+        )
+        val flat = cards.single { it.group.id == "flat" }
+        assertThat(flat.yourBalancePaise).isEqualTo(0)
+        assertThat(flat.outstandingPaise).isEqualTo(0)
+        assertThat(flat.lastActivity).isEqualTo(later)
+        assertThat(cards.single { it.group.id == "goa" }.yourBalancePaise).isEqualTo(15_000)
+        assertThat(GroupsViewModel.overviewOf(cards, "Darshan").youOwePaise).isEqualTo(0)
     }
 
     @Test

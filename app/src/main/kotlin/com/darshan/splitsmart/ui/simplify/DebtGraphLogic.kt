@@ -5,6 +5,7 @@ import androidx.compose.ui.geometry.Offset
 import com.darshan.splitsmart.domain.model.Bill
 import com.darshan.splitsmart.domain.model.Debt
 import com.darshan.splitsmart.domain.model.Member
+import com.darshan.splitsmart.domain.model.Settlement
 import com.darshan.splitsmart.domain.split.DebtSimplifier
 import kotlin.math.abs
 import kotlin.math.cos
@@ -45,8 +46,11 @@ object DebtGraphLogic {
 
     private const val HALF = 0.5f
 
-    /** Who owes whom bill by bill: each sharer owes the payer their share; opposite IOUs between two people cancel. */
-    fun pairwise(bills: List<Bill>): List<Debt> {
+    /**
+     * Who owes whom bill by bill: each sharer owes the payer their share; a payment already settled is an IOU the other way;
+     * opposite IOUs between two people cancel.
+     */
+    fun pairwise(bills: List<Bill>, settlements: List<Settlement> = emptyList()): List<Debt> {
         val owed = LinkedHashMap<Pair<String, String>, Long>()
         for (bill in bills) {
             val split = bill.split ?: continue
@@ -56,6 +60,12 @@ object DebtGraphLogic {
                 val key = share.memberId to payer
                 owed[key] = (owed[key] ?: 0L) + share.totalPaise
             }
+        }
+        for (payment in settlements) {
+            val from = payment.fromMemberId ?: continue
+            val to = payment.toMemberId ?: continue
+            val key = to to from
+            owed[key] = (owed[key] ?: 0L) + payment.amountPaise
         }
         val result = mutableListOf<Debt>()
         val seen = HashSet<Pair<String, String>>()
@@ -73,9 +83,9 @@ object DebtGraphLogic {
         return result.sortedWith(compareByDescending<Debt> { it.amountPaise }.thenBy { it.fromMemberId }.thenBy { it.toMemberId })
     }
 
-    fun graph(members: List<Member>, bills: List<Bill>, maxNodes: Int = MAX_NODES): DebtGraph {
-        val before = pairwise(bills)
-        val balances = DebtSimplifier.balances(bills)
+    fun graph(members: List<Member>, bills: List<Bill>, settlements: List<Settlement> = emptyList(), maxNodes: Int = MAX_NODES): DebtGraph {
+        val before = pairwise(bills, settlements)
+        val balances = DebtSimplifier.balances(bills, settlements)
         val after = DebtSimplifier.simplify(balances)
         val names = members.associate { it.id to it.name }
         val involved = (before + after).flatMap { listOf(it.fromMemberId, it.toMemberId) }.distinct()

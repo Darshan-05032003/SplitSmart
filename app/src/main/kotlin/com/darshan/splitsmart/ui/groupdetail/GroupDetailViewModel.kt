@@ -9,10 +9,12 @@ import com.darshan.splitsmart.domain.model.Debt
 import com.darshan.splitsmart.domain.split.DebtSimplifier
 import com.darshan.splitsmart.domain.model.Group
 import com.darshan.splitsmart.domain.model.Member
+import com.darshan.splitsmart.domain.model.Settlement
 import com.darshan.splitsmart.domain.model.NameError
 import com.darshan.splitsmart.domain.model.VpaError
 import com.darshan.splitsmart.domain.repository.BillRepository
 import com.darshan.splitsmart.domain.repository.GroupRepository
+import com.darshan.splitsmart.domain.repository.SettlementRepository
 import com.darshan.splitsmart.domain.usecase.AddMemberResult
 import com.darshan.splitsmart.domain.usecase.AddMemberUseCase
 import com.darshan.splitsmart.domain.usecase.CreateBillResult
@@ -38,7 +40,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class GroupDetail(val group: Group, val members: List<Member>, val bills: List<Bill>, val debts: List<Debt> = emptyList(), val unsettledBills: Int = 0)
+data class GroupDetail(
+    val group: Group,
+    val members: List<Member>,
+    val bills: List<Bill>,
+    val debts: List<Debt> = emptyList(),
+    val unsettledBills: Int = 0,
+    /** Payments already marked as made; they count in [debts] and in the simplify picture. */
+    val settlements: List<Settlement> = emptyList(),
+)
 
 data class MemberDraft(
     val name: String = "",
@@ -83,6 +93,7 @@ class GroupDetailViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val groupRepository: GroupRepository,
     billRepository: BillRepository,
+    settlementRepository: SettlementRepository,
     private val addMember: AddMemberUseCase,
     private val createManualBill: CreateManualBillUseCase,
     dispatchers: DispatcherProvider,
@@ -116,8 +127,17 @@ class GroupDetailViewModel @Inject constructor(
     }
 
     private val detail: Flow<LoadState<GroupDetail>> = reload.flatMapLatest {
-        combine(groupRepository.observeGroup(groupId), groupRepository.observeMembers(groupId), billRepository.observeBills(groupId)) { g, m, b ->
-            if (g == null) LoadState.Error(ErrorReason.NOT_FOUND) else LoadState.Content(GroupDetail(g, m, b, debts = debtsOf(b), unsettledBills = DebtSimplifier.unsettledCount(b)))
+        combine(
+            groupRepository.observeGroup(groupId),
+            groupRepository.observeMembers(groupId),
+            billRepository.observeBills(groupId),
+            settlementRepository.observeSettlements(groupId),
+        ) { g, m, b, s ->
+            if (g == null) {
+                LoadState.Error(ErrorReason.NOT_FOUND)
+            } else {
+                LoadState.Content(GroupDetail(g, m, b, debts = debtsOf(b, s), unsettledBills = DebtSimplifier.unsettledCount(b), settlements = s))
+            }
         }.onStart<LoadState<GroupDetail>> { emit(LoadState.Loading) }.catch { emit(LoadState.Error(it.toErrorReason())) }
     }.flowOn(dispatchers.default)
 
@@ -132,7 +152,8 @@ class GroupDetailViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GroupDetailUiState(memberDraft = initialMemberDraft(), billDraft = initialBillDraft()))
 
     /** Balances are a pure function of the bills; a corrupt split must never take the whole screen down. */
-    private fun debtsOf(bills: List<Bill>): List<Debt> = runCatching { DebtSimplifier.simplify(DebtSimplifier.balances(bills)) }.getOrDefault(emptyList())
+    private fun debtsOf(bills: List<Bill>, settlements: List<Settlement>): List<Debt> =
+        runCatching { DebtSimplifier.simplify(DebtSimplifier.balances(bills, settlements)) }.getOrDefault(emptyList())
 
     private fun initialMemberDraft() = if (memberOpen.value) MemberDraft(memberName.value, memberVpa.value) else null
     private fun initialBillDraft() = if (billOpen.value) BillDraft(billTitle.value, billAmount.value, billPayer.value) else null

@@ -6,6 +6,8 @@ import com.darshan.splitsmart.domain.model.BillSource
 import com.darshan.splitsmart.domain.model.BillStatus
 import com.darshan.splitsmart.domain.model.Group
 import com.darshan.splitsmart.domain.model.Member
+import com.darshan.splitsmart.domain.model.Settlement
+import com.darshan.splitsmart.domain.model.SettlementMethod
 import java.time.Instant
 
 fun testGroup(id: String = "g1", name: String = "Goa trip", createdAt: Instant = FIXED_INSTANT) =
@@ -33,3 +35,15 @@ fun testBill(
     id = id, groupId = groupId, title = title, totalPaise = totalPaise, taxPaise = taxPaise, tipPaise = tipPaise,
     paidByMemberId = paidByMemberId, source = source, status = status, createdAt = createdAt, items = items,
 )
+
+fun testSettlement(
+    id: String = "s1",
+    groupId: String = "g1",
+    from: String? = "b",
+    to: String? = "a",
+    amountPaise: Long = 30_000,
+    fromName: String = "Ravi",
+    toName: String = "Asha",
+    method: SettlementMethod = SettlementMethod.UPI_APP,
+    createdAt: Instant = FIXED_INSTANT,
+) = Settlement(id, groupId, from, to, fromName, toName, amountPaise, method, createdAt)

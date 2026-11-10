@@ -137,7 +137,7 @@ class GroupsStressTest {
     fun `1,000 archive and undo cycles through the view model leave one consistent group and no stuck writes`() = runTest(dispatcher) {
         val repo = FakeGroupRepository()
         repo.groups.value = listOf(testGroup("goa", "Goa trip"))
-        val vm = GroupsViewModel(repo, FakeBillRepository(), com.darshan.splitsmart.data.settings.InMemoryProfileRepository(), CreateGroupUseCase(repo), TestDispatcherProvider(dispatcher))
+        val vm = GroupsViewModel(repo, FakeBillRepository(), com.darshan.splitsmart.testutil.FakeSettlementRepository(), com.darshan.splitsmart.data.settings.InMemoryProfileRepository(), CreateGroupUseCase(repo), TestDispatcherProvider(dispatcher))
         val collector = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
         var archived = 0
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.events.collect { archived++ } }
@@ -186,7 +186,7 @@ class GroupsStressTest {
         }
         repo.groups.value = listOf(testGroup())
         val bills = FakeBillRepository()
-        val vm = GroupDetailViewModel(SavedStateHandle(mapOf("groupId" to "g1")), repo, bills, AddMemberUseCase(repo), CreateManualBillUseCase(bills, fixedClock), TestDispatcherProvider(dispatcher))
+        val vm = GroupDetailViewModel(SavedStateHandle(mapOf("groupId" to "g1")), repo, bills, com.darshan.splitsmart.testutil.FakeSettlementRepository(), AddMemberUseCase(repo), CreateManualBillUseCase(bills, fixedClock), TestDispatcherProvider(dispatcher))
         val events = mutableListOf<GroupDetailEvent>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.events.collect { events += it } }
         val ms = measureTimeMillis {

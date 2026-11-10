@@ -10,11 +10,13 @@ import com.darshan.splitsmart.domain.model.BillSplit
 import com.darshan.splitsmart.domain.model.BillStatus
 import com.darshan.splitsmart.domain.model.Member
 import com.darshan.splitsmart.domain.model.MemberShare
+import com.darshan.splitsmart.domain.model.SettlementMethod
 import com.darshan.splitsmart.domain.model.SplitConfig
 import com.darshan.splitsmart.domain.model.SplitMode
 import com.darshan.splitsmart.domain.repository.BillRepository
 import com.darshan.splitsmart.domain.repository.GroupRepository
 import com.darshan.splitsmart.domain.repository.OnboardingRepository
+import com.darshan.splitsmart.domain.repository.SettlementRepository
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -30,8 +32,8 @@ import kotlinx.coroutines.launch
 
 /**
  * Marks the intro as done (a fresh install would otherwise open on it, and every benchmark waits for the groups list), then
- * inserts [GROUPS] groups through the repositories, the newest being "[MAIN_GROUP]" with [MAIN_BILLS] bills, so the scroll
- * benchmarks have lists to scroll. Safe to send repeatedly.
+ * inserts [GROUPS] groups through the repositories, the newest being "[MAIN_GROUP]" with [MAIN_BILLS] bills and
+ * [MAIN_SETTLEMENTS] settled payments, so the scroll benchmarks have lists (group, history) to scroll. Safe to send repeatedly.
  *
  * `adb shell am broadcast -n com.darshan.splitsmart/.benchmark.SeedDataReceiver` replies `seeded=<groups>`.
  */
@@ -41,6 +43,7 @@ class SeedDataReceiver : BroadcastReceiver() {
     interface Dependencies {
         fun groupRepository(): GroupRepository
         fun billRepository(): BillRepository
+        fun settlementRepository(): SettlementRepository
         fun onboardingRepository(): OnboardingRepository
     }
 
@@ -49,7 +52,7 @@ class SeedDataReceiver : BroadcastReceiver() {
         val dependencies = EntryPointAccessors.fromApplication(context.applicationContext, Dependencies::class.java)
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                BenchmarkSeed.run(dependencies.groupRepository(), dependencies.billRepository(), dependencies.onboardingRepository())
+                BenchmarkSeed.run(dependencies.groupRepository(), dependencies.billRepository(), dependencies.settlementRepository(), dependencies.onboardingRepository())
                 pending.resultCode = Activity.RESULT_OK
                 pending.resultData = "seeded=${BenchmarkSeed.GROUPS}"
             } catch (e: Exception) {
@@ -64,13 +67,13 @@ class SeedDataReceiver : BroadcastReceiver() {
 
 /** The seeding itself, apart from the receiver so the debug unit tests can run it (see `app/build.gradle.kts`). */
 internal object BenchmarkSeed {
-    suspend fun run(groups: GroupRepository, bills: BillRepository, onboarding: OnboardingRepository) {
+    suspend fun run(groups: GroupRepository, bills: BillRepository, settlements: SettlementRepository, onboarding: OnboardingRepository) {
         // First, and on every run: the intro must never stand between a benchmark and the screen it measures.
         onboarding.setCompleted(true)
-        seed(groups, bills)
+        seed(groups, bills, settlements)
     }
 
-    private suspend fun seed(groups: GroupRepository, bills: BillRepository) {
+    private suspend fun seed(groups: GroupRepository, bills: BillRepository, settlements: SettlementRepository) {
         // The main group is written last, so a complete one means an earlier run finished.
         val done = groups.observeGroupSummaries().first().any { it.group.name == MAIN_GROUP && it.billCount >= MAIN_BILLS }
         if (done) return
@@ -81,6 +84,12 @@ internal object BenchmarkSeed {
         }
         delay(NEWEST_GAP_MS) // Sorts the main group above the others (newest first, millisecond timestamps).
         val members = createGroup(groups, MAIN_GROUP)
+        // Payments before bills: the bills are what marks a run complete.
+        repeat(MAIN_SETTLEMENTS) { index ->
+            val from = members[index % members.size]
+            val to = members[(index + 1) % members.size]
+            settlements.record(from, to, (index % 9 + 1) * 5_000L, if (index % 3 == 0) SettlementMethod.OTHER else SettlementMethod.UPI_APP)
+        }
         repeat(MAIN_BILLS) { index -> bills.saveBill(bill(members, index, now)) }
     }
 
@@ -121,6 +130,7 @@ internal object BenchmarkSeed {
 
     const val GROUPS = 200
     const val MAIN_BILLS = 200
+    const val MAIN_SETTLEMENTS = 24
     const val MAIN_GROUP = "Benchmark trip"
     private const val NEWEST_GAP_MS = 5L
     private val MEMBERS = listOf("Asha Rao", "Vikram Shah", "Neha Menon", "Rahul Verma")

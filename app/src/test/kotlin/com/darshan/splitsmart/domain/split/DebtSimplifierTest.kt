@@ -5,6 +5,7 @@ import com.darshan.splitsmart.domain.model.Debt
 import com.darshan.splitsmart.domain.model.SplitConfig
 import com.darshan.splitsmart.domain.model.SplitMode
 import com.darshan.splitsmart.testutil.testBill
+import com.darshan.splitsmart.testutil.testSettlement
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import kotlin.random.Random
@@ -55,6 +56,31 @@ class DebtSimplifierTest {
         assertThat(balances).containsExactly("a", 500L, "b", -500L)
         assertThat(DebtSimplifier.simplify(balances)).containsExactly(Debt("b", "a", 500))
         assertThat(DebtSimplifier.unsettledCount(listOf(paid, noPayer, notSplit))).isEqualTo(2)
+    }
+
+    @Test
+    fun `a settled payment moves balances like a bill in reverse, and paying in full clears the debt`() {
+        val config = SplitConfig(SplitMode.EQUAL, listOf("a", "b"))
+        val bill = testBill("b1", totalPaise = 1_000, items = emptyList(), paidByMemberId = "a")
+        val paid = bill.copy(split = BillSplit(config, SplitCalculator.split(bill, config).shares))
+        val part = DebtSimplifier.balances(listOf(paid), listOf(testSettlement(from = "b", to = "a", amountPaise = 200)))
+        assertThat(part).containsExactly("a", 300L, "b", -300L)
+        assertThat(DebtSimplifier.simplify(part)).containsExactly(Debt("b", "a", 300))
+        val full = DebtSimplifier.balances(listOf(paid), listOf(testSettlement("s1", amountPaise = 200), testSettlement("s2", amountPaise = 300)))
+        assertThat(DebtSimplifier.simplify(full)).isEmpty()
+        // Paying too much turns the debt around rather than hiding it.
+        val over = DebtSimplifier.balances(listOf(paid), listOf(testSettlement(amountPaise = 800)))
+        assertThat(DebtSimplifier.simplify(over)).containsExactly(Debt("a", "b", 300))
+    }
+
+    @Test
+    fun `a payment whose member left the group no longer counts, and settlements alone still balance`() {
+        val gone = testSettlement(from = null, to = "a", amountPaise = 500)
+        assertThat(gone.counts).isFalse()
+        assertThat(DebtSimplifier.balances(emptyList(), listOf(gone))).isEmpty()
+        val only = DebtSimplifier.balances(emptyList(), listOf(testSettlement(from = "b", to = "a", amountPaise = 500)))
+        assertThat(only.values.sum()).isEqualTo(0L)
+        assertThat(DebtSimplifier.simplify(only)).containsExactly(Debt("a", "b", 500))
     }
 
     @Test

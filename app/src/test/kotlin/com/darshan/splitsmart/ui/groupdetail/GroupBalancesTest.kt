@@ -45,7 +45,7 @@ class GroupBalancesTest {
             testBill("b3", totalPaise = 999, items = emptyList()),
         )
         val vm = GroupDetailViewModel(
-            SavedStateHandle(mapOf("groupId" to "g1")), groups, bills, AddMemberUseCase(groups),
+            SavedStateHandle(mapOf("groupId" to "g1")), groups, bills, com.darshan.splitsmart.testutil.FakeSettlementRepository(), AddMemberUseCase(groups),
             CreateManualBillUseCase(bills, fixedClock), TestDispatcherProvider(dispatcher),
         )
         vm.uiState.test {
@@ -53,6 +53,29 @@ class GroupBalancesTest {
             val detail = (awaitItem().detail as LoadState.Content).data
             assertThat(detail.debts).containsExactly(Debt("b", "a", 300)) // a paid 1000 (owed 500), b paid 400 (owed 200) → b owes a 300
             assertThat(detail.unsettledBills).isEqualTo(1)
+        }
+    }
+
+    @Test
+    fun `a payment marked as settled takes its debt off the group and stays in the detail`() = runTest(dispatcher) {
+        groups.groups.value = listOf(testGroup())
+        groups.members.value = listOf(testMember("a", name = "Asha"), testMember("b", name = "Ravi"))
+        val config = SplitConfig(SplitMode.EQUAL, listOf("a", "b"))
+        val b1 = testBill("b1", totalPaise = 1_000, items = emptyList(), paidByMemberId = "a")
+        bills.bills.value = listOf(b1.copy(split = BillSplit(config, SplitCalculator.split(b1, config).shares)))
+        val settlements = com.darshan.splitsmart.testutil.FakeSettlementRepository()
+        settlements.settlements.value = listOf(com.darshan.splitsmart.testutil.testSettlement(from = "b", to = "a", amountPaise = 200))
+        val vm = GroupDetailViewModel(
+            SavedStateHandle(mapOf("groupId" to "g1")), groups, bills, settlements, AddMemberUseCase(groups),
+            CreateManualBillUseCase(bills, fixedClock), TestDispatcherProvider(dispatcher),
+        )
+        vm.uiState.test {
+            awaitItem()
+            val detail = (awaitItem().detail as LoadState.Content).data
+            assertThat(detail.debts).containsExactly(Debt("b", "a", 300))
+            assertThat(detail.settlements).hasSize(1)
+            settlements.settlements.value = settlements.settlements.value + com.darshan.splitsmart.testutil.testSettlement("s2", from = "b", to = "a", amountPaise = 300)
+            assertThat((awaitItem().detail as LoadState.Content).data.debts).isEmpty()
         }
     }
 }

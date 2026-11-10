@@ -11,6 +11,7 @@ import com.darshan.splitsmart.domain.model.SplitMode
 import com.darshan.splitsmart.domain.split.DebtSimplifier
 import com.darshan.splitsmart.testutil.testBill
 import com.darshan.splitsmart.testutil.testMember
+import com.darshan.splitsmart.testutil.testSettlement
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import kotlin.math.hypot
@@ -62,6 +63,19 @@ class DebtGraphLogicTest {
         // Biggest balance first (Darshan is owed ₹3, Meera owes ₹3), ties by name.
         assertThat(graph.nodes.map { it.name }).containsExactly("Darshan", "Meera", "Asha", "Ravi").inOrder()
         assertThat(graph.hiddenPeople).isEqualTo(0)
+    }
+
+    @Test
+    fun `payments already settled cancel their IOU in the picture and in the payments after`() {
+        // Ravi paid Asha back the ₹3 from the beach dinner.
+        val settled = listOf(testSettlement(from = "r", to = "a", amountPaise = 300))
+        assertThat(DebtGraphLogic.pairwise(bills, settled)).doesNotContain(Debt("r", "a", 300))
+        val graph = DebtGraphLogic.graph(members, bills, settled)
+        assertThat(graph.after).isEqualTo(DebtSimplifier.simplify(DebtSimplifier.balances(bills, settled)))
+        fun net(debts: List<Debt>) = buildMap<String, Long> { debts.forEach { merge(it.fromMemberId, -it.amountPaise, Long::plus); merge(it.toMemberId, it.amountPaise, Long::plus) } }.filterValues { it != 0L }
+        assertThat(net(graph.before)).isEqualTo(net(graph.after))
+        // A payment whose member left draws nothing.
+        assertThat(DebtGraphLogic.pairwise(bills, listOf(testSettlement(from = null, to = "a", amountPaise = 300)))).isEqualTo(DebtGraphLogic.pairwise(bills))
     }
 
     @Test

@@ -107,3 +107,34 @@ open class FakeBillRepository : BillRepository {
         bills.update { list -> list.filterNot { it.id == billId } }
     }
 }
+
+/** In-memory settled payments; [failWith] makes every write throw. */
+open class FakeSettlementRepository(private val clock: Clock = fixedClock) : com.darshan.splitsmart.domain.repository.SettlementRepository {
+    val settlements = MutableStateFlow<List<com.darshan.splitsmart.domain.model.Settlement>>(emptyList())
+    var failWith: Throwable? = null
+    var recordCalls = 0
+
+    override fun observeSettlements(groupId: String): Flow<List<com.darshan.splitsmart.domain.model.Settlement>> =
+        settlements.map { list -> list.filter { it.groupId == groupId }.sortedByDescending { it.createdAt } }
+
+    override fun observeAllSettlements(): Flow<List<com.darshan.splitsmart.domain.model.Settlement>> =
+        settlements.map { list -> list.sortedByDescending { it.createdAt } }
+
+    override suspend fun record(
+        from: Member,
+        to: Member,
+        amountPaise: Long,
+        method: com.darshan.splitsmart.domain.model.SettlementMethod,
+    ): com.darshan.splitsmart.domain.model.Settlement {
+        recordCalls++
+        failWith?.let { throw it }
+        val s = com.darshan.splitsmart.domain.model.Settlement(UUID.randomUUID().toString(), from.groupId, from.id, to.id, from.name, to.name, amountPaise, method, clock.instant())
+        settlements.update { it + s }
+        return s
+    }
+
+    override suspend fun delete(settlementId: String) {
+        failWith?.let { throw it }
+        settlements.update { list -> list.filterNot { it.id == settlementId } }
+    }
+}

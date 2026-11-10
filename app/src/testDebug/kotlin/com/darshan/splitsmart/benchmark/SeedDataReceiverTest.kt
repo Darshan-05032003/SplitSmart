@@ -5,6 +5,7 @@ import com.darshan.splitsmart.domain.model.Bill
 import com.darshan.splitsmart.domain.repository.OnboardingRepository
 import com.darshan.splitsmart.testutil.FakeBillRepository
 import com.darshan.splitsmart.testutil.FakeGroupRepository
+import com.darshan.splitsmart.testutil.FakeSettlementRepository
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,12 +23,17 @@ class SeedDataReceiverTest {
         val onboarding = InMemoryOnboardingRepository(completed = false)
         val groups = FakeGroupRepository()
         val bills = FakeBillRepository()
-        BenchmarkSeed.run(groups, bills, onboarding)
+        val settlements = FakeSettlementRepository()
+        BenchmarkSeed.run(groups, bills, settlements, onboarding)
         assertThat(onboarding.completed.first()).isTrue()
         val summaries = groups.observeGroupSummaries().first()
         assertThat(summaries).hasSize(BenchmarkSeed.GROUPS)
         val main = summaries.single { it.group.name == BenchmarkSeed.MAIN_GROUP }
         assertThat(bills.observeBills(main.group.id).first()).hasSize(BenchmarkSeed.MAIN_BILLS)
+        // Through the repository, between members of the main group, so the history screen has payments to scroll.
+        val paid = settlements.observeSettlements(main.group.id).first()
+        assertThat(paid).hasSize(BenchmarkSeed.MAIN_SETTLEMENTS)
+        assertThat(paid.all { it.fromMemberId != it.toMemberId && it.counts }).isTrue()
     }
 
     @Test
@@ -48,12 +54,13 @@ class SeedDataReceiverTest {
             }
         }
         val groups = FakeGroupRepository()
-        BenchmarkSeed.run(groups, bills, onboarding)
+        val settlements = FakeSettlementRepository()
+        BenchmarkSeed.run(groups, bills, settlements, onboarding)
         assertThat(order.first()).isEqualTo("onboarding")
         // A second broadcast still marks the intro first, e.g. after someone replayed it between runs.
         onboarding.setCompleted(false)
         order.clear()
-        BenchmarkSeed.run(groups, bills, onboarding)
+        BenchmarkSeed.run(groups, bills, settlements, onboarding)
         assertThat(order.first()).isEqualTo("onboarding")
         assertThat(onboarding.completed.first()).isTrue()
     }

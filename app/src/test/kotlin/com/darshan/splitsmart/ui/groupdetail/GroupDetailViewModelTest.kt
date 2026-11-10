@@ -30,11 +30,13 @@ class GroupDetailViewModelTest {
     @get:Rule val mainRule = MainDispatcherRule(dispatcher)
     private val groups = FakeGroupRepository()
     private val bills = FakeBillRepository()
+    private val settlements = com.darshan.splitsmart.testutil.FakeSettlementRepository()
 
     private fun vm(handle: SavedStateHandle = SavedStateHandle(mapOf("groupId" to "g1"))) = GroupDetailViewModel(
         savedStateHandle = handle,
         groupRepository = groups,
         billRepository = bills,
+        settlementRepository = settlements,
         addMember = AddMemberUseCase(groups),
         createManualBill = CreateManualBillUseCase(bills, fixedClock),
         dispatchers = TestDispatcherProvider(dispatcher),
@@ -175,7 +177,7 @@ class GroupDetailViewModelTest {
         }
         counting.groups.value = groups.groups.value
         val vm = GroupDetailViewModel(
-            SavedStateHandle(mapOf("groupId" to "g1")), counting, bills, AddMemberUseCase(counting), CreateManualBillUseCase(bills, fixedClock),
+            SavedStateHandle(mapOf("groupId" to "g1")), counting, bills, settlements, AddMemberUseCase(counting), CreateManualBillUseCase(bills, fixedClock),
             TestDispatcherProvider(dispatcher),
         )
         val events = mutableListOf<GroupDetailEvent>()

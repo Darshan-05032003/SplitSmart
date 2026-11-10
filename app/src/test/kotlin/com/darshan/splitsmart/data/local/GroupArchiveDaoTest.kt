@@ -70,7 +70,7 @@ class GroupArchiveDaoTest {
             assertThat(row.name).isEqualTo("Trip")
             assertThat(row.archivedAt).isNull()
             assertThat(migrated.groupDao().observeSummaries().first().single().memberCount).isEqualTo(1)
-            assertThat(migrated.openHelper.readableDatabase.version).isEqualTo(4)
+            assertThat(migrated.openHelper.readableDatabase.version).isEqualTo(5) // every migration up to the current version ran
         } finally {
             migrated.close()
             context.deleteDatabase(name)

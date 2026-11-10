@@ -7,6 +7,7 @@ import com.darshan.splitsmart.domain.model.Bill
 import com.darshan.splitsmart.domain.model.Group
 import com.darshan.splitsmart.domain.model.GroupSummary
 import com.darshan.splitsmart.domain.model.Member
+import com.darshan.splitsmart.domain.model.Settlement
 import com.darshan.splitsmart.domain.model.NameValidation
 import com.darshan.splitsmart.domain.model.NameValidator
 import com.darshan.splitsmart.domain.repository.BillRepository
@@ -15,6 +16,7 @@ import com.darshan.splitsmart.domain.split.DebtSimplifier
 import java.time.Instant
 import com.darshan.splitsmart.domain.model.NameError
 import com.darshan.splitsmart.domain.repository.GroupRepository
+import com.darshan.splitsmart.domain.repository.SettlementRepository
 import com.darshan.splitsmart.domain.usecase.CreateGroupResult
 import com.darshan.splitsmart.domain.usecase.CreateGroupUseCase
 import com.darshan.splitsmart.ui.LoadState
@@ -46,7 +48,7 @@ data class NameDraft(val name: String = "", val error: NameError? = null)
 data class GroupCard(
     val summary: GroupSummary,
     val memberNames: List<String> = emptyList(),
-    /** Newest bill, or the group's creation when it has no bills. */
+    /** Newest bill or settled payment, or the group's creation when it has neither. */
     val lastActivity: Instant = summary.group.createdAt,
     /** Money still to move inside the group (sum of what creditors are owed). */
     val outstandingPaise: Long = 0,
@@ -98,6 +100,7 @@ sealed interface GroupsEvent {
 class GroupsViewModel @Inject constructor(
     private val repository: GroupRepository,
     billRepository: BillRepository,
+    settlementRepository: SettlementRepository,
     private val profile: ProfileRepository,
     private val createGroup: CreateGroupUseCase,
     private val dispatchers: DispatcherProvider,
@@ -109,8 +112,14 @@ class GroupsViewModel @Inject constructor(
     val events: Flow<GroupsEvent> = _events.receiveAsFlow()
 
     private val home: Flow<HomeSnapshot> = reload.flatMapLatest {
-        combine(repository.observeGroupSummaries(), repository.observeAllMembers(), billRepository.observeAllBills(), profile.yourName) { summaries, members, bills, me ->
-            val cards = buildCards(summaries, members, bills, me)
+        combine(
+            repository.observeGroupSummaries(),
+            repository.observeAllMembers(),
+            billRepository.observeAllBills(),
+            settlementRepository.observeAllSettlements(),
+            profile.yourName,
+        ) { summaries, members, bills, settlements, me ->
+            val cards = buildCards(summaries, members, bills, me, settlements)
             val (archived, active) = cards.partition { it.group.isArchived }
             // Empty means "no groups at all" (the first-run screen); with everything archived the list is content, just short.
             val state: LoadState<List<GroupCard>> = if (cards.isEmpty()) LoadState.Empty else LoadState.Content(active)
@@ -195,20 +204,28 @@ class GroupsViewModel @Inject constructor(
 
     companion object {
         /** Cards with balances, newest activity first. Pure so it can be unit-tested and run off the main thread. */
-        fun buildCards(summaries: List<GroupSummary>, members: List<Member>, bills: List<Bill>, yourName: String?): List<GroupCard> {
+        fun buildCards(
+            summaries: List<GroupSummary>,
+            members: List<Member>,
+            bills: List<Bill>,
+            yourName: String?,
+            settlements: List<Settlement> = emptyList(),
+        ): List<GroupCard> {
             val membersByGroup = members.groupBy { it.groupId }
             val billsByGroup = bills.groupBy { it.groupId }
+            val settlementsByGroup = settlements.groupBy { it.groupId }
             val me = yourName?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
             return summaries.map { summary ->
                 val id = summary.group.id
                 val groupMembers = membersByGroup[id].orEmpty()
                 val groupBills = billsByGroup[id].orEmpty()
-                val balances = runCatching { DebtSimplifier.balances(groupBills) }.getOrDefault(emptyMap())
+                val balances = runCatching { DebtSimplifier.balances(groupBills, settlementsByGroup[id].orEmpty()) }.getOrDefault(emptyMap())
                 val you = me?.let { name -> groupMembers.firstOrNull { it.name.trim().lowercase() == name } }
                 GroupCard(
                     summary = summary,
                     memberNames = groupMembers.map { it.name },
-                    lastActivity = groupBills.maxOfOrNull { it.createdAt } ?: summary.group.createdAt,
+                    lastActivity = listOfNotNull(groupBills.maxOfOrNull { it.createdAt }, settlementsByGroup[id]?.maxOfOrNull { it.createdAt }).maxOrNull()
+                        ?: summary.group.createdAt,
                     outstandingPaise = balances.values.filter { it > 0 }.sum(),
                     yourBalancePaise = you?.let { balances[it.id] ?: 0L },
                 )
