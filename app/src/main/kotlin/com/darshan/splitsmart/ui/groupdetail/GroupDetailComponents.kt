@@ -68,6 +68,7 @@ import com.darshan.splitsmart.ui.theme.SplitSmartTheme
 
 /** Test tags of the group screen that are not shared with other screens. */
 object GroupDetailTags {
+    const val LIST = "group_list"
     const val HERO = "group_hero"
     const val SPENT = "group_spent"
     const val OPTIONS = "group_options"

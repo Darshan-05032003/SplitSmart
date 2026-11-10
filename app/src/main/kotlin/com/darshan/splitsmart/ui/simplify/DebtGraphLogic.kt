@@ -29,6 +29,9 @@ data class DebtGraph(
     val shownAfter: List<Debt>,
     val hiddenPeople: Int,
 ) {
+    /** Everyone on the picture, the people folded into "+N" included. */
+    val people: Int get() = nodes.size - (if (hiddenPeople > 0) 1 else 0) + hiddenPeople
+
     /** Transfers the simplification saves; the screen only offers the picture when this is positive. */
     val saves: Int get() = before.size - after.size
 }

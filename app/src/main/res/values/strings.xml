@@ -333,6 +333,33 @@
     <string name="bill_line_spoken">%1$s, %2$s</string>
     <string name="bill_shares_exact">Exact to the paisa</string>
 
+    <!-- Simplify debts (row 12) -->
+    <plurals name="simplify_ious">
+        <item quantity="one">%d IOU</item>
+        <item quantity="other">%d IOUs</item>
+    </plurals>
+    <plurals name="simplify_payments">
+        <item quantity="one">%d payment</item>
+        <item quantity="other">%d payments</item>
+    </plurals>
+    <plurals name="simplify_people">
+        <item quantity="one">%d person</item>
+        <item quantity="other">%d people</item>
+    </plurals>
+    <string name="simplify_card_title">%1$s instead of %2$s</string>
+    <string name="simplify_card_body">Debts simplified. See how the arrows collapse.</string>
+    <string name="simplify_card_action">See how</string>
+    <string name="simplify_title">Simplify debts</string>
+    <string name="simplify_body">Bill by bill there are %1$s. Netting everyone\'s balance settles the group in %2$s, and nobody pays or gets a paisa more.</string>
+    <string name="simplify_graph_description">Bill by bill: %1$s between %2$s. Simplified: %3$s.</string>
+    <string name="simplify_replay">Play again</string>
+    <string name="simplify_legend_before">Bill by bill</string>
+    <string name="simplify_legend_after">Simplified</string>
+    <plurals name="simplify_folded">
+        <item quantity="one">The smallest balance shares the +%1$d face.</item>
+        <item quantity="other">The %1$d smallest balances share the +%1$d face.</item>
+    </plurals>
+
     <!-- Settle up -->
     <plurals name="settle_summary">
         <item quantity="one">%1$d payment settles %2$s</item>

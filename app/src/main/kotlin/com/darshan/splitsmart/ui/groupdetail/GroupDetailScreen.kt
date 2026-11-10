@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -72,6 +73,9 @@ import com.darshan.splitsmart.ui.designsystem.tokens.Radii
 import com.darshan.splitsmart.ui.designsystem.tokens.Sizes
 import com.darshan.splitsmart.ui.designsystem.tokens.Spacing
 import com.darshan.splitsmart.ui.messageRes
+import com.darshan.splitsmart.ui.simplify.DebtGraphLogic
+import com.darshan.splitsmart.ui.simplify.SimplifyCard
+import com.darshan.splitsmart.ui.simplify.SimplifySheetContent
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
 import kotlinx.coroutines.launch
 
@@ -157,7 +161,7 @@ data class GroupDetailCallbacks(
 )
 
 /** Which in-window sheet is up besides the add-member and add-bill drafts (those live in the view model). */
-private enum class DetailSheet { None, Options, Delete, Member }
+private enum class DetailSheet { None, Options, Delete, Member, Simplify }
 
 /**
  * The group screen on Marigold: the hero (spent together, still to move, Settle up when anyone owes anyone), the members as a
@@ -170,6 +174,7 @@ fun GroupDetailScreen(state: GroupDetailUiState, snackbar: SsSnackbarState, call
     val content = (state.detail as? LoadState.Content)?.data
     var sheet by rememberSaveable { mutableStateOf(DetailSheet.None) }
     var memberId by rememberSaveable { mutableStateOf<String?>(null) }
+    var simplifyPlays by rememberSaveable { mutableIntStateOf(0) }
     val anySheet = sheet != DetailSheet.None || state.memberDraft != null || state.billDraft != null
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().then(if (anySheet) Modifier.clearAndSetSemantics {} else Modifier)) {
@@ -194,7 +199,12 @@ fun GroupDetailScreen(state: GroupDetailUiState, snackbar: SsSnackbarState, call
                 LoadState.Loading -> DetailLoading()
                 LoadState.Empty -> DetailError(stringResource(R.string.error_not_found), callbacks.onRetry)
                 is LoadState.Error -> DetailError(stringResource(detail.reason.messageRes()), callbacks.onRetry)
-                is LoadState.Content -> GroupDetailContent(detail.data, callbacks, onOpenMember = { memberId = it.id; sheet = DetailSheet.Member })
+                is LoadState.Content -> GroupDetailContent(
+                    detail.data,
+                    callbacks,
+                    onOpenMember = { memberId = it.id; sheet = DetailSheet.Member },
+                    onOpenSimplify = { simplifyPlays++; sheet = DetailSheet.Simplify },
+                )
             }
         }
         SsSnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
@@ -218,6 +228,7 @@ fun GroupDetailScreen(state: GroupDetailUiState, snackbar: SsSnackbarState, call
                 onDismiss = { sheet = DetailSheet.None },
                 onRemove = { id -> sheet = DetailSheet.None; callbacks.onRemoveMember(id) },
             )
+            SimplifySheet(content, visible = sheet == DetailSheet.Simplify, playKey = simplifyPlays, onReplay = { simplifyPlays++ }, onDismiss = { sheet = DetailSheet.None })
         }
         AddMemberSheet(state.memberDraft, callbacks)
         AddBillSheet(state.billDraft, content?.members.orEmpty(), callbacks)
@@ -225,14 +236,15 @@ fun GroupDetailScreen(state: GroupDetailUiState, snackbar: SsSnackbarState, call
 }
 
 @Composable
-private fun GroupDetailContent(detail: GroupDetail, callbacks: GroupDetailCallbacks, onOpenMember: (Member) -> Unit) {
+private fun GroupDetailContent(detail: GroupDetail, callbacks: GroupDetailCallbacks, onOpenMember: (Member) -> Unit, onOpenSimplify: () -> Unit) {
     val unknown = stringResource(R.string.member_unknown)
     val names = remember(detail.members) { detail.members.associate { it.id to it.name } }
     val primary = GroupDetailLogic.primaryAction(detail)
     val addMemberLabel = stringResource(R.string.members_add)
     val colors = SplitSmartTheme.colors
     val type = SplitSmartTheme.type
-    LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+    val graph = remember(detail.members, detail.bills) { DebtGraphLogic.graph(detail.members, detail.bills) }
+    LazyColumn(Modifier.fillMaxSize().testTag(GroupDetailTags.LIST), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         item(key = "hero", contentType = "hero") {
             GroupHero(detail, primary, callbacks.onSettleUp, Modifier.padding(horizontal = Spacing.screen, vertical = Spacing.xxs))
         }
@@ -271,6 +283,9 @@ private fun GroupDetailContent(detail: GroupDetail, callbacks: GroupDetailCallba
                     }
                 }
             }
+            if (graph.saves > 0) {
+                item(key = "simplify", contentType = "simplify") { SimplifyCard(graph, onOpenSimplify, Modifier.padding(horizontal = Spacing.screen)) }
+            }
             items(detail.debts, key = { "d" + it.fromMemberId + ">" + it.toMemberId }, contentType = { "debt" }) { debt ->
                 DebtRow(names[debt.fromMemberId] ?: unknown, names[debt.toMemberId] ?: unknown, debt.amountPaise, Modifier.padding(horizontal = Spacing.screen))
             }
@@ -292,6 +307,19 @@ private fun GroupDetailContent(detail: GroupDetail, callbacks: GroupDetailCallba
             BillRow(bill, payerName = bill.paidByMemberId?.let { names[it] }, onClick = { callbacks.onOpenBill(bill.id) }, modifier = Modifier.padding(horizontal = Spacing.screen))
         }
         item(key = "end", contentType = "end") { Spacer(Modifier.navigationBarsPadding().height(Spacing.xxl)) }
+    }
+}
+
+/** The simplify-debts picture in a sheet; it replays each time it opens and on Play again. */
+@Composable
+private fun SimplifySheet(detail: GroupDetail, visible: Boolean, playKey: Int, onReplay: () -> Unit, onDismiss: () -> Unit) {
+    val unknown = stringResource(R.string.member_unknown)
+    val names = remember(detail.members) { detail.members.associate { it.id to it.name } }
+    val graph = remember(detail.members, detail.bills) { DebtGraphLogic.graph(detail.members, detail.bills) }
+    SsBottomSheet(visible = visible, onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+            SimplifySheetContent(graph, nameOf = { names[it] ?: unknown }, playKey = playKey, onReplay = onReplay)
+        }
     }
 }
 
