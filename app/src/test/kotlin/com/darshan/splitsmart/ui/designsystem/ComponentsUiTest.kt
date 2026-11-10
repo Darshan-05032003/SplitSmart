@@ -478,16 +478,26 @@ class ThemeTest {
     }
 
     @Test
-    fun `screens not rebuilt yet keep the old Material look, the Marigold look maps the palette`() {
-        var legacyPrimary: androidx.compose.ui.graphics.Color? = null
-        var marigoldPrimary: androidx.compose.ui.graphics.Color? = null
+    fun `Material slots carry Marigold everywhere, with marigold on the container and readable accent as primary`() {
+        var lightPrimary: androidx.compose.ui.graphics.Color? = null
+        var lightContainer: androidx.compose.ui.graphics.Color? = null
+        var darkPrimary: androidx.compose.ui.graphics.Color? = null
+        var lightBackground: androidx.compose.ui.graphics.Color? = null
         rule.setContent {
-            SplitSmartTheme(darkTheme = false) { legacyPrimary = MaterialTheme.colorScheme.primary }
-            SplitSmartTheme(darkTheme = false, materialLook = com.darshan.splitsmart.ui.theme.MaterialLook.Marigold) { marigoldPrimary = MaterialTheme.colorScheme.primary }
+            SplitSmartTheme(darkTheme = false) {
+                lightPrimary = MaterialTheme.colorScheme.primary
+                lightContainer = MaterialTheme.colorScheme.primaryContainer
+                lightBackground = MaterialTheme.colorScheme.background
+            }
+            SplitSmartTheme(darkTheme = true) { darkPrimary = MaterialTheme.colorScheme.primary }
         }
         rule.runOnIdle {
-            assertThat(legacyPrimary).isEqualTo(androidx.compose.ui.graphics.Color(0xFFB5401F))
-            assertThat(marigoldPrimary).isEqualTo(MarigoldLight.primary)
+            // The old coral (0xFFB5401F) is gone from the app.
+            assertThat(lightPrimary).isNotEqualTo(androidx.compose.ui.graphics.Color(0xFFB5401F))
+            assertThat(lightPrimary).isEqualTo(MarigoldLight.accent)
+            assertThat(lightContainer).isEqualTo(MarigoldLight.primary)
+            assertThat(lightBackground).isEqualTo(MarigoldLight.bg)
+            assertThat(darkPrimary).isEqualTo(com.darshan.splitsmart.ui.designsystem.tokens.MarigoldDark.accent)
         }
     }
 }

@@ -81,6 +81,7 @@ import com.darshan.splitsmart.ui.components.IconBubble
 import com.darshan.splitsmart.ui.components.InfoBanner
 import com.darshan.splitsmart.ui.components.LoadingView
 import com.darshan.splitsmart.ui.components.appIcon
+import com.darshan.splitsmart.ui.theme.SplitSmartTheme
 
 /** Production entry point: wires the permission and photo-picker launchers, then delegates to the testable route. */
 @Composable
@@ -209,20 +210,20 @@ private fun CameraView(preview: @Composable () -> Unit, callbacks: ScanCallbacks
             val captureLabel = stringResource(R.string.scan_capture)
             Surface(
                 onClick = callbacks.onCapture, color = Color.White, shape = CircleShape,
-                border = BorderStroke(4.dp, MaterialTheme.colorScheme.primary),
+                border = BorderStroke(4.dp, SplitSmartTheme.colors.primary),
                 modifier = Modifier.size(76.dp).testTag(SplitSmartTestTags.CAPTURE_BUTTON).semantics { contentDescription = captureLabel },
             ) {
-                Box(contentAlignment = Alignment.Center) { Icon(appIcon(AppIcons.Camera), contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(30.dp)) }
+                Box(contentAlignment = Alignment.Center) { Icon(appIcon(AppIcons.Camera), contentDescription = null, tint = SplitSmartTheme.colors.bar, modifier = Modifier.size(30.dp)) }
             }
             Spacer(Modifier.weight(1f))
         }
     }
 }
 
-/** Dims everything outside a receipt-shaped window and draws coral corner brackets around it. */
+/** Dims everything outside a receipt-shaped window and draws marigold corner brackets around it (always on the dark camera). */
 @Composable
 private fun FramingGuide(modifier: Modifier) {
-    val accent = MaterialTheme.colorScheme.primary
+    val accent = SplitSmartTheme.colors.primary
     Canvas(modifier.clearAndSetSemantics { }) {
         val w = size.width * 0.78f
         val h = minOf(size.height * 0.82f, w * 1.7f)

@@ -5,7 +5,6 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
@@ -46,14 +45,6 @@ import com.darshan.splitsmart.ui.designsystem.tokens.Radii
 import com.darshan.splitsmart.ui.designsystem.tokens.SplitSmartType
 import com.darshan.splitsmart.ui.designsystem.tokens.toMaterialTypography
 
-internal val SplitSmartShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(18.dp),
-    large = RoundedCornerShape(24.dp),
-    extraLarge = RoundedCornerShape(32.dp),
-)
-
 private val MarigoldShapes = Shapes(
     extraSmall = Radii.smallShape,
     small = Radii.smallShape,
@@ -61,14 +52,6 @@ private val MarigoldShapes = Shapes(
     large = Radii.mediumShape,
     extraLarge = Radii.largeShape,
 )
-
-/**
- * What `MaterialTheme` looks like under the design system. The design-system components never read Material slots; this only
- * decides how screens that still use Material widgets look.
- * - [Legacy]: the pre-overhaul coral scheme and system type, so screens not yet rebuilt look exactly as before.
- * - [Marigold]: Marigold Mela mapped onto Material slots. The app root switches to it when the screens are rebuilt (row 9).
- */
-enum class MaterialLook { Legacy, Marigold }
 
 val LocalMarigoldColors = staticCompositionLocalOf { MarigoldLight }
 val LocalSplitSmartType = staticCompositionLocalOf { DefaultSplitSmartType }
@@ -85,7 +68,6 @@ fun UiSettings.isDark(): Boolean = when (theme) {
 @Composable
 fun SplitSmartTheme(
     settings: UiSettings,
-    materialLook: MaterialLook = MaterialLook.Legacy,
     haptics: Haptics? = null,
     sound: UiSound = NoOpUiSound,
     content: @Composable () -> Unit,
@@ -97,7 +79,6 @@ fun SplitSmartTheme(
         soundEnabled = settings.soundEnabled,
         haptics = haptics,
         sound = sound,
-        materialLook = materialLook,
         content = content,
     )
 }
@@ -107,7 +88,8 @@ fun SplitSmartTheme(
  *
  * Provides the Marigold Mela tokens ([SplitSmartTheme.colors], [SplitSmartTheme.type]), [LocalMotion] (reduced when the
  * in-app setting is on or the system animator scale is 0), [LocalHaptics] and [LocalUiSound] behind the in-app switches, and
- * the pre-overhaul colours as [SplitSmartTheme.legacy]. Tests pass a fake [haptics] and set [reduceMotion] directly.
+ * the old semantic roles as [SplitSmartTheme.legacy] (derived from Marigold). Material slots carry Marigold too, so screens that
+ * still use Material widgets match the palette. Tests pass a fake [haptics] and set [reduceMotion] directly.
  */
 @Composable
 fun SplitSmartTheme(
@@ -117,7 +99,6 @@ fun SplitSmartTheme(
     soundEnabled: Boolean = false,
     haptics: Haptics? = null,
     sound: UiSound = NoOpUiSound,
-    materialLook: MaterialLook = MaterialLook.Legacy,
     content: @Composable () -> Unit,
 ) {
     val colors = if (darkTheme) MarigoldDark else MarigoldLight
@@ -129,20 +110,14 @@ fun SplitSmartTheme(
     val soundOn by rememberUpdatedState(soundEnabled)
     val guardedHaptics = remember(view, haptics) { GuardedHaptics(haptics ?: AndroidHaptics(view)) { hapticsOn } }
     val guardedSound = remember(sound) { GuardedUiSound(sound) { soundOn } }
-    val marigold = materialLook == MaterialLook.Marigold
-    val colorScheme = remember(colors, marigold) {
-        when {
-            marigold -> colors.toColorScheme()
-            darkTheme -> DarkColors
-            else -> LightColors
-        }
-    }
-    val typography = remember(marigold) { if (marigold) DefaultSplitSmartType.toMaterialTypography() else SplitSmartTypography }
+    val colorScheme = remember(colors) { colors.toColorScheme() }
+    val legacy = remember(colors) { colors.toLegacyColors() }
+    val typography = remember { DefaultSplitSmartType.toMaterialTypography() }
 
     CompositionLocalProvider(
         LocalMarigoldColors provides colors,
         LocalSplitSmartType provides DefaultSplitSmartType,
-        LocalSplitSmartColors provides if (darkTheme) DarkSplitSmartColors else LightSplitSmartColors,
+        LocalSplitSmartColors provides legacy,
         LocalMotion provides motion,
         LocalHaptics provides guardedHaptics,
         LocalUiSound provides guardedSound,
@@ -150,20 +125,27 @@ fun SplitSmartTheme(
         MaterialTheme(
             colorScheme = colorScheme,
             typography = typography,
-            shapes = if (marigold) MarigoldShapes else SplitSmartShapes,
+            shapes = MarigoldShapes,
             content = content,
         )
     }
 }
 
-/** Marigold Mela onto Material slots, for Material widgets inside rebuilt screens. */
+/**
+ * Marigold Mela onto Material slots, for Material widgets in screens not rebuilt on the design system yet.
+ *
+ * Material draws `primary` as text and focus colour (text buttons, focused field labels, cursors), and marigold on cream is only
+ * 1.9:1. So `primary` is the accent (aubergine in light, marigold in dark: the colour the design system uses for text actions) and
+ * marigold moves to `primaryContainer`, which filled FABs and tonal surfaces use with aubergine on top. Every text pair is
+ * checked in `MaterialSlotsContrastTest`.
+ */
 internal fun MarigoldColors.toColorScheme(): ColorScheme {
     val base = if (isDark) darkColorScheme() else lightColorScheme()
     return base.copy(
-        primary = primary,
-        onPrimary = onPrimary,
-        primaryContainer = raised,
-        onPrimaryContainer = text,
+        primary = accent,
+        onPrimary = onAccent,
+        primaryContainer = primary,
+        onPrimaryContainer = onPrimary,
         inversePrimary = accent,
         secondary = accent,
         onSecondary = onAccent,
@@ -232,7 +214,7 @@ object SplitSmartTheme {
     val haptics: Haptics
         @Composable @ReadOnlyComposable get() = LocalHaptics.current
 
-    /** Pre-overhaul semantic colours (coral hero, owed/owe) for screens not rebuilt yet. Removed once rows 9-13 are done. */
+    /** Old semantic roles (hero card, owed/owe) for screens not rebuilt yet, now drawn from Marigold. Removed once rows 10-13 are done. */
     val legacy: SplitSmartColors
         @Composable @ReadOnlyComposable get() = LocalSplitSmartColors.current
 }

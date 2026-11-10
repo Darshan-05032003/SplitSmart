@@ -9,7 +9,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import com.darshan.splitsmart.ui.theme.MaterialLook
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
 
 /**
@@ -24,7 +23,7 @@ class DesignCatalogActivity : ComponentActivity() {
             val systemDark = isSystemInDarkTheme()
             var dark by rememberSaveable { mutableStateOf(systemDark) }
             var reduceMotion by rememberSaveable { mutableStateOf(false) }
-            SplitSmartTheme(darkTheme = dark, reduceMotion = reduceMotion, materialLook = MaterialLook.Marigold) {
+            SplitSmartTheme(darkTheme = dark, reduceMotion = reduceMotion) {
                 DesignCatalog(dark = dark, onDarkChange = { dark = it }, reduceMotion = reduceMotion, onReduceMotionChange = { reduceMotion = it })
             }
         }

@@ -7,7 +7,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.Density
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.darshan.splitsmart.ui.designsystem.captureNode
-import com.darshan.splitsmart.ui.theme.MaterialLook
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
 import org.junit.Rule
 import org.junit.Test
@@ -32,7 +31,7 @@ class DesignCatalogScreenshotTest {
         rule.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
-                SplitSmartTheme(darkTheme = dark, reduceMotion = reduceMotion, materialLook = MaterialLook.Marigold) { CatalogSectionView(section) }
+                SplitSmartTheme(darkTheme = dark, reduceMotion = reduceMotion) { CatalogSectionView(section) }
             }
         }
         rule.mainClock.advanceTimeBy(SETTLE_MS)

@@ -13,7 +13,6 @@ import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.unit.Density
 import com.darshan.splitsmart.ui.designsystem.effects.Haptics
-import com.darshan.splitsmart.ui.theme.MaterialLook
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
 import com.google.common.truth.Truth.assertThat
 
@@ -28,7 +27,7 @@ fun ComposeContentTestRule.setDs(
     setContent {
         val density = LocalDensity.current
         CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
-            SplitSmartTheme(darkTheme = dark, reduceMotion = reduceMotion, haptics = haptics, materialLook = MaterialLook.Marigold) {
+            SplitSmartTheme(darkTheme = dark, reduceMotion = reduceMotion, haptics = haptics) {
                 Box(Modifier.background(SplitSmartTheme.colors.bg), content = content)
             }
         }

@@ -21,8 +21,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val settings by uiPreferences.settings.collectAsStateWithLifecycle()
-            // The design-system tokens, motion level and haptics are live app-wide; Material widgets keep the pre-overhaul
-            // look until the screens are rebuilt on the design system.
+            // Marigold Mela app-wide: design-system tokens, motion level, haptics, and Material slots for screens not rebuilt yet.
             SplitSmartTheme(settings) { SplitSmartNavHost() }
         }
     }
