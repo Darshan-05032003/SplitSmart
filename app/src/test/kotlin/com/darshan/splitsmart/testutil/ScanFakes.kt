@@ -3,6 +3,7 @@ package com.darshan.splitsmart.testutil
 import com.darshan.splitsmart.data.ocr.CameraCaptureException
 import com.darshan.splitsmart.data.ocr.CameraPermission
 import com.darshan.splitsmart.data.ocr.ImageImportException
+import com.darshan.splitsmart.data.ocr.LiveText
 import com.darshan.splitsmart.data.ocr.OcrLine
 import com.darshan.splitsmart.data.ocr.OcrResult
 import com.darshan.splitsmart.data.ocr.ReceiptCamera
@@ -13,6 +14,7 @@ import com.darshan.splitsmart.domain.model.ReceiptDraft
 import com.darshan.splitsmart.domain.repository.ReceiptDraftRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import java.io.File
@@ -35,6 +37,17 @@ class FakeTextRecognizer(var lines: List<String> = listOf("Paneer Tikka 250.00",
 class FakeReceiptCamera : ReceiptCamera {
     var failWith: Throwable? = null
     val captures = AtomicInteger()
+
+    /** Push boxes here to play the live analyzer. */
+    val live = MutableStateFlow(LiveText.NONE)
+    override val liveText: StateFlow<LiveText> get() = live
+
+    /** Every on/off request, in order. */
+    val liveTextRequests = mutableListOf<Boolean>()
+    override fun setLiveTextEnabled(enabled: Boolean) {
+        liveTextRequests += enabled
+    }
+
     override suspend fun capture(target: File) {
         captures.incrementAndGet()
         failWith?.let { throw if (it is CameraCaptureException) it else CameraCaptureException(it) }

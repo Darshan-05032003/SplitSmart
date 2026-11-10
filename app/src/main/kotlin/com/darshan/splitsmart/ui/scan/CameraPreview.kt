@@ -14,10 +14,15 @@ import com.darshan.splitsmart.R
 import com.darshan.splitsmart.data.ocr.CameraXReceiptCamera
 import com.darshan.splitsmart.data.ocr.ReceiptCamera
 
-/** Live CameraX preview bound to the screen's lifecycle. Device-only; tests inject a plain Box instead. */
+/**
+ * Live CameraX preview bound to the screen's lifecycle, with the live text outlines attached once it is bound. It stays composed
+ * from Ready through the shutter and the reading, so the camera is never torn down while a picture is being taken. Device-only;
+ * tests inject a plain Box instead.
+ */
 @Composable
 fun CameraPreview(camera: ReceiptCamera, modifier: Modifier = Modifier) {
-    val controller = (camera as? CameraXReceiptCamera)?.controller() ?: return
+    val cameraX = camera as? CameraXReceiptCamera ?: return
+    val controller = cameraX.controller()
     val lifecycleOwner = LocalLifecycleOwner.current
     val description = stringResource(R.string.scan_preview_description)
     AndroidView(
@@ -26,6 +31,10 @@ fun CameraPreview(camera: ReceiptCamera, modifier: Modifier = Modifier) {
     )
     DisposableEffect(controller, lifecycleOwner) {
         controller.bindToLifecycle(lifecycleOwner)
-        onDispose { controller.unbind() }
+        cameraX.attachLiveText()
+        onDispose {
+            cameraX.detachLiveText()
+            controller.unbind()
+        }
     }
 }
