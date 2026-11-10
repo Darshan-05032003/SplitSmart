@@ -65,6 +65,7 @@ Bricolage Grotesque for headlines and numbers, Figtree for everything else and f
 - Radii 16 (fields, snackbars), 24 (buttons, cards), 32 (sheets, hero cards, bottom bar), plus pills and circles.
 - Depth is a solid offset, not a blur: chip 2, card 3, button 4, FAB 5 dp. Pressing closes the gap.
 - Touch targets are at least 48dp everywhere.
+- The camera has its own sizes: a 76dp shutter (58dp disc), 36dp viewfinder corners drawn with a 5dp stroke, a 3dp scan line, 6dp corners on the outlines around live text.
 
 ## Motion
 | Spring | Stiffness / damping | Use |
@@ -114,7 +115,7 @@ Rules for screens:
 | Status | `StatusPill(StatusKind, label)` | Owed, Owe, Settled, Refining, Ai, Neutral; `animate = false` in long lists |
 | Input | `SsTextField(value, onValueChange, label, error)` | focus ring and glow; error wiggles once with a reject haptic |
 | Structure | `SsTopBar`, `SsSectionHeader`, `ChunkyCard`, `SsListRow` | outside text is cleaned with `DisplayText.safe`; `SsSectionHeader(actionModifier)` tags or relabels its action |
-| Empty / error / loading | `EmptyState`, `ErrorState`, `Illustration`, `SkeletonList`, `BrandLoader`, `LoadingDots` | illustrations are code-drawn; no grey spinners |
+| Empty / error / loading | `EmptyState`, `ErrorState`, `Illustration`, `SkeletonList`, `BrandLoader`, `LoadingDots` | illustrations are code-drawn (groups, bills, settled, search, error, camera); no grey spinners |
 | Overlays | `SsBottomSheet(visible, onDismissRequest, dismissible)`, `SsSnackbarHost(state)` | sheet is in-window and last in a full-screen `Box`; on a tab screen call `HideShellBarWhile(open)` so the floating bar steps aside; snackbar `show()` suspends and returns `Undo`/`TimedOut`/`Dismissed`/`Replaced` |
 | Navigation | `SsBottomBar(items, selectedIndex, onSelect, onReselect)` | marigold blob stretches as it travels; tick haptic |
 | Delight | `ConfettiBurst(playKey)` | achievements only; off under reduced motion |

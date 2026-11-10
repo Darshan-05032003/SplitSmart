@@ -283,3 +283,24 @@ To keep these benchmarks working as the UI changes:
 - Fix applied / recommendation:
   - Key-based scrolling in screenshot tests; behaviour tests keep the auto-advancing clock.
   - Frame timing of the hero morph, card swipe, FAB burst and the card-to-screen transform on a device belongs to the batched device session after row 14.
+
+## UI Feature: Scan, OCR, AI reading and receipt review
+- Scenario and scale (JVM, Robolectric, `./gradlew stressTest` → `ScanReviewStressTest`, plus `ScanScreenTest`, `ReviewScreenTest` and the view-model tests; not a device):
+  - A 500-line receipt through the on-device parser into the review (the bill cap is 200 lines), its first frame, the whole line-by-line reveal frame by frame, then 300 jumps across the list.
+  - 10,000 live text frames at the analyzer's pace, each with 20 to 79 outlines, on the camera screen.
+  - 1,000 shutter calls through the view model; 100 injected taps on the real shutter of the real route; 1,000 capture-then-rescan cycles; 1,000 saves of one review.
+  - The largest amounts: a line at the ₹1 crore cap and a ₹99,99,99,999.99 subtotal at 1.3× text.
+- Results (numbers):
+  - 500-line receipt: parsed in 21 to 29 ms → 200 rows with the "only the first 200 lines" note; first frame of the 200-row review 314 to 378 ms on Robolectric (only the visible rows are composed: the old screen built a `Column` of 600 text fields); the reveal is capped at 1,120 ms and caused 0 recomposer cycles; 300 jumps took 3,411 to 3,672 ms.
+  - 10,000 live text frames: 384 to 452 ms, 8 recomposer cycles in total (the hint pill changing wording; the outlines are drawn, never composed).
+  - Shutter: 1,000 calls → 1 picture, 1 heavy haptic, 1 hand-off to the review; 100 injected taps → 1 picture.
+  - 1,000 capture + rescan cycles in 343 to 357 ms: 0 drafts and 0 photos left behind, exactly 1,000 haptics and 1,000 hand-offs, live text back on at the end.
+  - 1,000 saves → 1 bill.
+  - Amounts: the ₹1 crore line and the ₹99,99,99,999.99 subtotal stay inside their cards at 1.3× text (`ReviewScreenTest`).
+  - Release APK: 46,647,222 bytes, +45,182 bytes (+0.10 %) against row 10's 46,602,040 (two rebuilt screens, the camera illustration and `camera-mlkit-vision`).
+- What broke:
+  - Nothing in the app at these scales.
+  - Test environment: a stress step called `runBlocking` on a use case whose dispatcher was a paused test dispatcher, and waited forever; the step now uses real dispatchers.
+- Failure flow (step by step): `runBlocking { provisional(text) }` → `withContext(test dispatcher)` → nobody advances that dispatcher → the test thread waits. Not an app path.
+- Fix applied / recommendation:
+  - The live analyzer's real cost (frames per second, CPU, battery, heat) and the shutter-to-review time need a device; both are on the batched device list after row 14.

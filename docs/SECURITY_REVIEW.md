@@ -233,3 +233,28 @@ One entry per feature, written after attacking the feature as a pentester. Sever
 - Scope for improvement:
   - `filterTouchesWhenObscured` for settle actions remains row 13's job; nothing on these two screens moves money.
   - A pending-delete with undo would need a soft-delete column and a purge job; not worth it while archive exists.
+
+## UI Feature: Scan, OCR, AI reading and receipt review
+- Attacks tried:
+  - Shutter storms: 10 taps on the shutter inside its tap window, 1,000 calls to `capture()` through the view model, 100 injected taps on the real shutter of the real route (`ScanScreenTest`, `ScanViewModelTest`, `ScanReviewStressTest`).
+  - Save storms: 10 taps on Save bill, then taps while it is saving; 1,000 saves through the view model (`ReviewScreenTest`, `ScanReviewStressTest`).
+  - What the camera keeps: live recognition returns only rectangles (`LiveTextBox` has four floats and no other field, checked by reflection in `LiveTextTest`); nothing is logged; analysis stops at the shutter and when the screen leaves.
+  - Hostile receipt text: a right-to-left override inside a line the OCR or the AI returned, shown in a review row and its TalkBack sentence, and in the saved-scan slip (`ReviewScreenTest`, `ScanScreenTest`).
+  - Invented items: while the bill is read the screen shows placeholders only, hidden behind one progress node; no row exists until a reader produced it (`ReviewScreenTest`).
+  - Honesty of the AI path: every failure kind still lands on the parser's reading with a reason; no retry is offered for a missing or rejected key; a late AI answer is offered, never forced (`ReviewScreenTest`, `ReviewFlowIntegrationTest`).
+  - Process death: a finished scan restored from its saved draft does not open the review again; a restored review form has no reveal to replay (`ScanViewModelTest`, `ReviewViewModelTest`).
+  - Back mid-capture and mid-reading: the preview stays composed through the shutter, so the camera is not unbound while a picture is taken; Back stays bright and active over the reading card.
+  - Reduced motion: the flash still marks the shutter (a dim instead of a cream flash), the reveal shows every row at once; no step is skipped (`ScanScreenTest`, `ReviewScreenTest`).
+  - Copy that promises privacy: the permission page, the reading card and the review were checked against what the code sends where.
+  - Screenshot baselines checked for real names, receipts or keys: the sample restaurant and dishes are invented ("Hotel Marigold Bhavan"), the camera "photo" is painted.
+- What broke:
+  - **Medium (fixed):** the camera permission page said "Nothing is uploaded; text is recognised on this device." With a Gemini key the recognised text is sent to Gemini. It now says the photo stays on the phone and, with AI reading on, only the text goes to Gemini.
+  - **Low (fixed):** the old scan screen replaced the preview with a spinner the moment the shutter was pressed, unbinding the camera while the picture was being taken (a capture could fail on a slow camera). The preview now stays composed until the reading is done.
+  - **Low (fixed):** the old result page printed the raw OCR text without removing direction overrides; the saved-scan slip now passes each line through `DisplayText.safe`.
+  - Nothing Critical or High.
+- Fixed now:
+  - Copy fixes with a test on the permission text; preview kept composed (tested: the fake preview is still there during Capturing and Recognizing); slip and rows cleaned with tests.
+- Scope for improvement:
+  - Live recognition's frame rate and battery cost need a device measurement (batched after row 14).
+  - `filterTouchesWhenObscured` on Save bill is not set; saving a draft bill moves no money (row 13 handles settle actions).
+  - Gemini still runs with the key in the APK; a backend proxy remains the real fix (unchanged from feature 3).
