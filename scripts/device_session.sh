@@ -26,8 +26,9 @@ ScrollBenchmark#homeScrollNoCompilation ScrollBenchmark#billsScrollNoCompilation
 JourneyBenchmark#scanSplitSettleNoCompilation}"
 
 die() { echo "device_session: $*" >&2; exit 1; }
-# Only our builds count: safe_gradle.sh runs the wrapper without a daemon. An editor's own Gradle daemon never shares
-# the emulator's memory budget with us, so it must not block the session.
+# Only our builds count: safe_gradle.sh runs every build in a ui-gradle-* systemd scope, so an active scope means a build
+# is running. (Matching the java command line missed them: the wrapper runs as `java -jar gradle-wrapper.jar`.) An
+# editor's own Gradle daemon has no such scope, so it never blocks the session.
 no_gradle() { ! [ -n "$(systemctl --user list-units --type=scope --state=active 'ui-gradle-*' --no-legend 2>/dev/null)" ] || die "a Gradle build is running; wait for it to exit"; }
 need_emulator() { [ "$("${adb[@]}" get-state 2>/dev/null)" = device ] || die "$serial is not up (../tools/safe_emulator.sh start)"; }
 
