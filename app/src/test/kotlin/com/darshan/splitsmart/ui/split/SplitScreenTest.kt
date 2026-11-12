@@ -125,7 +125,7 @@ class SplitScreenTest {
         scrollTo("person:a")
         rule.onNodeWithText("paid").assertIsDisplayed()
         scrollTo("check")
-        rule.onNodeWithText("Shares add up to ₹1,262.50, exactly the bill total (paise-exact).").assertIsDisplayed()
+        rule.onNodeWithText("Shares add up to ₹1,262.50, the bill total to the paisa.").assertIsDisplayed()
         rule.onAllNodesWithTag(SplitSmartTestTags.SPLIT_PREVIEW_ROW).assertCountEquals(3)
         // ₹1,262.50 over three: 420.84 + 420.83 + 420.83, read out per person.
         rule.onNodeWithContentDescription("Asha pays ₹420.84").assertExists()

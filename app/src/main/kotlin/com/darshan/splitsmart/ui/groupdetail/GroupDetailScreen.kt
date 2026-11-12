@@ -500,7 +500,8 @@ private fun AddMemberSheet(draft: MemberDraft?, callbacks: GroupDetailCallbacks)
                 label = stringResource(R.string.member_vpa_label),
                 error = current.vpaError?.label(),
                 supporting = stringResource(R.string.member_vpa_hint),
-                emoji = "₹",
+                // A UPI ID, not an amount: the settle-up mark, not a rupee sign.
+                emoji = "📲",
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 modifier = Modifier.testTag(SplitSmartTestTags.MEMBER_VPA_FIELD),
             )

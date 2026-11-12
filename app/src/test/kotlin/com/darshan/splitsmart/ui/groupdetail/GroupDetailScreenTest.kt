@@ -24,6 +24,7 @@ import com.darshan.splitsmart.ui.designsystem.components.SsSnackbarState
 import com.darshan.splitsmart.ui.designsystem.effects.HapticEvent
 import com.darshan.splitsmart.ui.designsystem.setDs
 import com.google.common.truth.Truth.assertThat
+import androidx.compose.ui.test.performScrollToKey
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -173,5 +174,12 @@ class GroupDetailScreenTest {
         for (tag in listOf(SplitSmartTestTags.SCAN_BUTTON, SplitSmartTestTags.GALLERY_ADD_BUTTON, SplitSmartTestTags.ADD_BILL_BUTTON)) {
             rule.onNodeWithTag(tag).assertInside(rule.onRoot())
         }
+    }
+
+    @Test
+    fun `bills left out of the balances say why in plain words`() {
+        show(GroupDetailUiState(LoadState.Content(square.copy(unsettledBills = 1))))
+        rule.onNodeWithTag(GroupDetailTags.LIST).performScrollToKey("unsettled")
+        rule.onNodeWithText("1 bill isn't split or has no payer yet, so it isn't counted here.").assertExists()
     }
 }

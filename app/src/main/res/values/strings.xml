@@ -129,8 +129,8 @@
     <string name="group_balances_title">Who owes whom</string>
     <string name="debt_row">%1$s owes %2$s</string>
     <plurals name="group_unsettled">
-        <item quantity="one">%d bill is not split yet (or has no payer).</item>
-        <item quantity="other">%d bills are not split yet (or have no payer).</item>
+        <item quantity="one">%d bill isn\'t split or has no payer yet, so it isn\'t counted here.</item>
+        <item quantity="other">%d bills aren\'t split or have no payer yet, so they aren\'t counted here.</item>
     </plurals>
     <string name="bill_split_button">Split this bill</string>
     <string name="bill_split_edit_button">Edit split</string>
@@ -263,7 +263,7 @@
 
     <!-- Split -->
     <string name="split_paid_badge">paid</string>
-    <string name="split_total_check_ok">Shares add up to %1$s, exactly the bill total (paise-exact).</string>
+    <string name="split_total_check_ok">Shares add up to %1$s, the bill total to the paisa.</string>
     <string name="split_total_check_off">Shares add up to %1$s but the bill says %2$s.</string>
 
     <!-- Split screen (row 12) -->
@@ -533,7 +533,7 @@
     <string name="history_month_spent">%1$s spent</string>
     <string name="history_month_meta">%1$s spent · %2$s settled</string>
     <string name="history_bill_meta">%1$s · %2$s paid</string>
-    <string name="history_bill_meta_no_payer">%1$s · nobody down as paying</string>
+    <string name="history_bill_meta_no_payer">%1$s · no payer yet</string>
     <string name="history_payment_title">%1$s paid %2$s</string>
     <string name="history_payment_meta_upi">%1$s · in a UPI app</string>
     <string name="history_payment_meta_other">%1$s · another way</string>

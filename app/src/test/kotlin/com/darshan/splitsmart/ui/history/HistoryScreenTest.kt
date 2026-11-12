@@ -58,7 +58,7 @@ class HistoryScreenTest {
         rule.onNodeWithText("Ravi paid Asha").assertIsDisplayed()
         rule.onNodeWithText("Dinner at Marigold Cafe").assertIsDisplayed()
         rule.onNodeWithTag(HistoryTags.LIST).performScrollToKey("b:b4")
-        rule.onNodeWithText("26 Oct · nobody down as paying").assertExists()
+        rule.onNodeWithText("26 Oct · no payer yet").assertExists()
         // Scrolled past October's header, the header stays pinned above its rows.
         rule.onNodeWithText("October 2026").assertIsDisplayed()
     }

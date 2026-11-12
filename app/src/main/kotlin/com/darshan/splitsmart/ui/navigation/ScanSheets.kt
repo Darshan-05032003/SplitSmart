@@ -21,10 +21,10 @@ import com.darshan.splitsmart.R
 import com.darshan.splitsmart.ui.designsystem.components.ChunkyButton
 import com.darshan.splitsmart.ui.designsystem.components.Illustration
 import com.darshan.splitsmart.ui.designsystem.components.IllustrationKind
-import com.darshan.splitsmart.ui.designsystem.components.MemberAvatar
 import com.darshan.splitsmart.ui.designsystem.components.SsListRow
 import com.darshan.splitsmart.ui.designsystem.tokens.Sizes
 import com.darshan.splitsmart.ui.designsystem.tokens.Spacing
+import com.darshan.splitsmart.ui.groups.GroupTile
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
 
 object ShellTags {
@@ -53,7 +53,8 @@ fun ScanPickerContent(choices: List<ScanChoice>, title: String = stringResource(
             items(choices, key = { it.groupId }, contentType = { "group" }) { choice ->
                 SsListRow(
                     title = choice.name,
-                    leading = { MemberAvatar(choice.name, contentDescription = null) },
+                    // The group's own emoji tile, as on its card, not a person's initials.
+                    leading = { GroupTile(choice.name, size = Sizes.avatar) },
                     onClick = { onPick(choice.groupId) },
                     minHeight = Sizes.listRowCompact,
                     modifier = Modifier.testTag(ShellTags.scanChoice(choice.groupId)),

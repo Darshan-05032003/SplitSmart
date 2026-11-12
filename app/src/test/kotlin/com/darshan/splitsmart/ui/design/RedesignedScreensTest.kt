@@ -174,7 +174,7 @@ class RedesignedScreensTest {
         }
         // The split screen is a lazy list now: rows further down are reached by key.
         compose.onNodeWithTag(SplitTags.LIST).performScrollToKey("check")
-        compose.onNodeWithText("Shares add up to ₹300.00, exactly the bill total (paise-exact).").assertIsDisplayed()
+        compose.onNodeWithText("Shares add up to ₹300.00, the bill total to the paisa.").assertIsDisplayed()
         compose.onNodeWithTag(SplitTags.LIST).performScrollToKey("person:a")
         compose.onNodeWithText("paid").assertIsDisplayed()
         compose.onNodeWithTag(SplitTags.LIST).performScrollToKey("person:b")
