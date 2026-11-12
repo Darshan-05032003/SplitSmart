@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.BySelector
 import androidx.test.uiautomator.Direction
+import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.Until
 import org.junit.Rule
@@ -75,7 +76,7 @@ class BaselineProfileGenerator {
         lowest(By.text("Add bill"))?.clickAndIdle()
 
         // Bill → split → save (back on the bill) → group.
-        scrollTo(By.textContains(BILL))?.clickAndIdle()
+        clickFresh(By.textContains(BILL))
         find(By.text("Split this bill"))?.clickAndIdle()
         find(By.text("Save split"))?.clickAndIdle()
         device.wait(Until.hasObject(By.text("Edit split")), WAIT_MS)
@@ -120,6 +121,21 @@ class BaselineProfileGenerator {
         return list.scrollUntil(Direction.DOWN, Until.findObject(selector))
     }
 
+    /**
+     * Scrolls to [selector] and clicks it, finding it again if it went stale: the new bill row is replaced while the list
+     * settles after the bill sheet closes (seen on the emulator: StaleObjectException on the first iteration).
+     */
+    private fun MacrobenchmarkScope.clickFresh(selector: BySelector) {
+        repeat(STALE_RETRIES) {
+            try {
+                (scrollTo(selector) ?: return).clickAndIdle()
+                return
+            } catch (_: StaleObjectException) {
+                device.waitForIdle()
+            }
+        }
+    }
+
     private fun UiObject2.clickAndIdle() {
         click()
         device().waitForIdle()
@@ -133,6 +149,7 @@ class BaselineProfileGenerator {
         const val WAIT_MS = 5_000L
         const val SHORT_MS = 1_500L
         const val BACKS = 4
+        const val STALE_RETRIES = 3
     }
 }
 
