@@ -282,7 +282,8 @@ Threats, findings and fixes per feature: [`docs/SECURITY_REVIEW.md`](docs/SECURI
 - [`docs/CREDITS.md`](docs/CREDITS.md): fonts and licences
 
 Screens: [`docs/screenshots`](docs/screenshots) (emulator captures from before the redesign) and the current screenshot
-baselines in [`app/src/test/screenshots`](app/src/test/screenshots).
+baselines in [`app/src/test/screenshots`](app/src/test/screenshots). Short emulator recordings of the redesigned flows:
+[`docs/media`](docs/media).
 
 ## Disclaimer
 
