@@ -90,7 +90,9 @@ import com.darshan.splitsmart.ui.designsystem.tokens.MarigoldDark
 import com.darshan.splitsmart.ui.designsystem.tokens.Radii
 import com.darshan.splitsmart.ui.designsystem.tokens.Sizes
 import com.darshan.splitsmart.ui.designsystem.tokens.Spacing
+import com.darshan.splitsmart.ui.navigation.TransformAnchor
 import com.darshan.splitsmart.ui.navigation.containerTransform
+import com.darshan.splitsmart.ui.navigation.listContainerTransform
 import com.darshan.splitsmart.ui.navigation.groupContainerKey
 import com.darshan.splitsmart.ui.theme.LocalMarigoldColors
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
@@ -99,6 +101,7 @@ import kotlinx.coroutines.launch
 
 /** Test tags of the groups home. */
 object GroupsTags {
+    const val LIST = "groups_list"
     const val HERO_AMOUNT = "groups_hero_amount"
     const val MENU_SCAN = "groups_menu_scan"
     const val MENU_EXPENSE = "groups_menu_expense"
@@ -224,10 +227,11 @@ fun CardBalance.label(): Pair<StatusKind, String> = when (kind) {
 
 /**
  * A group: emoji tile, name, who and how much, and where you stand. One TalkBack sentence ("Goa trip, 3 members, 4 bills, you're
- * owed ₹1,118.70") with Open as the tap and Archive as an action, and the card is one end of the card-to-screen transform.
+ * owed ₹1,118.70") with Open as the tap and Archive as an action, and the card is one end of the card-to-screen transform (in a
+ * long list only while [anchor] points at it).
  */
 @Composable
-fun GroupCardView(card: GroupCard, onClick: () -> Unit, onArchive: (() -> Unit)?, modifier: Modifier = Modifier) {
+fun GroupCardView(card: GroupCard, onClick: () -> Unit, onArchive: (() -> Unit)?, modifier: Modifier = Modifier, anchor: TransformAnchor? = null) {
     val colors = SplitSmartTheme.colors
     val type = SplitSmartTheme.type
     val members = pluralStringResource(R.plurals.member_count, card.summary.memberCount, card.summary.memberCount)
@@ -239,7 +243,9 @@ fun GroupCardView(card: GroupCard, onClick: () -> Unit, onArchive: (() -> Unit)?
     ChunkyCard(
         modifier = modifier
             .fillMaxWidth()
-            .containerTransform(groupContainerKey(card.group.id))
+            .then(
+                if (anchor != null) Modifier.listContainerTransform(anchor, groupContainerKey(card.group.id)) else Modifier.containerTransform(groupContainerKey(card.group.id)),
+            )
             .testTag(SplitSmartTestTags.GROUP_ITEM)
             .semantics {
                 contentDescription = description

@@ -76,6 +76,8 @@ import com.darshan.splitsmart.ui.designsystem.tokens.Spacing
 import com.darshan.splitsmart.ui.simplify.DebtGraphLogic
 import com.darshan.splitsmart.ui.simplify.SimplifyCard
 import com.darshan.splitsmart.ui.simplify.SimplifySheetContent
+import com.darshan.splitsmart.ui.navigation.billContainerKey
+import com.darshan.splitsmart.ui.navigation.rememberTransformAnchor
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
 import kotlinx.coroutines.launch
 
@@ -247,6 +249,8 @@ private fun GroupDetailContent(detail: GroupDetail, callbacks: GroupDetailCallba
     val colors = SplitSmartTheme.colors
     val type = SplitSmartTheme.type
     val graph = remember(detail.members, detail.bills, detail.settlements) { DebtGraphLogic.graph(detail.members, detail.bills, detail.settlements) }
+    // Only the bill under the finger, or the last one opened, is an end of the row-to-bill transform (see listContainerTransform).
+    val anchor = rememberTransformAnchor()
     LazyColumn(Modifier.fillMaxSize().testTag(GroupDetailTags.LIST), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         item(key = "hero", contentType = "hero") {
             GroupHero(detail, primary, callbacks.onSettleUp, Modifier.padding(horizontal = Spacing.screen, vertical = Spacing.xxs))
@@ -316,7 +320,16 @@ private fun GroupDetailContent(detail: GroupDetail, callbacks: GroupDetailCallba
             item(key = "noBills", contentType = "empty") { NoBills() }
         }
         items(detail.bills, key = { "b" + it.id }, contentType = { "bill" }) { bill ->
-            BillRow(bill, payerName = bill.paidByMemberId?.let { names[it] }, onClick = { callbacks.onOpenBill(bill.id) }, modifier = Modifier.padding(horizontal = Spacing.screen))
+            BillRow(
+                bill,
+                payerName = bill.paidByMemberId?.let { names[it] },
+                onClick = {
+                    anchor.key = billContainerKey(bill.id)
+                    callbacks.onOpenBill(bill.id)
+                },
+                modifier = Modifier.padding(horizontal = Spacing.screen),
+                anchor = anchor,
+            )
         }
         item(key = "end", contentType = "end") { Spacer(Modifier.navigationBarsPadding().height(Spacing.xxl)) }
     }

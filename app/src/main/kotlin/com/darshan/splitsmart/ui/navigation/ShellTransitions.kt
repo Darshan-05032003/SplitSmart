@@ -6,11 +6,22 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import com.darshan.splitsmart.ui.designsystem.motion.LocalMotion
 import com.darshan.splitsmart.ui.designsystem.motion.MotionToken
 import com.darshan.splitsmart.ui.designsystem.motion.SplitSmartMotion
@@ -73,4 +84,53 @@ fun Modifier.containerTransform(key: String): Modifier {
             clipInOverlayDuringTransition = OverlayClip(Radii.mediumShape),
         )
     }
+}
+
+/**
+ * Which element of a long list is one end of its container transform right now: the one under the finger, or the last one
+ * opened (kept across the trip to the other screen, so the way back finds its pair). Every shared element registers with the
+ * shell as it composes, so a list where every row carried one recomposed its visible rows on every fling.
+ */
+@Stable
+class TransformAnchor(initial: String? = null) {
+    var key: String? by mutableStateOf(initial)
+
+    companion object {
+        val Saver: Saver<TransformAnchor, String> = Saver(save = { it.key }, restore = { TransformAnchor(it) })
+    }
+}
+
+@Composable
+fun rememberTransformAnchor(): TransformAnchor = rememberSaveable(saver = TransformAnchor.Saver) { TransformAnchor() }
+
+/**
+ * [containerTransform] for one element of a long list: it takes part only while [anchor] points at [key]. A finger landing on
+ * it points it there, and gives it back as soon as it travels past the touch slop (a scroll or a swipe, not a tap), so a fling
+ * carries no shared element. A tap's finger lands at least a frame before its click, which is what the pair needs to match. A
+ * click with no finger (TalkBack, a keyboard) opens with the plain fade. Outside the shell, or under reduced motion, it adds
+ * nothing.
+ */
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+fun Modifier.listContainerTransform(anchor: TransformAnchor, key: String): Modifier {
+    if (LocalSharedTransitionScope.current == null || LocalNavAnimatedScope.current == null || LocalMotion.current.reduced) return this
+    val active by remember(anchor, key) { derivedStateOf { anchor.key == key } }
+    return this
+        .pointerInput(anchor, key) {
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                val before = anchor.key
+                anchor.key = key
+                // A finger that travels is a scroll or a swipe, not a tap: hand the anchor back before the fling carries the row.
+                while (true) {
+                    val change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: break
+                    if (!change.pressed) break
+                    if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) {
+                        if (anchor.key == key) anchor.key = before
+                        break
+                    }
+                }
+            }
+        }
+        .then(if (active) Modifier.containerTransform(key) else Modifier)
 }

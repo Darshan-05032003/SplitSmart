@@ -62,7 +62,9 @@ import com.darshan.splitsmart.ui.designsystem.tokens.Spacing
 import com.darshan.splitsmart.ui.groups.GroupTile
 import com.darshan.splitsmart.ui.groups.HeroPalette
 import com.darshan.splitsmart.ui.navigation.billContainerKey
+import com.darshan.splitsmart.ui.navigation.TransformAnchor
 import com.darshan.splitsmart.ui.navigation.containerTransform
+import com.darshan.splitsmart.ui.navigation.listContainerTransform
 import com.darshan.splitsmart.ui.theme.LocalMarigoldColors
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
 
@@ -222,14 +224,20 @@ fun DebtRow(from: String, to: String, paise: Long, modifier: Modifier = Modifier
     }
 }
 
-/** One bill: what, when, who paid, how it was made (AI gets its sparkle) and how much. Opens the bill. */
+/**
+ * One bill: what, when, who paid, how it was made (AI gets its sparkle) and how much. Opens the bill. The row is one end of the
+ * row-to-bill container transform: always, or, in a long list, only while [anchor] points at it.
+ */
 @Composable
-fun BillRow(bill: Bill, payerName: String?, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun BillRow(bill: Bill, payerName: String?, onClick: () -> Unit, modifier: Modifier = Modifier, anchor: TransformAnchor? = null) {
     val colors = SplitSmartTheme.colors
     val type = SplitSmartTheme.type
     val ai = bill.source == BillSource.SCAN_LLM
     ChunkyCard(
-        modifier.fillMaxWidth().containerTransform(billContainerKey(bill.id)).testTag(SplitSmartTestTags.BILL_ITEM),
+        modifier
+            .fillMaxWidth()
+            .then(if (anchor != null) Modifier.listContainerTransform(anchor, billContainerKey(bill.id)) else Modifier.containerTransform(billContainerKey(bill.id)))
+            .testTag(SplitSmartTestTags.BILL_ITEM),
         onClick = onClick,
         onClickLabel = stringResource(R.string.bill_open),
         contentPadding = PaddingValues(Spacing.md),

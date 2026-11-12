@@ -85,6 +85,8 @@ import com.darshan.splitsmart.ui.navigation.ScrollToTopOnReselect
 import com.darshan.splitsmart.ui.navigation.ShellRequest
 import com.darshan.splitsmart.ui.navigation.ShellRequestEffect
 import com.darshan.splitsmart.ui.navigation.ShellRoute
+import com.darshan.splitsmart.ui.navigation.groupContainerKey
+import com.darshan.splitsmart.ui.navigation.rememberTransformAnchor
 import com.darshan.splitsmart.ui.navigation.scanChoicesOf
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
 import kotlinx.coroutines.launch
@@ -243,7 +245,9 @@ private fun GroupsList(state: GroupsUiState, cards: List<GroupCard>, callbacks: 
     entrance.update(cards.map { it.group.id })
     LaunchedEffect(Unit) { opened = true }
     var archivedOpen by rememberSaveable { mutableStateOf(false) }
-    LazyColumn(Modifier.fillMaxSize(), state = listState, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+    // Only the card under the finger, or the last one opened, is an end of the card-to-group transform (listContainerTransform).
+    val anchor = rememberTransformAnchor()
+    LazyColumn(Modifier.fillMaxSize().testTag(GroupsTags.LIST), state = listState, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         item(key = "top", contentType = "top") {
             SsTopBar(stringResource(R.string.app_name), large = true, subtitle = stringResource(R.string.app_tagline))
         }
@@ -266,7 +270,15 @@ private fun GroupsList(state: GroupsUiState, cards: List<GroupCard>, callbacks: 
                     .padding(horizontal = Spacing.screen)
                     .then(if (delayIndex != null) Modifier.popInEntrance(delayIndex, card.group.id) else Modifier),
             ) {
-                GroupCardView(card, onClick = { callbacks.onOpenGroup(card.group.id) }, onArchive = { callbacks.onArchive(card.group.id) })
+                GroupCardView(
+                    card,
+                    onClick = {
+                        anchor.key = groupContainerKey(card.group.id)
+                        callbacks.onOpenGroup(card.group.id)
+                    },
+                    onArchive = { callbacks.onArchive(card.group.id) },
+                    anchor = anchor,
+                )
             }
         }
         if (cards.isNotEmpty() && state.archived.isEmpty()) {
