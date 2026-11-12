@@ -32,7 +32,9 @@ fun CameraPreview(camera: ReceiptCamera, modifier: Modifier = Modifier) {
     DisposableEffect(controller, lifecycleOwner) {
         controller.bindToLifecycle(lifecycleOwner)
         cameraX.attachLiveText()
+        cameraX.attachTorch(lifecycleOwner)
         onDispose {
+            cameraX.detachTorch(lifecycleOwner)
             cameraX.detachLiveText()
             controller.unbind()
         }

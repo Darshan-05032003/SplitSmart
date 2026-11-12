@@ -8,6 +8,7 @@ import com.darshan.splitsmart.data.ocr.CameraPermission
 import com.darshan.splitsmart.data.ocr.LiveText
 import com.darshan.splitsmart.data.ocr.ReceiptCamera
 import com.darshan.splitsmart.data.ocr.ReceiptImageStore
+import com.darshan.splitsmart.data.ocr.Torch
 import com.darshan.splitsmart.domain.model.ReceiptDraft
 import com.darshan.splitsmart.domain.model.ScanError
 import com.darshan.splitsmart.domain.repository.ReceiptDraftRepository
@@ -73,6 +74,20 @@ class ScanViewModel @Inject constructor(
 
     /** What the live preview sees, as rectangles. Read by the overlay in its draw phase only. */
     val liveText: StateFlow<LiveText> = camera.liveText
+
+    /** The torch of the open camera, if it has one. */
+    val torch: StateFlow<Torch> = camera.torch
+
+    /** Lights or puts out the torch while the camera is up. A camera without one ignores it (and shows no button). */
+    fun toggleTorch() {
+        val phase = phase.value
+        if (phase != ScanPhase.Ready && phase != ScanPhase.Capturing) return
+        when (torch.value) {
+            Torch.Off -> camera.setTorch(true)
+            Torch.On -> camera.setTorch(false)
+            Torch.Unavailable -> Unit
+        }
+    }
 
     init {
         // Launched first, so it sees the starting phase before the restore below can move it on.

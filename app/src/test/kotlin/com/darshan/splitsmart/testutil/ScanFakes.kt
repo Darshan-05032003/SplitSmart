@@ -4,6 +4,7 @@ import com.darshan.splitsmart.data.ocr.CameraCaptureException
 import com.darshan.splitsmart.data.ocr.CameraPermission
 import com.darshan.splitsmart.data.ocr.ImageImportException
 import com.darshan.splitsmart.data.ocr.LiveText
+import com.darshan.splitsmart.data.ocr.Torch
 import com.darshan.splitsmart.data.ocr.OcrLine
 import com.darshan.splitsmart.data.ocr.OcrResult
 import com.darshan.splitsmart.data.ocr.ReceiptCamera
@@ -46,6 +47,17 @@ class FakeReceiptCamera : ReceiptCamera {
     val liveTextRequests = mutableListOf<Boolean>()
     override fun setLiveTextEnabled(enabled: Boolean) {
         liveTextRequests += enabled
+    }
+
+    /** Set to Off or On to play a camera with a flash unit; the fake lights it when asked, as CameraX does. */
+    val torchState = MutableStateFlow(Torch.Unavailable)
+    override val torch: StateFlow<Torch> get() = torchState
+
+    /** Every torch request, in order. */
+    val torchRequests = mutableListOf<Boolean>()
+    override fun setTorch(on: Boolean) {
+        torchRequests += on
+        if (torchState.value != Torch.Unavailable) torchState.value = if (on) Torch.On else Torch.Off
     }
 
     override suspend fun capture(target: File) {

@@ -10,10 +10,12 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
+import androidx.camera.core.TorchState
 import androidx.camera.mlkit.vision.MlKitAnalyzer
 import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.LifecycleOwner
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -30,6 +32,11 @@ import kotlin.coroutines.resumeWithException
 
 class CameraCaptureException(cause: Throwable) : Exception(cause)
 
+/** The camera's flash used as a torch. [Unavailable] when the camera has no flash unit, or is not open yet. */
+enum class Torch { Unavailable, Off, On }
+
+private val NoTorch: StateFlow<Torch> = MutableStateFlow(Torch.Unavailable)
+
 /** Takes one still picture into [target]. Wrapped so JVM tests use a fake. */
 interface ReceiptCamera {
     suspend fun capture(target: File)
@@ -39,6 +46,12 @@ interface ReceiptCamera {
 
     /** Live recognition runs only while the screen is ready for a picture; off, it drops frames and clears the outlines. */
     fun setLiveTextEnabled(enabled: Boolean) = Unit
+
+    /** Whether the open camera has a torch, and whether it is lit. */
+    val torch: StateFlow<Torch> get() = NoTorch
+
+    /** Lights or puts out the torch; does nothing on a camera without one. The camera turns it off when it closes. */
+    fun setTorch(on: Boolean) = Unit
 }
 
 interface CameraPermission {
@@ -60,6 +73,8 @@ class AndroidCameraPermission @Inject constructor(@ApplicationContext private va
  */
 class CameraXReceiptCamera @Inject constructor(@ApplicationContext private val context: Context) : ReceiptCamera {
     private var controller: LifecycleCameraController? = null
+    private val torchState = MutableStateFlow(Torch.Unavailable)
+    override val torch: StateFlow<Torch> = torchState.asStateFlow()
     private val live = MutableStateFlow(LiveText.NONE)
     override val liveText: StateFlow<LiveText> = live.asStateFlow()
 
@@ -116,6 +131,37 @@ class CameraXReceiptCamera @Inject constructor(@ApplicationContext private val c
         analysisExecutor?.shutdown()
         analysisExecutor = null
         live.value = LiveText.NONE
+    }
+
+    /**
+     * Call on the main thread after binding the preview: follows the camera's torch, which exists only once a camera with a flash
+     * unit is open (`cameraInfo.hasFlashUnit`). Front cameras, most tablets and the emulator have none: the button stays hidden.
+     */
+    fun attachTorch(owner: LifecycleOwner) {
+        val camera = controller ?: return
+        camera.torchState.observe(owner) { state -> refreshTorch(state) }
+        camera.initializationFuture.addListener({ refreshTorch(camera.torchState.value) }, ContextCompat.getMainExecutor(context))
+    }
+
+    /** Call before unbinding: the camera puts its torch out when it closes. */
+    fun detachTorch(owner: LifecycleOwner) {
+        controller?.torchState?.removeObservers(owner)
+        torchState.value = Torch.Unavailable
+    }
+
+    private fun refreshTorch(state: Int?) {
+        val hasFlash = controller?.cameraInfo?.hasFlashUnit() == true
+        torchState.value = when {
+            !hasFlash -> Torch.Unavailable
+            state == TorchState.ON -> Torch.On
+            else -> Torch.Off
+        }
+    }
+
+    override fun setTorch(on: Boolean) {
+        val camera = controller ?: return
+        if (camera.cameraInfo?.hasFlashUnit() != true) return
+        camera.enableTorch(on)
     }
 
     /** Created lazily on first preview so constructing the ViewModel never touches camera hardware. */

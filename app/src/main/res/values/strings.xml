@@ -209,6 +209,9 @@
     <!-- Scan / review -->
     <string name="scan_frame_hint">Fit the whole receipt in the frame</string>
     <string name="scan_gallery_short">Gallery</string>
+    <string name="scan_torch_short">Torch</string>
+    <string name="scan_torch_off">Torch is off</string>
+    <string name="scan_torch_on">Torch is on</string>
     <plurals name="scan_result_lines">
         <item quantity="one">%d line read on this phone and saved as a draft for this group.</item>
         <item quantity="other">%d lines read on this phone and saved as a draft for this group.</item>

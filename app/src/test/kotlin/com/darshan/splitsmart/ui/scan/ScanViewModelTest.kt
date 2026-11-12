@@ -1,5 +1,7 @@
 package com.darshan.splitsmart.ui.scan
 
+import com.darshan.splitsmart.data.ocr.Torch
+
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.darshan.splitsmart.domain.model.ScanError
@@ -246,5 +248,38 @@ class ScanViewModelTest {
         val boxes = com.darshan.splitsmart.data.ocr.LiveText.of(listOf(com.darshan.splitsmart.data.ocr.LiveTextBox(1f, 2f, 30f, 12f)), frame = 1)
         camera.live.value = boxes
         assertThat(vm.liveText.value).isEqualTo(boxes)
+    }
+
+    @Test
+    fun `the torch lights and goes out while the camera is up, and is ignored without one`() = runTest(dispatcher) {
+        val vm = vm()
+        vm.uiState.test {
+            awaitItem(); assertThat(awaitItem().phase).isEqualTo(ScanPhase.Ready)
+            vm.toggleTorch()
+            assertThat(camera.torchRequests).isEmpty() // no flash unit: nothing to light, and no button shown
+            camera.torchState.value = Torch.Off
+            vm.toggleTorch()
+            assertThat(vm.torch.value).isEqualTo(Torch.On)
+            vm.toggleTorch()
+            assertThat(vm.torch.value).isEqualTo(Torch.Off)
+            assertThat(camera.torchRequests).containsExactly(true, false).inOrder()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `the torch is left alone once the camera has gone (an error page)`() = runTest(dispatcher) {
+        camera.torchState.value = Torch.Off
+        camera.failWith = IllegalStateException("closed")
+        val vm = vm()
+        vm.uiState.test {
+            awaitItem(); awaitItem()
+            vm.capture()
+            assertThat(awaitItem().phase).isEqualTo(ScanPhase.Capturing)
+            assertThat(awaitItem().phase).isInstanceOf(ScanPhase.Error::class.java)
+            vm.toggleTorch()
+            assertThat(camera.torchRequests).isEmpty()
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 }

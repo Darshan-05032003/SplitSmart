@@ -78,6 +78,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -86,6 +89,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.darshan.splitsmart.R
 import com.darshan.splitsmart.data.ocr.LiveText
+import com.darshan.splitsmart.data.ocr.Torch
 import com.darshan.splitsmart.domain.model.ScanError
 import com.darshan.splitsmart.ui.SplitSmartTestTags
 import com.darshan.splitsmart.ui.designsystem.components.ButtonStyle
@@ -131,6 +135,7 @@ object ScanTags {
     const val VIEWFINDER = "scan_viewfinder"
     const val PERMISSION = "scan_permission"
     const val RESULT = "scan_result"
+    const val TORCH = "scan_torch"
 }
 
 /** Production entry point: wires the permission and photo-picker launchers, then delegates to the testable route. */
@@ -174,6 +179,7 @@ fun ScanRoute(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val liveText = viewModel.liveText.collectAsStateWithLifecycle()
+    val torch = viewModel.torch.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val continueTo by rememberUpdatedState(onContinue)
     CollectUiEffects(viewModel.effects, onOther = { effect -> if (effect is ScanEffect.OpenReview) continueTo(effect.draftId) })
@@ -181,6 +187,7 @@ fun ScanRoute(
         state = state,
         preview = preview,
         liveText = liveText,
+        torch = torch,
         callbacks = ScanCallbacks(
             onBack = onBack,
             onCapture = viewModel::capture,
@@ -194,6 +201,7 @@ fun ScanRoute(
             onRetry = viewModel::retry,
             onRescan = viewModel::rescan,
             onContinue = { (state.phase as? ScanPhase.Result)?.let { onContinue(it.draft.id) } },
+            onToggleTorch = viewModel::toggleTorch,
         ),
     )
 }
@@ -207,9 +215,11 @@ data class ScanCallbacks(
     val onRetry: () -> Unit,
     val onRescan: () -> Unit,
     val onContinue: () -> Unit,
+    val onToggleTorch: () -> Unit = {},
 )
 
 private val NoLiveText: State<LiveText> = mutableStateOf(LiveText.NONE)
+private val NoTorch: State<Torch> = mutableStateOf(Torch.Unavailable)
 
 /**
  * The scan flow on Marigold, in the night palette: a full-bleed camera with a receipt-shaped window, breathing marigold corners,
@@ -219,7 +229,13 @@ private val NoLiveText: State<LiveText> = mutableStateOf(LiveText.NONE)
  * through the reading, so the camera is never unbound mid-capture.
  */
 @Composable
-fun ScanScreen(state: ScanUiState, preview: @Composable () -> Unit, callbacks: ScanCallbacks, liveText: State<LiveText> = NoLiveText) {
+fun ScanScreen(
+    state: ScanUiState,
+    preview: @Composable () -> Unit,
+    callbacks: ScanCallbacks,
+    liveText: State<LiveText> = NoLiveText,
+    torch: State<Torch> = NoTorch,
+) {
     CompositionLocalProvider(LocalMarigoldColors provides CameraPalette) {
         val colors = SplitSmartTheme.colors
         StatusBarSurface(colors.bg, settled = LocalNavAnimatedScope.current?.hasArrived() ?: true)
@@ -228,7 +244,7 @@ fun ScanScreen(state: ScanUiState, preview: @Composable () -> Unit, callbacks: S
         val showPreview = ScanLogic.showsPreview(phase, previewWasUp[0]).also { previewWasUp[0] = it }
         Box(Modifier.fillMaxSize().background(colors.bg).testTag(ScanTags.SCREEN)) {
             if (phase == ScanPhase.Ready || phase == ScanPhase.Capturing || phase == ScanPhase.Recognizing) {
-                CameraStage(phase, showPreview, preview, liveText, callbacks)
+                CameraStage(phase, showPreview, preview, liveText, torch.value, callbacks)
             } else {
                 when (phase) {
                     is ScanPhase.PermissionRequired -> PermissionPage(phase.permanentlyDenied, callbacks)
@@ -247,7 +263,7 @@ private fun ScanTopBar(onBack: () -> Unit) {
 }
 
 @Composable
-private fun CameraStage(phase: ScanPhase, showPreview: Boolean, preview: @Composable () -> Unit, liveText: State<LiveText>, callbacks: ScanCallbacks) {
+private fun CameraStage(phase: ScanPhase, showPreview: Boolean, preview: @Composable () -> Unit, liveText: State<LiveText>, torch: Torch, callbacks: ScanCallbacks) {
     val motion = LocalMotion.current
     val area = remember { mutableStateOf(Rect.Zero) }
     val closing = animateFloatAsState(if (phase == ScanPhase.Ready) 0f else 1f, motion.spec(MotionToken.Snap), label = "corners")
@@ -264,7 +280,7 @@ private fun CameraStage(phase: ScanPhase, showPreview: Boolean, preview: @Compos
             ScanTopBar(callbacks.onBack)
             HintPill(hint)
             Box(Modifier.weight(1f).fillMaxWidth().onPlaced { area.value = it.boundsInParent() })
-            CameraControls(phase, callbacks)
+            CameraControls(phase, torch, callbacks)
         }
         ShutterFlash(phase)
     }
@@ -391,11 +407,8 @@ private const val GLOW_ALPHA = 0.35f
 private const val FLASH_ALPHA = 0.85f
 
 @Composable
-private fun CameraControls(phase: ScanPhase, callbacks: ScanCallbacks) {
-    val colors = SplitSmartTheme.colors
-    val type = SplitSmartTheme.type
+private fun CameraControls(phase: ScanPhase, torch: Torch, callbacks: ScanCallbacks) {
     val ready = phase == ScanPhase.Ready
-    val galleryLabel = stringResource(R.string.scan_pick_gallery)
     Row(
         Modifier
             .fillMaxWidth()
@@ -404,20 +417,54 @@ private fun CameraControls(phase: ScanPhase, callbacks: ScanCallbacks) {
             .graphicsLayer { alpha = if (phase == ScanPhase.Recognizing) 0f else 1f },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+            LabelledControl(stringResource(R.string.scan_gallery_short)) {
                 ChunkyIconButton(
                     ImageVector.vectorResource(R.drawable.ic_gallery),
-                    galleryLabel,
+                    stringResource(R.string.scan_pick_gallery),
                     callbacks.onPickImage,
                     Modifier.testTag(SplitSmartTestTags.GALLERY_BUTTON),
                     enabled = ready,
                 )
-                BasicText(stringResource(R.string.scan_gallery_short), Modifier.clearAndSetSemantics { }, style = type.label.copy(color = colors.textSecondary))
             }
         }
         ShutterButton(enabled = ready, onClick = callbacks.onCapture, modifier = Modifier.testTag(SplitSmartTestTags.CAPTURE_BUTTON))
-        Spacer(Modifier.weight(1f))
+        // The torch balances the gallery on the right, only on a camera that has one. Lit, it turns marigold.
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+            if (torch != Torch.Unavailable) TorchButton(on = torch == Torch.On, enabled = ready || phase == ScanPhase.Capturing, onToggle = callbacks.onToggleTorch)
+        }
+    }
+}
+
+/** A round control with its short name under it; TalkBack hears the button's own label once. */
+@Composable
+private fun LabelledControl(label: String, content: @Composable () -> Unit) {
+    val colors = SplitSmartTheme.colors
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
+        content()
+        BasicText(label, Modifier.clearAndSetSemantics { }, style = SplitSmartTheme.type.label.copy(color = colors.textSecondary))
+    }
+}
+
+/**
+ * The torch switch: secondary when off, marigold when lit. TalkBack hears "Torch is off" or "Torch is on" as a switch, so the
+ * state is said, not only shown.
+ */
+@Composable
+private fun TorchButton(on: Boolean, enabled: Boolean, onToggle: () -> Unit) {
+    val state = stringResource(if (on) R.string.scan_torch_on else R.string.scan_torch_off)
+    LabelledControl(stringResource(R.string.scan_torch_short)) {
+        ChunkyIconButton(
+            ImageVector.vectorResource(R.drawable.ic_torch),
+            state,
+            onToggle,
+            Modifier.testTag(ScanTags.TORCH).semantics {
+                role = Role.Switch
+                toggleableState = ToggleableState(on)
+            },
+            style = if (on) ButtonStyle.Primary else ButtonStyle.Secondary,
+            enabled = enabled,
+        )
     }
 }
 

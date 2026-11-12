@@ -34,6 +34,12 @@ import com.darshan.splitsmart.ui.designsystem.setDs
 import com.darshan.splitsmart.ui.navigation.LocalStatusBarController
 import com.darshan.splitsmart.ui.navigation.StatusBarController
 import com.google.common.truth.Truth.assertThat
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.unit.dp
+import com.darshan.splitsmart.data.ocr.Torch
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -54,16 +60,18 @@ class ScanScreenTest {
         var rescan = 0
         var continued = 0
         var back = 0
+        var torch = 0
     }
 
     private fun callbacks(calls: Calls) = ScanCallbacks(
         onBack = { calls.back++ }, onCapture = { calls.captures++ }, onPickImage = { calls.gallery++ },
         onRequestPermission = { calls.permission++ }, onOpenSettings = { calls.settings++ }, onRetry = { calls.retry++ },
-        onRescan = { calls.rescan++ }, onContinue = { calls.continued++ },
+        onRescan = { calls.rescan++ }, onContinue = { calls.continued++ }, onToggleTorch = { calls.torch++ },
     )
 
     private val live = mutableStateOf(LiveText.NONE)
     private val phase = mutableStateOf<ScanPhase>(ScanPhase.Ready)
+    private val torch = mutableStateOf(Torch.Unavailable)
 
     /** The clock is paused before content: the corners breathe and the scan line sweeps forever. */
     private fun show(calls: Calls = Calls(), reduceMotion: Boolean = false, fontScale: Float = 1f, dark: Boolean = false, statusBar: StatusBarController? = null) {
@@ -71,7 +79,7 @@ class ScanScreenTest {
         rule.setDs(reduceMotion = reduceMotion, fontScale = fontScale, dark = dark) {
             CompositionLocalProvider(LocalStatusBarController provides statusBar) {
                 Box(Modifier.fillMaxSize().testTag(ROOT)) {
-                    ScanScreen(ScanUiState(phase.value, "g1"), preview = { Box(Modifier.fillMaxSize().testTag(PREVIEW)) }, callbacks = callbacks(calls), liveText = live)
+                    ScanScreen(ScanUiState(phase.value, "g1"), preview = { Box(Modifier.fillMaxSize().testTag(PREVIEW)) }, callbacks = callbacks(calls), liveText = live, torch = torch)
                 }
             }
         }
@@ -269,5 +277,43 @@ class ScanScreenTest {
         const val PREVIEW = "fake_preview"
         const val SHUTTER = "shutter"
         const val FRAME = 16L
+    }
+
+    @Test
+    fun `a camera without a flash shows no torch`() {
+        show()
+        rule.onNodeWithTag(ScanTags.TORCH).assertDoesNotExist()
+    }
+
+    @Test
+    fun `the torch says whether it is lit, as a switch, and toggles`() {
+        val calls = Calls()
+        torch.value = Torch.Off
+        show(calls)
+        rule.onNodeWithTag(ScanTags.TORCH)
+            .assertContentDescriptionEquals("Torch is off")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.Off))
+            .performClick()
+        assertThat(calls.torch).isEqualTo(1)
+        commitState { torch.value = Torch.On }
+        rule.mainClock.advanceTimeBy(FRAME * 2)
+        rule.onNodeWithTag(ScanTags.TORCH)
+            .assertContentDescriptionEquals("Torch is on")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.On))
+        // The lit torch keeps the camera's mirror image: gallery left, torch right, the shutter between.
+        val gallery = rule.onNodeWithTag(SplitSmartTestTags.GALLERY_BUTTON).fetchSemanticsNode().boundsInRoot
+        val shutter = rule.onNodeWithTag(SplitSmartTestTags.CAPTURE_BUTTON).fetchSemanticsNode().boundsInRoot
+        val lamp = rule.onNodeWithTag(ScanTags.TORCH).fetchSemanticsNode().boundsInRoot
+        assertThat(gallery.right).isLessThan(shutter.left)
+        assertThat(lamp.left).isGreaterThan(shutter.right)
+    }
+
+    @Test
+    fun `at 1_3x text the torch stays on screen with its 48dp target`() {
+        torch.value = Torch.On
+        show(fontScale = 1.3f)
+        rule.onNodeWithTag(ScanTags.TORCH).assertInside(rule.onNodeWithTag(ROOT))
+        rule.onNodeWithTag(ScanTags.TORCH).assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
     }
 }

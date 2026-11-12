@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A torch: a flared head over a handle with its switch. Drawn for SplitSmart. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FF000000" android:fillType="evenOdd"
+        android:pathData="M6,2h12v3.5l-3,4V20c0,1.1 -0.9,2 -2,2h-2c-1.1,0 -2,-0.9 -2,-2V9.5l-3,-4V2zM12,12.25a1.25,1.25 0,1 0,0.001 0z" />
+</vector>

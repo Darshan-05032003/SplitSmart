@@ -40,13 +40,14 @@ class ScanScreenshotTest {
 
     private val phase = mutableStateOf<ScanPhase>(ScanPhase.Ready)
     private val live = mutableStateOf(LiveText.NONE)
+    private val torch = mutableStateOf(com.darshan.splitsmart.data.ocr.Torch.Unavailable)
     private val noop = ScanCallbacks({}, {}, {}, {}, {}, {}, {}, {})
 
     private fun shot(name: String, dark: Boolean = false, fontScale: Float = 1f, reduced: Boolean = false, settle: Long = 1_500, act: () -> Unit = {}) {
         rule.mainClock.autoAdvance = false
         rule.setDs(dark = dark, fontScale = fontScale, reduceMotion = reduced) {
             Box(Modifier.fillMaxSize().testTag(ROOT)) {
-                ScanScreen(ScanUiState(phase.value, "g1"), preview = { FakePhoto() }, callbacks = noop, liveText = live)
+                ScanScreen(ScanUiState(phase.value, "g1"), preview = { FakePhoto() }, callbacks = noop, liveText = live, torch = torch)
             }
         }
         rule.mainClock.advanceTimeBy(settle)
@@ -67,6 +68,19 @@ class ScanScreenshotTest {
     @Test fun camera_dark() = shot("camera", dark = true)
     @Test fun camera_font130() = shot("camera", fontScale = 1.3f)
     @Test fun camera_reduced() = shot("camera", reduced = true)
+
+    /** A phone with a flash unit: the torch balances the gallery (row 17). */
+    @Test
+    fun camera_torch_off_light() {
+        torch.value = com.darshan.splitsmart.data.ocr.Torch.Off
+        shot("camera_torch_off")
+    }
+
+    @Test
+    fun camera_torch_on_dark() {
+        torch.value = com.darshan.splitsmart.data.ocr.Torch.On
+        shot("camera_torch_on", dark = true)
+    }
 
     @Test
     fun camera_live_text_light() = shot("camera_live_text", act = {
