@@ -172,7 +172,7 @@ class AppStartStressTest {
         val ms = measureTimeMillis {
             repeat(1_000) { i ->
                 val repo = InMemoryOnboardingRepository(completed = i % 2 == 0)
-                val vm = AppStartViewModel(repo)
+                val vm = AppStartViewModel(repo) { false }
                 runCurrent()
                 if (vm.start.value == AppStart.Onboarding) onboarding++ else ready++
                 repeat(10) { vm.finish() }

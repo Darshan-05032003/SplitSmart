@@ -2,6 +2,7 @@ package com.darshan.splitsmart.ui.onboarding
 
 import app.cash.turbine.test
 import com.darshan.splitsmart.data.settings.InMemoryOnboardingRepository
+import com.darshan.splitsmart.domain.repository.ExistingGroups
 import com.darshan.splitsmart.domain.repository.OnboardingRepository
 import com.darshan.splitsmart.testutil.MainDispatcherRule
 import com.darshan.splitsmart.ui.splash.SplashPolicy
@@ -69,7 +70,7 @@ class AppStartViewModelTest {
     @Test
     fun `a fresh install starts on the intro, finishing it stores done and opens the app`() = runTest(dispatcher) {
         val repo = InMemoryOnboardingRepository(completed = false)
-        val vm = AppStartViewModel(repo)
+        val vm = AppStartViewModel(repo, NO_GROUPS)
         vm.start.test {
             assertThat(awaitItem()).isEqualTo(AppStart.Loading)
             assertThat(awaitItem()).isEqualTo(AppStart.Onboarding)
@@ -83,7 +84,7 @@ class AppStartViewModelTest {
 
     @Test
     fun `a returning user goes straight to the app`() = runTest(dispatcher) {
-        val vm = AppStartViewModel(InMemoryOnboardingRepository(completed = true))
+        val vm = AppStartViewModel(InMemoryOnboardingRepository(completed = true), NO_GROUPS)
         vm.start.test {
             assertThat(awaitItem()).isEqualTo(AppStart.Loading)
             assertThat(awaitItem()).isEqualTo(AppStart.Ready)
@@ -97,7 +98,7 @@ class AppStartViewModelTest {
             override val completed: Flow<Boolean> = flow { awaitCancellation() }
             override suspend fun setCompleted(completed: Boolean) = Unit
         }
-        val vm = AppStartViewModel(hung)
+        val vm = AppStartViewModel(hung, NO_GROUPS)
         vm.start.test {
             assertThat(awaitItem()).isEqualTo(AppStart.Loading)
             advanceTimeBy(SplashPolicy.MAX_HOLD_MS - 1)
@@ -112,7 +113,7 @@ class AppStartViewModelTest {
     @Test
     fun `replay shows the intro without forgetting it was done`() = runTest(dispatcher) {
         val repo = InMemoryOnboardingRepository(completed = true)
-        val vm = AppStartViewModel(repo)
+        val vm = AppStartViewModel(repo, NO_GROUPS)
         vm.start.test {
             skipItems(2)
             vm.replay()
@@ -132,11 +133,65 @@ class AppStartViewModelTest {
             override val completed: Flow<Boolean> = MutableStateFlow(false)
             override suspend fun setCompleted(completed: Boolean) { writes.value++ }
         }
-        val vm = AppStartViewModel(repo)
+        val vm = AppStartViewModel(repo, NO_GROUPS)
         runCurrent()
         repeat(1_000) { vm.finish() }
         runCurrent()
         assertThat(writes.value).isEqualTo(1)
         assertThat(vm.start.value).isEqualTo(AppStart.Ready)
+    }
+
+    @Test
+    fun `someone updating with groups already on the phone skips the intro, and it is remembered`() = runTest(dispatcher) {
+        val repo = InMemoryOnboardingRepository(completed = false)
+        val vm = AppStartViewModel(repo) { true }
+        vm.start.test {
+            assertThat(awaitItem()).isEqualTo(AppStart.Loading)
+            assertThat(awaitItem()).isEqualTo(AppStart.Ready)
+            runCurrent()
+            assertThat(repo.completed.first()).isTrue()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a returning user with the intro done never waits on the database`() = runTest(dispatcher) {
+        val vm = AppStartViewModel(InMemoryOnboardingRepository(completed = true)) { error("the database must not be read") }
+        vm.start.test {
+            assertThat(awaitItem()).isEqualTo(AppStart.Loading)
+            assertThat(awaitItem()).isEqualTo(AppStart.Ready)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a database that cannot be read still shows the intro`() = runTest(dispatcher) {
+        val repo = InMemoryOnboardingRepository(completed = false)
+        val vm = AppStartViewModel(repo) { throw IllegalStateException("corrupt") }
+        vm.start.test {
+            assertThat(awaitItem()).isEqualTo(AppStart.Loading)
+            assertThat(awaitItem()).isEqualTo(AppStart.Onboarding)
+            runCurrent()
+            assertThat(repo.completed.first()).isFalse()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a slow database gives way after the splash cap`() = runTest(dispatcher) {
+        val vm = AppStartViewModel(InMemoryOnboardingRepository(completed = false)) { awaitCancellation() }
+        vm.start.test {
+            assertThat(awaitItem()).isEqualTo(AppStart.Loading)
+            advanceTimeBy(SplashPolicy.MAX_HOLD_MS - 1)
+            runCurrent()
+            expectNoEvents()
+            advanceTimeBy(2)
+            assertThat(awaitItem()).isEqualTo(AppStart.Ready)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    private companion object {
+        val NO_GROUPS = ExistingGroups { false }
     }
 }

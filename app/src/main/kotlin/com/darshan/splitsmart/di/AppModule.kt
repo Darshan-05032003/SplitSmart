@@ -15,8 +15,10 @@ import com.darshan.splitsmart.data.repository.BillRepositoryImpl
 import com.darshan.splitsmart.data.repository.GroupRepositoryImpl
 import com.darshan.splitsmart.data.repository.ReceiptDraftRepositoryImpl
 import com.darshan.splitsmart.data.repository.SettlementRepositoryImpl
+import com.darshan.splitsmart.data.repository.RoomExistingGroups
 import com.darshan.splitsmart.data.repository.TrashRepositoryImpl
 import com.darshan.splitsmart.domain.repository.BillRepository
+import com.darshan.splitsmart.domain.repository.ExistingGroups
 import com.darshan.splitsmart.domain.repository.GroupRepository
 import com.darshan.splitsmart.domain.repository.ReceiptDraftRepository
 import com.darshan.splitsmart.domain.repository.SettlementRepository
@@ -61,4 +63,5 @@ abstract class RepositoryModule {
     @Binds abstract fun receiptDraftRepository(impl: ReceiptDraftRepositoryImpl): ReceiptDraftRepository
     @Binds abstract fun settlementRepository(impl: SettlementRepositoryImpl): SettlementRepository
     @Binds abstract fun trashRepository(impl: TrashRepositoryImpl): TrashRepository
+    @Binds abstract fun existingGroups(impl: RoomExistingGroups): ExistingGroups
 }

@@ -76,4 +76,21 @@ class GroupArchiveDaoTest {
             context.deleteDatabase(name)
         }
     }
+
+    /** The start screen's question for someone updating: are there groups on this phone? Archived ones count too. */
+    @Test
+    fun `existing groups are found, archived ones included, and an empty database has none`() = runTest {
+        val db = Room.inMemoryDatabaseBuilder(context, SplitSmartDatabase::class.java).allowMainThreadQueries().build()
+        try {
+            val dispatchers = TestDispatcherProvider(Dispatchers.Unconfined)
+            val existing = com.darshan.splitsmart.data.repository.RoomExistingGroups(db.groupDao(), dispatchers)
+            assertThat(existing.any()).isFalse()
+            val repo = GroupRepositoryImpl(db.groupDao(), db.memberDao(), fixedClock, dispatchers)
+            val goa = repo.createGroup("Goa trip")
+            repo.setArchived(goa.id, archived = true)
+            assertThat(existing.any()).isTrue()
+        } finally {
+            db.close()
+        }
+    }
 }

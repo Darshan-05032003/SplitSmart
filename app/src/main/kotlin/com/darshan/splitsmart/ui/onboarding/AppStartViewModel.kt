@@ -6,6 +6,8 @@ import com.darshan.splitsmart.domain.repository.OnboardingRepository
 import com.darshan.splitsmart.ui.splash.SplashPolicy
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import com.darshan.splitsmart.domain.repository.ExistingGroups
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -49,12 +51,22 @@ object AppStartLogic {
  * reads [start] to know when the first screen is decided.
  */
 @HiltViewModel
-class AppStartViewModel @Inject constructor(private val onboarding: OnboardingRepository) : ViewModel() {
+class AppStartViewModel @Inject constructor(
+    private val onboarding: OnboardingRepository,
+    private val existingGroups: ExistingGroups,
+) : ViewModel() {
     private val _start = MutableStateFlow(AppStart.Loading)
     val start: StateFlow<AppStart> = _start.asStateFlow()
 
     init {
-        viewModelScope.launch { on(AppStartEvent.Stored(onboarding.completed.first())) }
+        viewModelScope.launch {
+            val stored = onboarding.completed.first()
+            // Someone updating with groups already on the phone knows the app: no intro, and it is remembered so the next start
+            // reads only the flag. The read is inside the splash cap like the flag's; a slow database gives way to the app.
+            val knowsTheApp = stored || hasGroups()
+            on(AppStartEvent.Stored(knowsTheApp))
+            if (knowsTheApp && !stored) onboarding.setCompleted(true)
+        }
         viewModelScope.launch {
             delay(SplashPolicy.MAX_HOLD_MS)
             on(AppStartEvent.TimedOut)
@@ -70,6 +82,15 @@ class AppStartViewModel @Inject constructor(private val onboarding: OnboardingRe
 
     /** Shows the intro again. The stored flag stays done, so leaving halfway does not bring it back next launch. */
     fun replay() = on(AppStartEvent.Replay)
+
+    /** A database that can't be read counts as empty: the intro is help, never a gate. */
+    private suspend fun hasGroups(): Boolean = try {
+        existingGroups.any()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        false
+    }
 
     private fun on(event: AppStartEvent) = _start.update { AppStartLogic.reduce(it, event) }
 }
