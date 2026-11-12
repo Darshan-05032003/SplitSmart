@@ -320,3 +320,23 @@ One entry per feature, written after attacking the feature as a pentester. Sever
 - What broke: nothing. The "Did it go through?" question came back after process death, the reported "success" recorded nothing, and only "Yes, mark as paid" did.
 - Fixed now: no change needed.
 - Scope for improvement: tapjacking with a real overlay app and a QR scanned by a second device were not tried on the emulator; the JVM tests with obscured `MotionEvent`s still cover the touch filter.
+
+## UI Feature: Enhancement pass (row 17)
+- Attacks tried:
+  - Undo integrity: delete + Undo of a full group (archived, three people, a split bill with lines and shares, a draft bill, two payments, an unsaved scan) beside another group, comparing every row of all seven tables before and after, and the balances (`TrashDaoTest`); 20 cycles over a 200-person group with 2,000 split bills, 6,000 lines, 4,000 shares and 500 payments (`TrashStressTest`).
+  - Half-states: a put-back that fails after the group, its people and bills were already written (a clashing payment id) must roll back to nothing; a bill whose payer was removed, or whose group was deleted, inside the window must not come back with a dangling or missing payer; Undo tapped twice must restore once (`TrashDaoTest`, `ShellUndoViewModelTest`: 1,000 Undo taps → 1 restore).
+  - Process death inside the Undo window: the copy is in memory only, so the delete must stand after a restart, never a partial restore (`TrashDaoTest` reopens a file database).
+  - A late Undo: after the window closed (timeout, swipe) or a newer delete replaced the offer, Undo must do nothing.
+  - Torch: a camera without a flash unit (no button, `setTorch` ignored), toggles once the camera has gone (an error page), and that it never runs while the photo is being read on another page.
+  - Save and scan the next one: a burst of both save actions saves one bill; the new camera carries only the group id and a flag, no bill data; the flag clears on the next picture.
+  - Intro skip: an unreadable or slow database, and a returning user whose start must never wait on it.
+  - Large text: the payee's name, UPI ID and amount on a payment card at 1.3×, 1.5× and 2×, since a cut UPI ID is what a person would fail to check before paying.
+  - Tapjacking: no new money action was added; Pay, Paid another way and Yes keep `filterTouchesWhenObscured` (the settle-up card layout changed at 2× text, the action modifiers did not; the existing obscured-touch tests still pass).
+- What broke:
+  - **Medium (fixed):** at 1.3× text the payee's UPI ID on a payment card was cut with an ellipsis, and at 2× the "who pays whom" sentence broke mid-word, so the person could not read whom they were about to pay.
+  - **Low (fixed):** a group card's balance was cut at 2× text ("you're owed ₹1,1…").
+  - Nothing Critical or High. No delete path could leave a partial group or bill in any test.
+- Fixed now: UPI ID and sentence wrap (and stack under the amount from 1.4×), card balances move to their own line, snapshot-and-restore in single Room transactions with ABORT on conflict, the single-slot `UndoCenter` with `take()` ending an offer exactly once.
+- Scope for improvement:
+  - The Undo copy is not encrypted at rest because it is never at rest; if it were ever persisted (to survive process death) it would hold names and UPI IDs and would need the same care as the database.
+  - Undo of a removed member or a removed payment in the history is still not offered (both can be added or marked again).

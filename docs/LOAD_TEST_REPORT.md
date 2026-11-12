@@ -419,3 +419,23 @@ To keep these benchmarks working as the UI changes:
   `groups-fab.webp` (89 KB), `scan-review.webp` (175 KB), `split-drag.webp` (86 KB), `settle-stamp.webp` (232 KB),
   `simplify.webp` (97 KB). LeakCanary (debug build): 5 watched objects, including two `MainActivity` recreations from a
   font-scale change, 0 retained.
+
+## UI Feature: Enhancement pass (row 17)
+- Scenario and scale:
+  - Flinging the group screen's bills (2,000 bills over six people, every status and source) and the groups home (2,000 cards), 60 flings each after 10 warm-up flings, in three set-ups inside one composition so they share a warm JVM: on its own, inside the shell's shared-element layout with no row taking part, and inside the shell as in the app (`ListFlingCostStressTest`).
+  - Delete + Undo through Room: a 200-person group with 2,000 split bills (6,000 lines, 4,000 shares) and 500 payments, 12,701 rows, 20 cycles (`TrashStressTest`); 1,000 Undo taps through the shell's view model (`ShellUndoViewModelTest`).
+- Results (JVM, Robolectric; comparable only with each other):
+
+  | 60 flings | recomposition cycles | ms per fling | KB allocated per fling |
+  |---|---|---|---|
+  | Bills, in the shell, before (every row a shared element) | 998 | 17 | 4,173 |
+  | Bills, in the shell, after | 0 | 11 | 3,706 |
+  | Bills, on their own | 0 | 11 | 3,462 |
+  | Groups, in the shell, before | 1,042 | 22 | 5,221 |
+  | Groups, in the shell, after | 0 | 15 | 4,666 |
+  | Groups, on their own | 0 | 14 | 4,383 |
+
+  Delete + Undo of the 12,701-row group: 36 ms to delete (read and delete in one transaction) and 30 ms to put back, per cycle; balances identical after every cycle. 1,000 Undo taps → 1 restore.
+- What broke: the shell's shared-element layout recomposed the visible rows on every fling, about 17 times per fling, because every bill row and group card registered as one end of a container transform as it scrolled in. First measured with separate test methods, the times were dominated by which test ran first (a cold JVM made the first set-up look 3× slower); the final test switches set-ups inside one composition and reports a second, warm round.
+- Failure flow: fling → rows scroll in → each row's `sharedBounds` registers with the `SharedTransitionLayout` → the shell's shared-element state changes → visible rows recompose → more main-thread work and allocation per frame.
+- Fix applied / recommendation: only the row under a still finger, or the last one opened, carries the transform (`listContainerTransform`); a finger that travels past the touch slop gives it back. The emulator figures above (P90 32 → 39 ms) were measured before this fix; re-measure with `scripts/light_bench.sh` (`SCREENS=bills`) on a device.
