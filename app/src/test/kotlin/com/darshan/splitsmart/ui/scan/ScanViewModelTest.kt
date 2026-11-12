@@ -24,6 +24,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
+import kotlinx.coroutines.launch
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -281,5 +282,29 @@ class ScanViewModelTest {
             assertThat(camera.torchRequests).isEmpty()
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `opened again after a save, the state says so until the next picture, and the hand-off still happens once`() = runTest(dispatcher) {
+        val handle = SavedStateHandle(mapOf("groupId" to "g1", "saved" to true))
+        val vm = vm(handle)
+        val opened = mutableListOf<String>()
+        backgroundScope.launch(kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler)) {
+            vm.effects.collect { if (it is ScanEffect.OpenReview) opened += it.draftId }
+        }
+        vm.uiState.test {
+            awaitItem()
+            val ready = awaitItem()
+            assertThat(ready.phase).isEqualTo(ScanPhase.Ready)
+            assertThat(ready.afterSave).isTrue()
+            vm.capture()
+            val capturing = awaitItem()
+            assertThat(capturing.phase).isEqualTo(ScanPhase.Capturing)
+            assertThat(capturing.afterSave).isFalse()
+            cancelAndIgnoreRemainingEvents()
+        }
+        dispatcher.scheduler.advanceUntilIdle()
+        assertThat(handle.get<Boolean>("saved")).isFalse()
+        assertThat(opened).hasSize(1)
     }
 }

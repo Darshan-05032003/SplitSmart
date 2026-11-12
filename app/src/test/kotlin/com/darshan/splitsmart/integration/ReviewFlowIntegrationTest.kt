@@ -104,6 +104,24 @@ class ReviewFlowIntegrationTest {
         assertThat(runOffMain { db.receiptDraftDao().getById("d1") }).isNull()
     }
 
+
+    @Test
+    fun `save and scan the next one saves the bill and asks for the camera for the same group`() {
+        var savedId: String? = null
+        var nextFor: String? = null
+        compose.setContent {
+            SplitSmartTheme(reduceMotion = true) { ReviewRoute(viewModel = vm(), onBack = {}, onSaved = { savedId = it }, onScanNext = { nextFor = it }) }
+        }
+        compose.waitUntilWithMainLooper { compose.onAllNodesWithTagExists(ReviewTags.SAVE_SCAN_NEXT) }
+        compose.onNodeWithText("Save and scan the next one").assertIsDisplayed()
+        compose.onNodeWithTag(ReviewTags.SAVE_SCAN_NEXT).performClick()
+        compose.waitUntilWithMainLooper { nextFor != null }
+        assertThat(savedId).isNull()
+        val group = runOffMain { db.receiptDraftDao().getById("d1") }
+        assertThat(group).isNull() // the draft is gone: the bill took its place
+        val saved = runOffMain { BillRepositoryImpl(db.billDao(), dispatchers).observeAllBills().first() }.single()
+        assertThat(nextFor).isEqualTo(saved.groupId)
+    }
     @Test
     fun `without an api key the on-device parser result is shown with a notice`() {
         llm.failWith = LlmException.KeyMissing()

@@ -40,6 +40,7 @@ class ScanScreenshotTest {
 
     private val phase = mutableStateOf<ScanPhase>(ScanPhase.Ready)
     private val live = mutableStateOf(LiveText.NONE)
+    private val afterSave = mutableStateOf(false)
     private val torch = mutableStateOf(com.darshan.splitsmart.data.ocr.Torch.Unavailable)
     private val noop = ScanCallbacks({}, {}, {}, {}, {}, {}, {}, {})
 
@@ -47,7 +48,7 @@ class ScanScreenshotTest {
         rule.mainClock.autoAdvance = false
         rule.setDs(dark = dark, fontScale = fontScale, reduceMotion = reduced) {
             Box(Modifier.fillMaxSize().testTag(ROOT)) {
-                ScanScreen(ScanUiState(phase.value, "g1"), preview = { FakePhoto() }, callbacks = noop, liveText = live, torch = torch)
+                ScanScreen(ScanUiState(phase.value, "g1", afterSave = afterSave.value), preview = { FakePhoto() }, callbacks = noop, liveText = live, torch = torch)
             }
         }
         rule.mainClock.advanceTimeBy(settle)
@@ -68,6 +69,13 @@ class ScanScreenshotTest {
     @Test fun camera_dark() = shot("camera", dark = true)
     @Test fun camera_font130() = shot("camera", fontScale = 1.3f)
     @Test fun camera_reduced() = shot("camera", reduced = true)
+
+    /** Opened again right after "Save and scan the next one" (row 17). */
+    @Test
+    fun camera_after_save_light() {
+        afterSave.value = true
+        shot("camera_after_save")
+    }
 
     /** A phone with a flash unit: the torch balances the gallery (row 17). */
     @Test

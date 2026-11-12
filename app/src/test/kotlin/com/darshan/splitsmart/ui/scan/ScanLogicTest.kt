@@ -67,4 +67,11 @@ class ScanLogicTest {
             last = y
         }
     }
+
+    @Test
+    fun `right after a save the hint says it was saved and asks for the next receipt, until text is found`() {
+        assertThat(ScanLogic.hint(ScanPhase.Ready, liveLines = 0, afterSave = true)).isEqualTo(ScanHint.Saved)
+        assertThat(ScanLogic.hint(ScanPhase.Ready, liveLines = ScanLogic.TEXT_FOUND_LINES, afterSave = true)).isEqualTo(ScanHint.TextFound)
+        assertThat(ScanLogic.hint(ScanPhase.Capturing, liveLines = 0, afterSave = true)).isEqualTo(ScanHint.HoldStill)
+    }
 }

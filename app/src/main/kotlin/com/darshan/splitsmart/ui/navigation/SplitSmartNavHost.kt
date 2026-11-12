@@ -55,7 +55,8 @@ import kotlinx.serialization.Serializable
 /** [addBill] opens the group with its add-bill sheet up (the home's "Add an expense"). */
 @Serializable data class GroupDetailDestination(val groupId: String, val addBill: Boolean = false)
 @Serializable data class BillDetailDestination(val billId: String)
-@Serializable data class ScanDestination(val groupId: String, val gallery: Boolean = false)
+/** [saved]: the camera opened again right after a bill was saved ("Save and scan the next one"). */
+@Serializable data class ScanDestination(val groupId: String, val gallery: Boolean = false, val saved: Boolean = false)
 @Serializable data class ReviewDestination(val draftId: String)
 @Serializable data class SplitDestination(val billId: String)
 @Serializable data class SettleUpDestination(val groupId: String)
@@ -198,6 +199,8 @@ fun SplitSmartNavHost(
                             ReviewRoute(
                                 onBack = { navController.popBackStack() },
                                 onSaved = { billId -> navController.navigate(BillDetailDestination(billId)) { popUpTo<GroupDetailDestination>() } },
+                                // The next receipt replaces this scan and its review: back from the new camera goes where the first began.
+                                onScanNext = { groupId -> navController.navigate(ScanDestination(groupId, saved = true)) { popUpTo<ScanDestination> { inclusive = true } } },
                             )
                         }
                     }

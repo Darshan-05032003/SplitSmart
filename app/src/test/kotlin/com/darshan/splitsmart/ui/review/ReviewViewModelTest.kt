@@ -276,6 +276,34 @@ class ReviewViewModelTest {
     }
 
     @Test
+    fun `save and scan next saves the same bill and asks for the next scan into the same group`() = runTest(dispatcher) {
+        val vm = vm()
+        vm.awaitEditing()
+        vm.events.test {
+            vm.save(defaultTitle = "Scanned bill", scanNext = true)
+            val saved = awaitItem() as ReviewEvent.Saved
+            assertThat(saved.scanNext).isTrue()
+            assertThat(saved.groupId).isEqualTo("g1")
+            assertThat(bills.bills.value.single().id).isEqualTo(saved.billId)
+        }
+        assertThat(drafts.get("d1")).isNull()
+    }
+
+    @Test
+    fun `a plain save does not ask for another scan, and a burst of both saves once`() = runTest(dispatcher) {
+        val vm = vm()
+        vm.awaitEditing()
+        vm.events.test {
+            vm.save("x")
+            repeat(500) { vm.save("x", scanNext = true); vm.save("x") }
+            val saved = awaitItem() as ReviewEvent.Saved
+            assertThat(saved.scanNext).isFalse()
+            expectNoEvents()
+        }
+        assertThat(bills.bills.value).hasSize(1)
+    }
+
+    @Test
     fun `double save creates one bill`() = runTest(dispatcher) {
         val vm = vm()
         vm.awaitEditing()

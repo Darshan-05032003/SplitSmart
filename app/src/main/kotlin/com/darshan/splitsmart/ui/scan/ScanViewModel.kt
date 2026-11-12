@@ -22,6 +22,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -40,7 +41,8 @@ sealed interface ScanPhase {
     data class Error(val error: ScanError) : ScanPhase
 }
 
-data class ScanUiState(val phase: ScanPhase, val groupId: String)
+/** [afterSave]: the camera was opened again right after a bill was saved; the hint says so until the next picture. */
+data class ScanUiState(val phase: ScanPhase, val groupId: String, val afterSave: Boolean = false)
 
 /** The scan's own one-off effect: the receipt was read, open the review for this draft. Sent once per scan, never on restore. */
 sealed interface ScanEffect : UiEffect {
@@ -66,7 +68,9 @@ class ScanViewModel @Inject constructor(
     private val phase = MutableStateFlow<ScanPhase>(ScanPhase.CheckingPermission)
     private val effectChannel = UiEffectChannel()
 
-    val uiState: StateFlow<ScanUiState> = phase.map { ScanUiState(it, groupId) }
+    private val afterSave = savedStateHandle.getStateFlow(ARG_SAVED, false)
+
+    val uiState: StateFlow<ScanUiState> = combine(phase, afterSave) { p, saved -> ScanUiState(p, groupId, saved) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ScanUiState(ScanPhase.CheckingPermission, groupId))
 
     /** Haptics and the hand-off to the review. */
@@ -116,6 +120,7 @@ class ScanViewModel @Inject constructor(
     fun capture() {
         if (phase.value != ScanPhase.Ready) return
         phase.value = ScanPhase.Capturing
+        savedStateHandle[ARG_SAVED] = false
         effectChannel.send(UiEffect.Haptic(HapticEvent.Heavy))
         viewModelScope.launch {
             val file = imageStore.newCaptureFile()
@@ -135,6 +140,7 @@ class ScanViewModel @Inject constructor(
     fun onImagePicked(sourceUri: String) {
         if (phase.value is ScanPhase.Capturing || phase.value is ScanPhase.Recognizing) return
         phase.value = ScanPhase.Recognizing
+        savedStateHandle[ARG_SAVED] = false
         viewModelScope.launch { finish(scanReceipt.importAndRecognize(groupId, sourceUri)) }
     }
 
@@ -166,6 +172,8 @@ class ScanViewModel @Inject constructor(
 
     companion object {
         const val ARG_GROUP_ID = "groupId"
+        /** Navigation argument: opened again right after saving a bill. */
+        const val ARG_SAVED = "saved"
         private const val KEY_DRAFT_ID = "draftId"
     }
 }

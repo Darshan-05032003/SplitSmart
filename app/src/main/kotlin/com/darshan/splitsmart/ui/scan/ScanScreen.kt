@@ -244,7 +244,7 @@ fun ScanScreen(
         val showPreview = ScanLogic.showsPreview(phase, previewWasUp[0]).also { previewWasUp[0] = it }
         Box(Modifier.fillMaxSize().background(colors.bg).testTag(ScanTags.SCREEN)) {
             if (phase == ScanPhase.Ready || phase == ScanPhase.Capturing || phase == ScanPhase.Recognizing) {
-                CameraStage(phase, showPreview, preview, liveText, torch.value, callbacks)
+                CameraStage(phase, state.afterSave, showPreview, preview, liveText, torch.value, callbacks)
             } else {
                 when (phase) {
                     is ScanPhase.PermissionRequired -> PermissionPage(phase.permanentlyDenied, callbacks)
@@ -263,12 +263,12 @@ private fun ScanTopBar(onBack: () -> Unit) {
 }
 
 @Composable
-private fun CameraStage(phase: ScanPhase, showPreview: Boolean, preview: @Composable () -> Unit, liveText: State<LiveText>, torch: Torch, callbacks: ScanCallbacks) {
+private fun CameraStage(phase: ScanPhase, afterSave: Boolean, showPreview: Boolean, preview: @Composable () -> Unit, liveText: State<LiveText>, torch: Torch, callbacks: ScanCallbacks) {
     val motion = LocalMotion.current
     val area = remember { mutableStateOf(Rect.Zero) }
     val closing = animateFloatAsState(if (phase == ScanPhase.Ready) 0f else 1f, motion.spec(MotionToken.Snap), label = "corners")
     // The outlines change a few times a second; the hint only when its wording would, so the stage never recomposes per frame.
-    val hint by remember(phase) { derivedStateOf { ScanLogic.hint(phase, liveText.value.boxes.size) } }
+    val hint by remember(phase, afterSave) { derivedStateOf { ScanLogic.hint(phase, liveText.value.boxes.size, afterSave) } }
     Box(Modifier.fillMaxSize()) {
         if (showPreview) Box(Modifier.fillMaxSize()) { preview() }
         Viewfinder(phase, showPreview, area, closing, liveText)
@@ -296,6 +296,7 @@ private fun HintPill(hint: ScanHint) {
         AnimatedContent(hint, transitionSpec = { motion.fadeThrough() }, label = "hint") { shown ->
             val text = when (shown) {
                 ScanHint.Frame -> stringResource(R.string.scan_frame_hint)
+                ScanHint.Saved -> stringResource(R.string.scan_hint_saved)
                 ScanHint.TextFound -> stringResource(R.string.scan_hint_text_found)
                 ScanHint.HoldStill -> stringResource(R.string.scan_hint_hold)
                 ScanHint.None -> null

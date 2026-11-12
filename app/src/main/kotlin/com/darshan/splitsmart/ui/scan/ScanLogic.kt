@@ -8,7 +8,7 @@ import kotlin.math.min
 import kotlin.math.sin
 
 /** What the camera's hint pill says. */
-enum class ScanHint { Frame, TextFound, HoldStill, None }
+enum class ScanHint { Frame, Saved, TextFound, HoldStill, None }
 
 /** One frame of the scan line: [y] from the window's top (0) to its bottom (1), and how strongly it shows. */
 data class BeamFrame(val y: Float, val alpha: Float)
@@ -27,8 +27,13 @@ object ScanLogic {
     /** Share of the free height between the top bar and the controls the window may use. */
     private const val HEIGHT_FRACTION = 0.94f
 
-    fun hint(phase: ScanPhase, liveLines: Int): ScanHint = when (phase) {
-        ScanPhase.Ready -> if (liveLines >= TEXT_FOUND_LINES) ScanHint.TextFound else ScanHint.Frame
+    /** [afterSave]: just back from saving a bill; until text is found, the pill says it was saved and asks for the next one. */
+    fun hint(phase: ScanPhase, liveLines: Int, afterSave: Boolean = false): ScanHint = when (phase) {
+        ScanPhase.Ready -> when {
+            liveLines >= TEXT_FOUND_LINES -> ScanHint.TextFound
+            afterSave -> ScanHint.Saved
+            else -> ScanHint.Frame
+        }
         ScanPhase.Capturing -> ScanHint.HoldStill
         else -> ScanHint.None
     }

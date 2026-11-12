@@ -115,10 +115,16 @@ object ReviewTags {
     const val EDITOR = "review_row_editor"
     const val WARNINGS = "review_warnings"
     const val LIST = "review_list"
+    const val SAVE_SCAN_NEXT = "review_save_scan_next"
 }
 
 @Composable
-fun ReviewRoute(viewModel: ReviewViewModel = hiltViewModel(), onBack: () -> Unit, onSaved: (String) -> Unit) {
+fun ReviewRoute(
+    viewModel: ReviewViewModel = hiltViewModel(),
+    onBack: () -> Unit,
+    onSaved: (String) -> Unit,
+    onScanNext: (groupId: String) -> Unit = {},
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbar = remember { SsSnackbarState() }
     val scope = rememberCoroutineScope()
@@ -127,7 +133,7 @@ fun ReviewRoute(viewModel: ReviewViewModel = hiltViewModel(), onBack: () -> Unit
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
-                is ReviewEvent.Saved -> onSaved(event.billId)
+                is ReviewEvent.Saved -> if (event.scanNext) onScanNext(event.groupId) else onSaved(event.billId)
                 ReviewEvent.Failed -> scope.launch { snackbar.show(failedText, emoji = "😕") }
             }
         }
@@ -137,6 +143,7 @@ fun ReviewRoute(viewModel: ReviewViewModel = hiltViewModel(), onBack: () -> Unit
         snackbar = snackbar,
         callbacks = ReviewCallbacks(
             onBack = onBack, onRetry = viewModel::retry, onRerun = viewModel::rerunExtraction, onSave = { viewModel.save(defaultTitle) },
+            onSaveAndScanNext = { viewModel.save(defaultTitle, scanNext = true) },
             onTitle = viewModel::onTitleChange, onPayer = viewModel::onPayerChange, onItemName = viewModel::onItemNameChange,
             onItemQty = viewModel::onItemQtyChange, onItemAmount = viewModel::onItemAmountChange, onAddItem = viewModel::addItem,
             onRemoveItem = viewModel::removeItem, onTax = viewModel::onTaxChange, onTip = viewModel::onTipChange, onTotal = viewModel::onTotalChange,
@@ -165,6 +172,7 @@ data class ReviewCallbacks(
     val onApplyAi: () -> Unit = {},
     val onDismissAi: () -> Unit = {},
     val onRevealShown: (Long) -> Unit = {},
+    val onSaveAndScanNext: () -> Unit = {},
 )
 
 /**
@@ -172,7 +180,7 @@ data class ReviewCallbacks(
  * parser if it can't answer). When a reading arrives its lines resolve one by one: each skeleton wipes into the real text with a
  * marigold caret, in draw only. A pill and a sentence say who read the bill (the AI or the built-in parser), and why the AI was
  * not used. Every line is a compact row; a tap opens it in place for editing. Totals check themselves against the printed total.
- * One primary action: Save bill.
+ * One primary action: Save bill, with "Save and scan the next one" under it for a stack of receipts.
  */
 @Composable
 fun ReviewScreen(state: ReviewUiState, snackbar: SsSnackbarState, callbacks: ReviewCallbacks) {
@@ -190,16 +198,20 @@ fun ReviewScreen(state: ReviewUiState, snackbar: SsSnackbarState, callbacks: Rev
                 }
             }
             if (form != null && (state.phase == ReviewPhase.EDITING || state.phase == ReviewPhase.SAVING)) {
-                ChunkyButton(
-                    stringResource(R.string.review_save),
-                    callbacks.onSave,
-                    Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .padding(horizontal = Spacing.screen, vertical = Spacing.sm)
-                        .testTag(SplitSmartTestTags.REVIEW_SAVE),
-                    loading = state.phase == ReviewPhase.SAVING,
-                )
+                Column(
+                    Modifier.fillMaxWidth().navigationBarsPadding().padding(start = Spacing.screen, end = Spacing.screen, top = Spacing.sm),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    ChunkyButton(
+                        stringResource(R.string.review_save),
+                        callbacks.onSave,
+                        Modifier.fillMaxWidth().testTag(SplitSmartTestTags.REVIEW_SAVE),
+                        loading = state.phase == ReviewPhase.SAVING,
+                    )
+                    // A stack of receipts: save this one and go straight back to the camera for the same group.
+                    // Ignored while saving: the view model saves once.
+                    TextAction(stringResource(R.string.review_save_scan_next), callbacks.onSaveAndScanNext, Modifier.testTag(ReviewTags.SAVE_SCAN_NEXT))
+                }
             }
         }
         SsSnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))

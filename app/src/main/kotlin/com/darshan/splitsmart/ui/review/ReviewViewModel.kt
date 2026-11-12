@@ -93,7 +93,8 @@ data class ReviewUiState(
 )
 
 sealed interface ReviewEvent {
-    data class Saved(val billId: String) : ReviewEvent
+    /** The bill is saved. [scanNext]: the person asked to scan the next receipt into the same [groupId] straight away. */
+    data class Saved(val billId: String, val groupId: String, val scanNext: Boolean = false) : ReviewEvent
     data object Failed : ReviewEvent
 }
 
@@ -279,7 +280,8 @@ class ReviewViewModel @Inject constructor(
     }
 
     // ----- saving -----
-    fun save(defaultTitle: String) {
+    /** Saves once however often it is tapped; [scanNext] asks for the camera again, for the same group, once it is saved. */
+    fun save(defaultTitle: String, scanNext: Boolean = false) {
         val state = _uiState.value
         val form = state.form ?: return
         val current = draft ?: return
@@ -299,7 +301,7 @@ class ReviewViewModel @Inject constructor(
                 runCatching { drafts.delete(current.id) }
                 current.imagePath?.let { path -> imageStore.resolveOwnedFile(File(path).name)?.let { runCatching { imageStore.delete(it) } } }
                 savedStateHandle[KEY_FORM] = null
-                _events.send(ReviewEvent.Saved(bill.id))
+                _events.send(ReviewEvent.Saved(bill.id, bill.groupId, scanNext))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

@@ -209,6 +209,8 @@
     <!-- Scan / review -->
     <string name="scan_frame_hint">Fit the whole receipt in the frame</string>
     <string name="scan_gallery_short">Gallery</string>
+    <string name="scan_hint_saved">Saved ✓ Fit the next receipt in the frame</string>
+    <string name="review_save_scan_next">Save and scan the next one</string>
     <string name="scan_torch_short">Torch</string>
     <string name="scan_torch_off">Torch is off</string>
     <string name="scan_torch_on">Torch is on</string>
