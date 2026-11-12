@@ -251,8 +251,10 @@ on the JVM.
 
 On a software-rendered emulator (2 GB guest; `am start -W` over 4 cold starts, `dumpsys gfxinfo` over 2 fling rounds per
 screen) median cold start went from 929 ms before the redesign to 748 ms after, while a group's bill list got slower to
-fling (P90 frame time 32 ms to 39 ms). These are small emulator samples, not phone figures; method, raw numbers and what
-was not run are in [`docs/LOAD_TEST_REPORT.md`](docs/LOAD_TEST_REPORT.md).
+fling (P90 frame time 32 ms to 39 ms). A JVM measurement later traced the fling cost to every bill row registering as a
+shared element (998 recompositions over 60 flings, 0 after the fix); the fix has not been re-measured on a device yet.
+These are small emulator samples, not phone figures; method, raw numbers and what was not run are in
+[`docs/LOAD_TEST_REPORT.md`](docs/LOAD_TEST_REPORT.md).
 
 ## Security
 

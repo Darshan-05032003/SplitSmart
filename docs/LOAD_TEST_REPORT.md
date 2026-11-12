@@ -439,3 +439,9 @@ To keep these benchmarks working as the UI changes:
 - What broke: the shell's shared-element layout recomposed the visible rows on every fling, about 17 times per fling, because every bill row and group card registered as one end of a container transform as it scrolled in. First measured with separate test methods, the times were dominated by which test ran first (a cold JVM made the first set-up look 3× slower); the final test switches set-ups inside one composition and reports a second, warm round.
 - Failure flow: fling → rows scroll in → each row's `sharedBounds` registers with the `SharedTransitionLayout` → the shell's shared-element state changes → visible rows recompose → more main-thread work and allocation per frame.
 - Fix applied / recommendation: only the row under a still finger, or the last one opened, carries the transform (`listContainerTransform`); a finger that travels past the touch slop gives it back. The emulator figures above (P90 32 → 39 ms) were measured before this fix; re-measure with `scripts/light_bench.sh` (`SCREENS=bills`) on a device.
+- Device (2026-11-12, one emulator boot, same `Pixel_7` AVD and `light_bench.sh` method as the device session): the build
+  before this fix (`3c674eb`) flung the bills at P50/P90/P95/P99 27/33/37/75 ms with 5.9 % janky frames (725 frames, 2 rounds;
+  rounds 371/18 and 354/25 frames/janky). The emulator was then OOM-killed by its memory cap while installing the build with
+  the fix, so there is **no after number from a device**: not a result, and the JVM table above is the only evidence for the
+  fix. Re-run `SCREENS=bills ROUNDS=2 SKIP_STARTUP=1 scripts/light_bench.sh <apk> <dir>` for each build on fresh boots.
+
