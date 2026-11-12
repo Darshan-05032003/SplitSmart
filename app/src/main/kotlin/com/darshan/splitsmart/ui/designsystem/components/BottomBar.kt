@@ -41,7 +41,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import com.darshan.splitsmart.ui.designsystem.effects.LocalHaptics
 import com.darshan.splitsmart.ui.designsystem.effects.tick
 import com.darshan.splitsmart.ui.designsystem.motion.LocalMotion
@@ -57,6 +59,28 @@ import kotlinx.coroutines.launch
 
 @Immutable
 data class BottomBarItem(val label: String, val icon: ImageVector, val badge: Int = 0)
+
+/** How tall the bar is for the current text size: pure, so the rule is tested without a screen. */
+object BottomBarLayout {
+    /** A tab's face: the icon, the small gap and one line of label. */
+    fun faceHeight(labelLine: Dp): Dp = Sizes.icon + Spacing.xxs / 2 + labelLine
+
+    /**
+     * 68dp at normal text. When a face plus a little room above and below would not fit the blob, the blob grows to hold it and
+     * the bar with it, so 2x text never pushes a label out of its tab.
+     */
+    fun height(labelLine: Dp): Dp {
+        val blob = maxOf(Sizes.bottomBarHeight - Spacing.xs * 2, faceHeight(labelLine) + Spacing.xs)
+        return blob + Spacing.xs * 2
+    }
+}
+
+/** The bar's height at the current text size (read from the label's line height). */
+@Composable
+fun bottomBarHeight(): Dp {
+    val line = with(LocalDensity.current) { SplitSmartTheme.type.labelStrong.lineHeight.toDp() }
+    return BottomBarLayout.height(line)
+}
 
 /** Width of the blob inside its tab, and how far the icon jumps when its tab is picked. */
 private const val BLOB_WIDTH_FRACTION = 0.84f
@@ -112,7 +136,7 @@ fun SsBottomBar(
             .padding(horizontal = Sizes.bottomBarInset, vertical = Spacing.xs)
             .fillMaxWidth()
             .padding(bottom = Depth.card)
-            .height(Sizes.bottomBarHeight)
+            .height(bottomBarHeight())
             .drawWithCache {
                 val outline = shape.createOutline(size, layoutDirection, this)
                 val depthPx = Depth.card.toPx()

@@ -20,6 +20,9 @@ import com.darshan.splitsmart.ui.designsystem.modifiers.Squash
 import com.darshan.splitsmart.ui.designsystem.modifiers.SquashMath
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
+import com.darshan.splitsmart.ui.designsystem.components.BottomBarLayout
+import com.darshan.splitsmart.ui.designsystem.tokens.Spacing
+import androidx.compose.ui.unit.dp
 import org.junit.Test
 
 class ClickGuardTest {
@@ -358,4 +361,16 @@ class MotionMathTest {
         val last = (80..99).maxOf { kotlin.math.abs(ShakeMath.offsetFraction(it / 100f)) }
         assertThat(last).isLessThan(first)
     }
+
+class BottomBarLayoutTest {
+    @Test
+    fun `the bar keeps its 68dp until a tab's icon and label need more, then grows to hold them`() {
+        assertThat(BottomBarLayout.height(16.dp)).isEqualTo(68.dp)
+        // 2x text: a 32dp label line under the 24dp icon.
+        val tall = BottomBarLayout.height(32.dp)
+        assertThat(tall).isGreaterThan(68.dp)
+        assertThat(BottomBarLayout.faceHeight(32.dp) + Spacing.xs).isAtMost(tall - Spacing.xs * 2)
+        assertThat(BottomBarLayout.height(24.dp)).isAtLeast(68.dp)
+    }
+}
 }

@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.darshan.splitsmart.R
 import com.darshan.splitsmart.ui.designsystem.components.BottomBarItem
 import com.darshan.splitsmart.ui.designsystem.components.SsBottomBar
+import com.darshan.splitsmart.ui.designsystem.components.bottomBarHeight
 import com.darshan.splitsmart.ui.designsystem.motion.LocalMotion
 import com.darshan.splitsmart.ui.designsystem.tokens.Depth
 import com.darshan.splitsmart.ui.designsystem.tokens.Sizes
@@ -37,20 +38,21 @@ import kotlinx.coroutines.flow.Flow
  */
 val LocalBottomBarInset = staticCompositionLocalOf { 0.dp }
 
-/** The bar's own height plus its margins: what `SsBottomBar` occupies above the navigation bar. */
+/** The bar's own height plus its margins at normal text: what `SsBottomBar` occupies above the navigation bar. */
 val BottomBarInset: Dp = Sizes.bottomBarHeight + Spacing.xs * 2 + Depth.card
+
+/** The same at the current text size: the bar grows with large text, and what keeps clear of it grows too. */
+@Composable
+fun bottomBarInset(): Dp = bottomBarHeight() + Spacing.xs * 2 + Depth.card
 
 /** What a snackbar on the groups list clears above the bar: the FAB's margin, face and depth (it must never cover the FAB). */
 val FabSnackbarLift: Dp = Spacing.md + Sizes.fab + Depth.fab
 
-/** Where a snackbar sits on the groups list in the shell: above the floating bar and above the FAB. */
-val FabSnackbarClearance: Dp = BottomBarInset + FabSnackbarLift
-
-/** How far up the shell lifts a snackbar on [lift]. */
-fun SnackbarLift.clearance(): Dp = when (this) {
+/** How far up the shell lifts a snackbar on [lift], over a bar that takes [barInset]. */
+fun SnackbarLift.clearance(barInset: Dp = BottomBarInset): Dp = when (this) {
     SnackbarLift.None -> 0.dp
-    SnackbarLift.Bar -> BottomBarInset
-    SnackbarLift.BarAndFab -> FabSnackbarClearance
+    SnackbarLift.Bar -> barInset
+    SnackbarLift.BarAndFab -> barInset + FabSnackbarLift
 }
 
 /** The shell's bar state; null outside the shell. */

@@ -14,9 +14,9 @@ import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -53,6 +53,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -101,6 +104,8 @@ import kotlinx.coroutines.launch
 
 /** Test tags of the groups home. */
 object GroupsTags {
+    const val CARD_FACES = "group_card_faces"
+    const val CARD_BALANCE = "group_card_balance"
     const val LIST = "groups_list"
     const val HERO_AMOUNT = "groups_hero_amount"
     const val MENU_SCAN = "groups_menu_scan"
@@ -266,10 +271,11 @@ fun GroupCardView(card: GroupCard, onClick: () -> Unit, onArchive: (() -> Unit)?
                 )
             }
         }
-        Row(Modifier.fillMaxWidth().padding(top = Spacing.sm), verticalAlignment = Alignment.CenterVertically) {
-            if (card.memberNames.isNotEmpty()) AvatarStack(card.memberNames, size = Sizes.avatarSmall)
-            Spacer(Modifier.width(Spacing.xs))
-            Box(Modifier.weight(1f).clearAndSetSemantics {}, contentAlignment = Alignment.CenterEnd) { StatusPill(kind, balance, animate = false) }
+        // Faces left, balance right; when the balance would not fit beside the faces at its full width (large text, a huge
+        // amount), it takes its own line rather than being cut: an amount must be read in full.
+        BesideOrBelow(Modifier.fillMaxWidth().padding(top = Spacing.sm), gap = Spacing.xs) {
+            Box(Modifier.testTag(GroupsTags.CARD_FACES)) { if (card.memberNames.isNotEmpty()) AvatarStack(card.memberNames, size = Sizes.avatarSmall) }
+            Box(Modifier.testTag(GroupsTags.CARD_BALANCE).clearAndSetSemantics {}) { StatusPill(kind, balance, animate = false) }
         }
     }
 }
@@ -474,3 +480,32 @@ fun GroupsFabMenu(
 
 private const val MENU_ITEM_FROM = 0.6f
 private const val FAB_TURN_DEGREES = 45f
+
+/**
+ * Two children: the first at the start, the second at the end of the same line when it fits there at its full width, otherwise
+ * on its own line below, at the start. Unlike a flow row, the second child is never squeezed (and cut) to fit.
+ */
+@Composable
+private fun BesideOrBelow(modifier: Modifier, gap: Dp, content: @Composable () -> Unit) {
+    Layout(content, modifier) { measurables, constraints ->
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val start = measurables[0].measure(loose)
+        val gapPx = gap.roundToPx()
+        val endWidth = measurables[1].maxIntrinsicWidth(Constraints.Infinity)
+        val beside = start.width + gapPx + endWidth <= constraints.maxWidth
+        val end = measurables[1].measure(loose)
+        val width = constraints.maxWidth
+        if (beside) {
+            val height = maxOf(start.height, end.height)
+            layout(width, height) {
+                start.placeRelative(0, (height - start.height) / 2)
+                end.placeRelative(width - end.width, (height - end.height) / 2)
+            }
+        } else {
+            layout(width, start.height + gapPx + end.height) {
+                start.placeRelative(0, 0)
+                end.placeRelative(0, start.height + gapPx)
+            }
+        }
+    }
+}

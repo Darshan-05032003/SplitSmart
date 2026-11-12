@@ -108,6 +108,7 @@ object Sizes {
     val topBarHeight = 64.dp
     val listRowHeight = 72.dp
     val listRowCompact = 56.dp
+    /** The bar at normal text; it grows only when a tab's icon and label need more (BottomBarLayout). */
     val bottomBarHeight = 68.dp
     val bottomBarBlobHeight = 40.dp
     val bottomBarInset = 12.dp
@@ -162,4 +163,13 @@ object SplitSmartTokens {
     val depth = Depth
     val strokes = Strokes
     val sizes = Sizes
+}
+
+/** Text sizes the layouts respond to. */
+object TextScale {
+    /**
+     * From this font scale up (beyond the 1.3x every screen is designed and tested at), rows that put a sentence beside a figure
+     * stack them instead, so neither is cut: names, UPI IDs and amounts are read in full.
+     */
+    const val STACKED = 1.4f
 }

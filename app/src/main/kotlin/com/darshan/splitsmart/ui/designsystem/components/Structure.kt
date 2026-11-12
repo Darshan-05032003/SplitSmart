@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import com.darshan.splitsmart.ui.designsystem.effects.LocalHaptics
@@ -186,7 +187,7 @@ fun SsSectionHeader(
     }
 }
 
-/** A text-only action in the accent colour with a full touch target. */
+/** A text-only action in the accent colour with a full touch target. At large text it wraps (centred) rather than being cut. */
 @Composable
 fun TextAction(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = SplitSmartTheme.colors
@@ -201,7 +202,7 @@ fun TextAction(label: String, onClick: () -> Unit, modifier: Modifier = Modifier
             .padding(horizontal = Spacing.xs),
         contentAlignment = Alignment.Center,
     ) {
-        BasicText(label, style = SplitSmartTheme.type.bodyStrong.copy(color = colors.accent), maxLines = 1)
+        BasicText(label, style = SplitSmartTheme.type.bodyStrong.copy(color = colors.accent, textAlign = TextAlign.Center), maxLines = 2)
     }
 }
 

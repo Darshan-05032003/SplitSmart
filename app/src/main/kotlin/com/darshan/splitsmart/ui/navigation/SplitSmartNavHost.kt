@@ -128,7 +128,7 @@ fun SplitSmartNavHost(
     }
 
     CompositionLocalProvider(
-        LocalBottomBarInset provides BottomBarInset,
+        LocalBottomBarInset provides bottomBarInset(),
         LocalTabReselects provides reselects,
         LocalShellRequests provides requestFlow,
         LocalShellBar provides barState,
@@ -232,7 +232,7 @@ fun SplitSmartNavHost(
                         outcomes = shellViewModel.undoOutcomes,
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = ShellLogic.snackbarLift(route, ShellLogic.barVisible(route, modalOpen = barState.modalOpen)).clearance()),
+                            .padding(bottom = ShellLogic.snackbarLift(route, ShellLogic.barVisible(route, modalOpen = barState.modalOpen)).clearance(LocalBottomBarInset.current)),
                     )
                     SsBottomSheet(visible = scanSheet != ScanSheet.None, onDismissRequest = { scanSheet = ScanSheet.None }) {
                         when (scanSheet) {

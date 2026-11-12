@@ -44,6 +44,9 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import com.darshan.splitsmart.ui.designsystem.tokens.TextScale
+import androidx.compose.ui.text.style.LineBreak
+import androidx.compose.ui.platform.LocalDensity
 import com.darshan.splitsmart.R
 import com.darshan.splitsmart.data.upi.QrMatrix
 import com.darshan.splitsmart.domain.model.SettlementMethod
@@ -200,20 +203,36 @@ fun PaymentCard(
     val payer = DisplayText.safe(item.payer.name)
     val payee = DisplayText.safe(item.payee.name)
     ChunkyCard(modifier.fillMaxWidth().testTag(SplitSmartTestTags.SETTLE_ITEM), contentPadding = PaddingValues(Spacing.md)) {
-        Row(Modifier.semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        // Who pays whom and the UPI ID are what a person checks before paying, so they are never cut: beside the faces and the
+        // amount at normal text, under them from TextScale.STACKED up.
+        val sentence = stringResource(R.string.debt_row, payer, payee)
+        val to = item.payee.vpa?.let { stringResource(R.string.settle_to_vpa, it) } ?: stringResource(R.string.settle_no_upi_id)
+        val faces: @Composable () -> Unit = {
             MemberAvatar(item.payer.name, size = Sizes.avatar, contentDescription = null)
             BasicText("→", Modifier.clearAndSetSemantics {}, style = type.bodyStrong.copy(color = colors.textSecondary))
             MemberAvatar(item.payee.name, size = Sizes.avatar, contentDescription = null)
-            Column(Modifier.weight(1f).padding(start = Spacing.xxs), verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
-                BasicText(stringResource(R.string.debt_row, payer, payee), style = type.bodyStrong.copy(color = colors.text), maxLines = 2, overflow = TextOverflow.Ellipsis)
-                BasicText(
-                    item.payee.vpa?.let { stringResource(R.string.settle_to_vpa, it) } ?: stringResource(R.string.settle_no_upi_id),
-                    style = type.label.copy(color = colors.textSecondary),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+        }
+        val words: @Composable (Modifier) -> Unit = { modifier ->
+            Column(modifier, verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
+                BasicText(sentence, style = type.bodyStrong.copy(color = colors.text), maxLines = PAYEE_LINES, overflow = TextOverflow.Ellipsis)
+                BasicText(to, style = type.label.copy(color = colors.textSecondary, lineBreak = LineBreak.Simple), maxLines = PAYEE_LINES, overflow = TextOverflow.Ellipsis)
             }
-            AmountText(item.debt.amountPaise, style = type.amount, color = colors.text)
+        }
+        if (LocalDensity.current.fontScale < TextScale.STACKED) {
+            Row(Modifier.semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                faces()
+                words(Modifier.weight(1f).padding(start = Spacing.xxs))
+                AmountText(item.debt.amountPaise, style = type.amount, color = colors.text)
+            }
+        } else {
+            Column(Modifier.semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                    faces()
+                    Spacer(Modifier.weight(1f))
+                    AmountText(item.debt.amountPaise, style = type.amount, color = colors.text)
+                }
+                words(Modifier.fillMaxWidth())
+            }
         }
         when {
             item.missingVpa -> Note(stringResource(R.string.settle_missing_vpa, payee))
@@ -454,3 +473,6 @@ fun QrCode(matrix: QrMatrix, description: String, modifier: Modifier = Modifier)
             },
     )
 }
+
+/** A payee's sentence and UPI ID wrap this far before an ellipsis (a UPI ID is at most 256 + 1 + 64 characters). */
+private const val PAYEE_LINES = 3

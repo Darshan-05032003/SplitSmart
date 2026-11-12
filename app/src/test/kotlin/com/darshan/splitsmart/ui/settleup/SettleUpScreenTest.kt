@@ -31,6 +31,7 @@ import com.darshan.splitsmart.ui.LoadState
 import com.darshan.splitsmart.ui.SplitSmartTestTags
 import com.darshan.splitsmart.ui.designsystem.FakeHaptics
 import com.darshan.splitsmart.ui.designsystem.assertInside
+import com.darshan.splitsmart.ui.designsystem.assertTextWhole
 import com.darshan.splitsmart.ui.designsystem.sameAs
 import com.darshan.splitsmart.ui.designsystem.components.ButtonStyle
 import com.darshan.splitsmart.ui.designsystem.components.ChunkyButton
@@ -289,6 +290,27 @@ class SettleUpScreenTest {
         rule.onNodeWithTag(SettleUpTags.LIST).performScrollToKey("d>m")
         rule.onNodeWithTag(SettleUpTags.CHECK_YES).assertInside(rule.onNodeWithTag(SettleUpTags.CHECK_CARD))
         rule.onNodeWithTag(SettleUpTags.CHECK_NOT_YET).assertInside(rule.onNodeWithTag(SettleUpTags.CHECK_CARD))
+    }
+
+    @Test
+    fun `the payee's UPI ID is read in full before paying at 1_3x text`() = upiIdsWhole(1.3f)
+
+    @Test
+    fun `the payee's UPI ID is read in full before paying at 1_5x text`() = upiIdsWhole(1.5f)
+
+    @Test
+    fun `at 2x text who pays whom, the UPI ID and the amount are all read in full`() {
+        upiIdsWhole(2f)
+        rule.onNodeWithText("Ravi owes Asha", useUnmergedTree = true).assertTextWhole()
+        rule.onNodeWithText("Darshan owes Meera", useUnmergedTree = true).assertTextWhole()
+        val card = rule.onAllNodesWithTag(SplitSmartTestTags.SETTLE_ITEM)[0]
+        rule.onAllNodesWithTag(SplitSmartTestTags.SETTLE_PAY)[0].assertInside(card)
+    }
+
+    private fun upiIdsWhole(scale: Float) {
+        show(SettleUpFixtures.state(), fontScale = scale)
+        rule.onNodeWithText("To meera@fakebank", useUnmergedTree = true).assertTextWhole()
+        rule.onNodeWithText("To asha@okfake", useUnmergedTree = true).assertTextWhole()
     }
 
     @Test
