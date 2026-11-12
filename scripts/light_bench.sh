@@ -8,7 +8,8 @@
 # done), dex reset to `verify` (no AOT code, like Macrobenchmark's CompilationMode.None), one discarded launch, then
 # COLD_RUNS cold starts (force-stop + am start -W). Frames: ROUNDS rounds per screen; each round is a cold launch, gfxinfo
 # reset, FLINGS flings down and FLINGS up, on the groups home and on the "Benchmark trip" group screen (its bills).
-# SKIP_STARTUP=1 or SKIP_FRAMES=1 runs one half only (one half per boot when memory is tight).
+# SKIP_STARTUP=1 or SKIP_FRAMES=1 runs one half only (one half per boot when memory is tight); SCREENS="bills" picks screens.
+# COMPILE=speed-profile installs the APK's Baseline Profile and compiles with it instead of resetting to verify.
 # Emulator only (emulator-5554), adb only: no Gradle may run while the emulator is up.
 # Emulator numbers with software rendering: compare before and after from one session, never against a phone or against
 # Macrobenchmark tables.
@@ -34,7 +35,16 @@ done
 "${adb[@]}" install -r -t "$apk" >/dev/null
 seed="$("${adb[@]}" shell am broadcast --include-stopped-packages -n "$pkg/.benchmark.SeedDataReceiver" | tr -d '\r')"
 case "$seed" in *seeded=*) ;; *) echo "light_bench: seeding failed: $seed" >&2; exit 1 ;; esac
-"${adb[@]}" shell cmd package compile -f -m verify "$pkg" >/dev/null
+if [ "${COMPILE:-verify}" = speed-profile ]; then
+    # Like Macrobenchmark's CompilationMode.Partial: the APK's Baseline Profile is installed by ProfileInstaller, then AOT.
+    "${adb[@]}" shell am start -W -n "$("${adb[@]}" shell cmd package resolve-activity --brief -c android.intent.category.LAUNCHER "$pkg" | tr -d '\r' | tail -1)" >/dev/null
+    sleep 3
+    "${adb[@]}" shell am broadcast -a androidx.profileinstaller.action.INSTALL_PROFILE "$pkg/androidx.profileinstaller.ProfileInstallReceiver" | tr -d '\r' | tail -1
+    "${adb[@]}" shell am force-stop "$pkg"
+    "${adb[@]}" shell cmd package compile -f -m speed-profile "$pkg" >/dev/null
+else
+    "${adb[@]}" shell cmd package compile -f -m verify "$pkg" >/dev/null
+fi
 activity="$("${adb[@]}" shell cmd package resolve-activity --brief -c android.intent.category.LAUNCHER "$pkg" | tr -d '\r' | tail -1)"
 echo "activity $activity" | tee "$results/meta.txt"
 
@@ -60,10 +70,10 @@ if [ "${SKIP_STARTUP:-0}" != 1 ]; then
     done
 fi
 
-tap_group() { # taps the group card whose text or description names the main group
+tap_group() { # taps the first node whose text or description names the main group (Compose puts it on the card)
     "${adb[@]}" shell uiautomator dump /sdcard/light_bench.xml >/dev/null 2>&1
     local b
-    b="$("${adb[@]}" shell cat /sdcard/light_bench.xml | tr '>' '\n' | grep -F "$main_group" | grep 'clickable="true"' | head -1 |
+    b="$("${adb[@]}" shell cat /sdcard/light_bench.xml | tr '>' '\n' | grep -F "$main_group" | head -1 |
         grep -oE 'bounds="\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]"' | grep -oE '[0-9]+' | tr '\n' ' ')"
     [ -n "$b" ] || { echo "light_bench: no card for $main_group" >&2; return 1; }
     set -- $b
@@ -71,7 +81,7 @@ tap_group() { # taps the group card whose text or description names the main gro
 }
 
 if [ "${SKIP_FRAMES:-0}" != 1 ]; then
-    for screen in home bills; do
+    for screen in ${SCREENS:-home bills}; do
         for round in $(seq 1 "$rounds"); do
             cold_launch >/dev/null
             sleep 3
