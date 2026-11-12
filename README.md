@@ -243,14 +243,16 @@ on the JVM.
 ## Performance
 
 - **Baseline Profile**: `:baselineprofile` runs a whole first-evening journey (group, members, a bill, split, settle,
-  history); no generated profile is committed yet.
+  history); the generated profile ships in `app/src/main/baseline-prof.txt` (its startup effect is not measured yet).
 - **Macrobenchmark**: `:macrobenchmark` has `StartupBenchmark`, `ScrollBenchmark` and a `JourneyBenchmark` over
   scan → review → split → settle → history, against a release-like `benchmark` build type.
 - **Main thread and stability**: OCR, Gemini and persistence run on injected dispatchers; StrictMode is on in debug
   builds; `app/compose_stability.conf` marks `java.time` types and `DateTimeFormatter` stable.
 
-Both benchmark modules compile, but device numbers after the redesign have not been measured yet. A pre-redesign emulator
-baseline and its method are in [`docs/LOAD_TEST_REPORT.md`](docs/LOAD_TEST_REPORT.md).
+On a software-rendered emulator (2 GB guest; `am start -W` over 4 cold starts, `dumpsys gfxinfo` over 2 fling rounds per
+screen) median cold start went from 929 ms before the redesign to 748 ms after, while a group's bill list got slower to
+fling (P90 frame time 32 ms to 39 ms). These are small emulator samples, not phone figures; method, raw numbers and what
+was not run are in [`docs/LOAD_TEST_REPORT.md`](docs/LOAD_TEST_REPORT.md).
 
 ## Security
 

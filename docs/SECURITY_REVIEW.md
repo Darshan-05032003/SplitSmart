@@ -314,3 +314,9 @@ One entry per feature, written after attacking the feature as a pentester. Sever
 - What broke: Low: the review card showed developer setup details and HTTP codes to every user of a build without a key. Low: two real chain names and a real mall name remained in docs and a parser fixture.
 - Fixed now: the review card speaks in user words for no key, a rejected key and a pin mismatch (tests assert that `LLM_API_KEY` and `local.properties` do not appear there); the setup hint is shown only in Me, only when AI is off. Errors offer Try again only when reading again can help and Back when the item is gone. Settle-up's retry re-reads the group only; the open question lives in `SavedStateHandle` and is untouched (`SettleUpViewModelTest`). Names replaced with invented ones.
 - Scope for improvement: the Me hint still names the build property; a store build would hide it behind `BuildConfig.DEBUG`.
+
+## Device session (2026-11-10, emulator)
+- Attacks tried: the app's process killed while a stand-in UPI app was in front during settle-up; a stand-in that reports "success" for a payment that was never made; a stand-in that answers instantly (no time spent away).
+- What broke: nothing. The "Did it go through?" question came back after process death, the reported "success" recorded nothing, and only "Yes, mark as paid" did.
+- Fixed now: no change needed.
+- Scope for improvement: tapjacking with a real overlay app and a QR scanned by a second device were not tried on the emulator; the JVM tests with obscured `MotionEvent`s still cover the touch filter.

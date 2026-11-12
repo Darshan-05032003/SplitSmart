@@ -359,3 +359,63 @@ To keep these benchmarks working as the UI changes:
 - What broke: nothing under load. Two benchmark gaps were closed: the Baseline Profile journey stopped at the camera's permission page, and no benchmark measured the scan → split → settle flow.
 - Failure flow: n/a.
 - Fix applied / recommendation: `BaselineProfileGenerator` now drives the whole first evening (intro, group, two members, the camera page, a typed bill, split, Paid another way, "Yes, mark as paid", history), idempotent across iterations; `JourneyBenchmark` (FrameTimingMetric, `None` and `Partial`, 3 iterations) runs groups → scan (falls back to a seeded bill when the photo has no text) → review → split → settle → history on seeded data, with the camera permission granted by `pm grant`. Both compile (`:macrobenchmark:assembleBenchmark`, `:baselineprofile:assemble`); neither has run (no device in this row). Device session pending.
+
+## Device session (2026-11-10)
+- Scenario and scale:
+  - Emulator: `Pixel_7` AVD, API 37, 2 GB guest, 2 vCPUs, software rendering (`-gpu guest`, llvmpipe), inside a 5.8–6.1 GB
+    kernel memory cap that protects the desktop it shares the laptop with. Every number below is an emulator number.
+  - Builds: after = the redesign at `3c674eb`; before = `db9f704`, the pre-redesign baseline above, built from a git
+    worktree. Both are the release-like `benchmark` build type with `SeedDataReceiver`: 200 groups, the newest being
+    "Benchmark trip" with 200 bills (and, after, 24 settled payments).
+  - Method: `scripts/light_bench.sh` (no Macrobenchmark, no Perfetto). Fresh install, seed, dex reset to `verify` (no AOT
+    code, the state Macrobenchmark calls `CompilationMode.None`), one discarded launch, then cold starts (force-stop +
+    `am start -W`, TotalTime). Frames: per round a cold launch, `dumpsys gfxinfo` reset, 3 flings down and 3 up, on the
+    groups home and on the "Benchmark trip" group screen (its bills).
+  - Sample sizes: 4 cold starts per build; 2 frame rounds per screen per build. Startup, home frames and bills frames each
+    ran on a fresh boot, because repeated cold starts grow the emulator towards its cap.
+- Results (numbers, before vs after):
+
+  | Cold start, `am start -W` TotalTime (ms) | runs (in order) | min | median | max |
+  |---|---|---|---|---|
+  | before `db9f704` | 917, 941, 1,000, 844 | 844 | 929 | 1,000 |
+  | after `3c674eb` | 790, 707, 817, 700 | 700 | 748 | 817 |
+
+  | Frames (gfxinfo, 2 rounds) | frames | janky % | P50 ms | P90 ms | P95 ms | P99 ms |
+  |---|---|---|---|---|---|---|
+  | Home, before | 831 | 5.3 | 26 | 32 | 37 | 54 |
+  | Home, after (a different page now) | 635 | 18.1 | 32 | 50 | 54 | 150 |
+  | Group bills, before | 961 | 2.9 | 26 | 32 | 32 | 48 |
+  | Group bills, after | 706 | 8.5 | 29 | 39 | 47 | 111 |
+
+  Percentiles are the median over rounds of gfxinfo's per-round percentile; janky % is janky frames over all frames.
+  Per-round raw counts (frames / janky): home before 488/19, 343/25; home after 321/63, 314/52; bills before 481/16,
+  480/12; bills after 346/31, 360/29.
+- What the numbers say:
+  - Cold start is about 180 ms faster at the median. The redesign's start path decides between the intro and the app
+    from one DataStore read while the splash holds (`AppStartLogic`, 2 s cap), and the seed marks the intro done, so both
+    builds land on the groups list. Four runs each, so treat it as "not slower", not as a precise gain.
+  - Flinging got slower. The redesigned home is a different page (an aubergine hero with a rolling total, chunky cards
+    with avatar stacks and status pills, under a floating bar), so its row compares two designs. The bill list is the
+    fairer pair: P90 32 → 39 ms and janky frames 2.9 → 8.5 %, with fewer frames drawn per round. Software rendering puts
+    every frame on the CPU; a phone's GPU changes these numbers. Compare only within this table.
+- What was not run, and why:
+  - Macrobenchmark (`StartupBenchmark`, `ScrollBenchmark`, `JourneyBenchmark`): not run. On every boot the emulator's
+    anonymous memory sat at 5.0–5.9 GB of a 6.1 GB cap after five launches; Perfetto tracing on top of that was OOM-killed in
+    PayFlow's earlier session.
+  - Baseline Profile: generated, committed (`app/src/main/baseline-prof.txt`, 39,151 rules from the first-evening journey,
+    `maxIterations = 5`), but its effect is not measured yet. Run 1 (2026-11-10) failed at the "open the new bill" step with
+    a `StaleObjectException` (the new bill row is replaced while the list settles after the bill sheet closes); the journey
+    now finds the row again (`clickFresh`). On 2026-11-12 the first start was refused (about 6 GB free, it needs 8.2 GB);
+    in the second boot the guest's own low-memory killer stopped the generator one second after launch (nothing ran),
+    and the next run passed. The profile sat in `src/main/generated/baselineProfiles/` first, but this plugin setup did
+    not merge it (`mergeBenchmarkArtProfile` stayed up to date); `src/main/baseline-prof.txt` is merged into every variant:
+    the APK's `baseline.prof` went from 12,328 to 13,151 bytes, the release APK from 46,667,346 to 46,683,730 bytes.
+    Measuring it needs one more boot: `COMPILE=speed-profile COLD_RUNS=4 SKIP_FRAMES=1 scripts/light_bench.sh` on the new
+    benchmark APK against the same command on the APK without the profile.
+  - One emulator boot (looks and recordings) was OOM-killed by its cap after about 27 minutes of UI work and a dozen screen
+    recordings (cap 5.8 GB; the desktop was unaffected). Its recordings had already been pulled; the rest of the looks ran
+    on the next boot.
+- Device looks and recordings: see DECISIONS "Device session". Recordings in `docs/media/`: `splash-intro.webp` (264 KB),
+  `groups-fab.webp` (89 KB), `scan-review.webp` (175 KB), `split-drag.webp` (86 KB), `settle-stamp.webp` (232 KB),
+  `simplify.webp` (97 KB). LeakCanary (debug build): 5 watched objects, including two `MainActivity` recreations from a
+  font-scale change, 0 retained.
