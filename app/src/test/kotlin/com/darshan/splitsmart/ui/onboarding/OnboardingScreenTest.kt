@@ -72,10 +72,11 @@ class OnboardingScreenTest {
     }
 
     @Test
-    fun `the scan page is honest that AI needs a key and a built-in parser covers without one`() {
+    fun `the scan page is honest that AI reading can be off and a built-in parser covers then`() {
         show()
-        rule.onNodeWithText("Gemini API key", substring = true).assertExists()
-        rule.onNodeWithText("built-in parser", substring = true).assertExists()
+        rule.onNodeWithText("When AI reading is on, Gemini turns it into items", substring = true).assertExists()
+        rule.onNodeWithText("when it is off, a built-in parser does", substring = true).assertExists()
+        rule.onNodeWithText("API key", substring = true).assertDoesNotExist()
     }
 
     @Test
@@ -183,7 +184,7 @@ class OnboardingScreenTest {
     fun `the first page fits at 1_3x too, with skip and next on screen`() {
         show(fontScale = 1.3f)
         val root = rule.onNodeWithTag(ROOT)
-        rule.onNodeWithText("Gemini API key", substring = true).assertInside(root)
+        rule.onNodeWithText("a built-in parser does", substring = true).assertInside(root)
         rule.onNodeWithTag(OnboardingTags.SKIP).assertInside(root)
         rule.onNodeWithTag(OnboardingTags.NEXT).assertInside(root)
     }
