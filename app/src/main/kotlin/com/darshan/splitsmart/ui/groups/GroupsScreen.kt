@@ -77,6 +77,7 @@ import com.darshan.splitsmart.ui.designsystem.motion.MotionToken
 import com.darshan.splitsmart.ui.designsystem.tokens.Radii
 import com.darshan.splitsmart.ui.designsystem.tokens.Sizes
 import com.darshan.splitsmart.ui.designsystem.tokens.Spacing
+import com.darshan.splitsmart.ui.navigation.FabSnackbarLift
 import com.darshan.splitsmart.ui.navigation.HideShellBarWhile
 import com.darshan.splitsmart.ui.navigation.LocalBottomBarInset
 import com.darshan.splitsmart.ui.navigation.ScanPickerContent
@@ -222,7 +223,8 @@ fun GroupsScreen(
                 modifier = Modifier.navigationBarsPadding(),
             )
         }
-        SsSnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = barInset))
+        // Above the FAB, never over it (an archive's Undo used to cover its top half).
+        SsSnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = if (content != null) barInset + FabSnackbarLift else barInset))
         CreateGroupSheet(state.draft, callbacks)
         NameSheet(state.nameDraft, callbacks.profile)
         SsBottomSheet(visible = pickingForExpense, onDismissRequest = { pickingForExpense = false }) {

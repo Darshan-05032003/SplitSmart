@@ -10,14 +10,17 @@ import com.darshan.splitsmart.data.local.MemberDao
 import com.darshan.splitsmart.data.local.ReceiptDraftDao
 import com.darshan.splitsmart.data.local.SettlementDao
 import com.darshan.splitsmart.data.local.SplitSmartDatabase
+import com.darshan.splitsmart.data.local.TrashDao
 import com.darshan.splitsmart.data.repository.BillRepositoryImpl
 import com.darshan.splitsmart.data.repository.GroupRepositoryImpl
 import com.darshan.splitsmart.data.repository.ReceiptDraftRepositoryImpl
 import com.darshan.splitsmart.data.repository.SettlementRepositoryImpl
+import com.darshan.splitsmart.data.repository.TrashRepositoryImpl
 import com.darshan.splitsmart.domain.repository.BillRepository
 import com.darshan.splitsmart.domain.repository.GroupRepository
 import com.darshan.splitsmart.domain.repository.ReceiptDraftRepository
 import com.darshan.splitsmart.domain.repository.SettlementRepository
+import com.darshan.splitsmart.domain.repository.TrashRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -47,6 +50,7 @@ object DatabaseModule {
     @Provides fun billDao(db: SplitSmartDatabase): BillDao = db.billDao()
     @Provides fun receiptDraftDao(db: SplitSmartDatabase): ReceiptDraftDao = db.receiptDraftDao()
     @Provides fun settlementDao(db: SplitSmartDatabase): SettlementDao = db.settlementDao()
+    @Provides fun trashDao(db: SplitSmartDatabase): TrashDao = db.trashDao()
 }
 
 @Module
@@ -56,4 +60,5 @@ abstract class RepositoryModule {
     @Binds abstract fun billRepository(impl: BillRepositoryImpl): BillRepository
     @Binds abstract fun receiptDraftRepository(impl: ReceiptDraftRepositoryImpl): ReceiptDraftRepository
     @Binds abstract fun settlementRepository(impl: SettlementRepositoryImpl): SettlementRepository
+    @Binds abstract fun trashRepository(impl: TrashRepositoryImpl): TrashRepository
 }

@@ -25,6 +25,9 @@ enum class ScreenTransition {
     ContainerTransform,
 }
 
+/** What a bottom snackbar is lifted over. */
+enum class SnackbarLift { None, Bar, BarAndFab }
+
 object ShellLogic {
     /** Bar order: Groups, Scan, Me. Scan is the hero flow, so it sits in the middle. */
     val BAR: List<ShellRoute> = listOf(ShellRoute.Groups, ShellRoute.Scan, ShellRoute.Me)
@@ -41,6 +44,13 @@ object ShellLogic {
      * the FAB menu): drawn inside the screen, it would otherwise sit under the floating bar.
      */
     fun barVisible(route: ShellRoute?, modalOpen: Boolean = false): Boolean = isTabRoot(route) && !modalOpen
+
+    /** What a snackbar shown by the shell must stay clear of: the bar on a tab root, and the FAB on the groups list. */
+    fun snackbarLift(route: ShellRoute?, barVisible: Boolean): SnackbarLift = when {
+        !barVisible -> SnackbarLift.None
+        route == ShellRoute.Groups -> SnackbarLift.BarAndFab
+        else -> SnackbarLift.Bar
+    }
 
     /** Where the blob sits: on the current tab, or on the tab the user came from. */
     fun selectedIndex(route: ShellRoute?, lastTab: ShellRoute): Int =

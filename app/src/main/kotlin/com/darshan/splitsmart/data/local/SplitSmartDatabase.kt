@@ -16,6 +16,7 @@ abstract class SplitSmartDatabase : RoomDatabase() {
     abstract fun billDao(): BillDao
     abstract fun receiptDraftDao(): ReceiptDraftDao
     abstract fun settlementDao(): SettlementDao
+    abstract fun trashDao(): TrashDao
 
     companion object {
         const val NAME = "splitsmart.db"

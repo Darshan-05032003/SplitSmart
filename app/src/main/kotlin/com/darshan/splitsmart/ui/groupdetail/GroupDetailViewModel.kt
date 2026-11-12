@@ -39,6 +39,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.darshan.splitsmart.domain.repository.TrashRepository
+import com.darshan.splitsmart.ui.undo.UndoCenter
 
 data class GroupDetail(
     val group: Group,
@@ -97,6 +99,8 @@ class GroupDetailViewModel @Inject constructor(
     private val addMember: AddMemberUseCase,
     private val createManualBill: CreateManualBillUseCase,
     dispatchers: DispatcherProvider,
+    private val trash: TrashRepository,
+    private val undo: UndoCenter,
 ) : ViewModel() {
     val groupId: String = checkNotNull(savedStateHandle[ARG_GROUP_ID]) { "groupId missing" }
 
@@ -221,13 +225,19 @@ class GroupDetailViewModel @Inject constructor(
         }
     }
 
-    /** Called from the confirmation only. The first confirmation wins; a failure unlocks it again. */
+    /**
+     * Called from the confirmation only. The first confirmation wins; a failure unlocks it again. What the delete took is offered
+     * for Undo (in memory, a few seconds) wherever the person lands.
+     */
     fun deleteGroup() {
         if (deleting.value) return
         deleting.value = true
         viewModelScope.launch {
-            runCatching { groupRepository.deleteGroup(groupId) }
-                .onSuccess { _events.send(GroupDetailEvent.GroupDeleted) }
+            runCatching { trash.removeGroup(groupId) }
+                .onSuccess { removal ->
+                    removal?.let(undo::offer)
+                    _events.send(GroupDetailEvent.GroupDeleted)
+                }
                 .onFailure {
                     deleting.value = false
                     _events.send(GroupDetailEvent.Failed)

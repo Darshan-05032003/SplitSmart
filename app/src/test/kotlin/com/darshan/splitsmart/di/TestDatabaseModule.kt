@@ -24,4 +24,5 @@ object TestDatabaseModule {
     @Provides fun billDao(db: SplitSmartDatabase) = db.billDao()
     @Provides fun receiptDraftDao(db: SplitSmartDatabase) = db.receiptDraftDao()
     @Provides fun settlementDao(db: SplitSmartDatabase) = db.settlementDao()
+    @Provides fun trashDao(db: SplitSmartDatabase) = db.trashDao()
 }

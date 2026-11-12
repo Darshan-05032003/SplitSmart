@@ -131,4 +131,14 @@ class StatusBarLogicTest {
         val arriving = StatusBarEntry(id = 1, surface = MarigoldLight.bar, settled = false)
         assertThat(StatusBarLogic.darkIcons(listOf(arriving), themeDark = false)).isTrue()
     }
+
+    @Test
+    fun `a snackbar from the shell clears the bar on a tab, and the FAB on the groups list`() {
+        assertThat(ShellLogic.snackbarLift(ShellRoute.Groups, barVisible = true)).isEqualTo(SnackbarLift.BarAndFab)
+        assertThat(ShellLogic.snackbarLift(ShellRoute.Me, barVisible = true)).isEqualTo(SnackbarLift.Bar)
+        assertThat(ShellLogic.snackbarLift(ShellRoute.Groups, barVisible = false)).isEqualTo(SnackbarLift.None)
+        assertThat(ShellLogic.snackbarLift(ShellRoute.GroupDetail, barVisible = false)).isEqualTo(SnackbarLift.None)
+        assertThat(SnackbarLift.BarAndFab.clearance()).isGreaterThan(SnackbarLift.Bar.clearance())
+        assertThat(SnackbarLift.BarAndFab.clearance()).isEqualTo(BottomBarInset + FabSnackbarLift)
+    }
 }

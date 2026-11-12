@@ -29,6 +29,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.darshan.splitsmart.domain.repository.TrashRepository
+import com.darshan.splitsmart.ui.undo.UndoCenter
 
 data class BillDetail(val bill: Bill, val members: List<Member>) {
     val payerName: String? get() = members.find { it.id == bill.paidByMemberId }?.name
@@ -48,6 +50,8 @@ class BillDetailViewModel @Inject constructor(
     private val billRepository: BillRepository,
     groupRepository: GroupRepository,
     dispatchers: DispatcherProvider,
+    private val trash: TrashRepository,
+    private val undo: UndoCenter,
 ) : ViewModel() {
     val billId: String = checkNotNull(savedStateHandle[ARG_BILL_ID]) { "billId missing" }
     private val reload = MutableStateFlow(0)
@@ -67,12 +71,16 @@ class BillDetailViewModel @Inject constructor(
 
     fun retry() = reload.update { it + 1 }
 
+    /** From the confirmation only; once. What it took is offered for Undo wherever the person lands. */
     fun deleteBill() {
         if (deleting.value) return
         deleting.value = true
         viewModelScope.launch {
-            runCatching { billRepository.deleteBill(billId) }
-                .onSuccess { _events.send(BillDetailEvent.Deleted) }
+            runCatching { trash.removeBill(billId) }
+                .onSuccess { removal ->
+                    removal?.let(undo::offer)
+                    _events.send(BillDetailEvent.Deleted)
+                }
                 .onFailure { deleting.value = false; _events.send(BillDetailEvent.Failed) }
         }
     }

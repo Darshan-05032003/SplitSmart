@@ -31,6 +31,8 @@ class GroupDetailViewModelTest {
     private val groups = FakeGroupRepository()
     private val bills = FakeBillRepository()
     private val settlements = com.darshan.splitsmart.testutil.FakeSettlementRepository()
+    private val trash = com.darshan.splitsmart.testutil.FakeTrashRepository(groups, bills)
+    private val undo = com.darshan.splitsmart.ui.undo.UndoCenter()
 
     private fun vm(handle: SavedStateHandle = SavedStateHandle(mapOf("groupId" to "g1"))) = GroupDetailViewModel(
         savedStateHandle = handle,
@@ -40,6 +42,8 @@ class GroupDetailViewModelTest {
         addMember = AddMemberUseCase(groups),
         createManualBill = CreateManualBillUseCase(bills, fixedClock),
         dispatchers = TestDispatcherProvider(dispatcher),
+        trash = trash,
+        undo = undo,
     )
 
     @Test
@@ -178,7 +182,7 @@ class GroupDetailViewModelTest {
         counting.groups.value = groups.groups.value
         val vm = GroupDetailViewModel(
             SavedStateHandle(mapOf("groupId" to "g1")), counting, bills, settlements, AddMemberUseCase(counting), CreateManualBillUseCase(bills, fixedClock),
-            TestDispatcherProvider(dispatcher),
+            TestDispatcherProvider(dispatcher), com.darshan.splitsmart.testutil.FakeTrashRepository(counting, bills), undo,
         )
         val events = mutableListOf<GroupDetailEvent>()
         backgroundScope.launch(kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler)) { vm.events.collect { events += it } }
@@ -232,5 +236,28 @@ class GroupDetailViewModelTest {
             assertThat(awaitItem()).isEqualTo(GroupDetailEvent.GroupDeleted)
         }
         assertThat(groups.groups.value).isEmpty()
+    }
+
+    @Test
+    fun `deleting offers everything it took for Undo, and Undo brings the group back`() = runTest(dispatcher) {
+        groups.groups.value = listOf(testGroup())
+        groups.members.value = listOf(testMember())
+        bills.bills.value = listOf(testBill())
+        val vm = vm()
+        vm.uiState.test { awaitItem(); awaitItem(); cancelAndIgnoreRemainingEvents() }
+        vm.events.test {
+            vm.deleteGroup()
+            assertThat(awaitItem()).isEqualTo(GroupDetailEvent.GroupDeleted)
+        }
+        val offer = undo.offer.value as com.darshan.splitsmart.domain.repository.Removal.Group
+        assertThat(offer.groupId).isEqualTo("g1")
+        assertThat(offer.name).isEqualTo("Goa trip")
+        assertThat(groups.groups.value).isEmpty()
+        assertThat(bills.bills.value).isEmpty()
+        assertThat(undo.take(offer)).isTrue()
+        assertThat(trash.restore(offer)).isTrue()
+        assertThat(groups.groups.value).containsExactly(testGroup())
+        assertThat(groups.members.value).containsExactly(testMember())
+        assertThat(bills.bills.value).containsExactly(testBill())
     }
 }

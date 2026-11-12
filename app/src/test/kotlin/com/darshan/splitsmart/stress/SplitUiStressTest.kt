@@ -240,7 +240,7 @@ class SplitUiStressTest {
             override suspend fun deleteBill(billId: String) = super.deleteBill(billId).also { deletes++ }
         }
         bills.bills.value = listOf(split)
-        val vm = BillDetailViewModel(SavedStateHandle(mapOf("billId" to split.id)), bills, FakeGroupRepository().apply { members.value = people }, dispatchers)
+        val vm = BillDetailViewModel(SavedStateHandle(mapOf("billId" to split.id)), bills, FakeGroupRepository().apply { members.value = people }, dispatchers, com.darshan.splitsmart.testutil.FakeTrashRepository(bills = bills), com.darshan.splitsmart.ui.undo.UndoCenter())
         val ms = measureTimeMillis { repeat(1_000) { vm.deleteBill() } }
         dispatcher.scheduler.advanceUntilIdle()
         assertThat(deletes).isEqualTo(1)

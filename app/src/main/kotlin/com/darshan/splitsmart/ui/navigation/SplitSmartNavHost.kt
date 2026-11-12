@@ -5,6 +5,7 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -42,6 +43,7 @@ import com.darshan.splitsmart.ui.settleup.SettleUpRoute
 import com.darshan.splitsmart.ui.history.HistoryRoute
 import com.darshan.splitsmart.ui.split.SplitRoute
 import com.darshan.splitsmart.ui.theme.SplitSmartTheme
+import com.darshan.splitsmart.ui.undo.UndoSnackbarHost
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -218,6 +220,17 @@ fun SplitSmartNavHost(
                             modifier = Modifier.testTag(ShellTags.BAR),
                         )
                     }
+                    // A delete made on another screen offers its Undo here, over wherever the person landed.
+                    val undoOffer by shellViewModel.undoOffer.collectAsStateWithLifecycle()
+                    UndoSnackbarHost(
+                        offer = undoOffer,
+                        onUndo = shellViewModel::undo,
+                        onExpire = shellViewModel::expire,
+                        outcomes = shellViewModel.undoOutcomes,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = ShellLogic.snackbarLift(route, ShellLogic.barVisible(route, modalOpen = barState.modalOpen)).clearance()),
+                    )
                     SsBottomSheet(visible = scanSheet != ScanSheet.None, onDismissRequest = { scanSheet = ScanSheet.None }) {
                         when (scanSheet) {
                             ScanSheet.Pick -> ScanPickerContent(scanChoices.orEmpty()) { groupId ->

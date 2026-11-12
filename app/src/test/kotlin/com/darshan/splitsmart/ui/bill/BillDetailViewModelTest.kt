@@ -23,9 +23,10 @@ class BillDetailViewModelTest {
     @get:Rule val mainRule = MainDispatcherRule(dispatcher)
     private val bills = FakeBillRepository()
     private val groups = FakeGroupRepository()
+    private val undo = com.darshan.splitsmart.ui.undo.UndoCenter()
 
     private fun vm(billId: String = "b1") =
-        BillDetailViewModel(SavedStateHandle(mapOf("billId" to billId)), bills, groups, TestDispatcherProvider(dispatcher))
+        BillDetailViewModel(SavedStateHandle(mapOf("billId" to billId)), bills, groups, TestDispatcherProvider(dispatcher), com.darshan.splitsmart.testutil.FakeTrashRepository(groups, bills), undo)
 
     @Test
     fun `shows the bill with items and payer name`() = runTest(dispatcher) {
@@ -57,5 +58,20 @@ class BillDetailViewModelTest {
             assertThat(awaitItem()).isEqualTo(BillDetailEvent.Deleted)
         }
         assertThat(bills.bills.value).isEmpty()
+    }
+
+    @Test
+    fun `delete offers the bill for Undo`() = runTest(dispatcher) {
+        bills.bills.value = listOf(testBill(title = "Beach shack dinner"))
+        val vm = vm()
+        vm.uiState.test { awaitItem(); awaitItem(); cancelAndIgnoreRemainingEvents() }
+        vm.events.test {
+            vm.deleteBill()
+            assertThat(awaitItem()).isEqualTo(BillDetailEvent.Deleted)
+        }
+        val offer = undo.offer.value as com.darshan.splitsmart.domain.repository.Removal.Bill
+        assertThat(offer.billId).isEqualTo("b1")
+        assertThat(offer.groupId).isEqualTo("g1")
+        assertThat(offer.name).isEqualTo("Beach shack dinner")
     }
 }

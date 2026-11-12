@@ -122,7 +122,7 @@ class GroupDetailScreenTest {
         rule.onNodeWithTag(GroupDetailTags.OPTIONS).performClick()
         rule.onNodeWithTag(SplitSmartTestTags.DELETE_GROUP_BUTTON).performClick()
         rule.onNodeWithText("Delete Goa trip?").assertIsDisplayed()
-        rule.onNodeWithText("This removes 2 bills and 2 members. It can't be undone.").assertIsDisplayed()
+        rule.onNodeWithText("This removes 2 bills and 2 members. You'll have a few seconds to undo it.").assertIsDisplayed()
         rule.onNodeWithTag(GroupDetailTags.DELETE_KEEP).performClick()
         rule.onNodeWithTag(GroupDetailTags.DELETE_SHEET).assertDoesNotExist()
         assertThat(calls.deletes).isEqualTo(0)

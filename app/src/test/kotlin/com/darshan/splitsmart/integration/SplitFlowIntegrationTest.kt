@@ -108,7 +108,7 @@ class SplitFlowIntegrationTest {
             val bill = billRepo.getBill("b1")!!
             SaveSplitUseCase(billRepo, RecordingAnalyticsTracker(), RecordingCrashReporter())(bill, com.darshan.splitsmart.domain.model.SplitConfig(com.darshan.splitsmart.domain.model.SplitMode.EQUAL, listOf("a", "b")), payerId = "a")
         }
-        val vm = GroupDetailViewModel(SavedStateHandle(mapOf("groupId" to "g1")), groupRepo, billRepo, SettlementRepositoryImpl(db.settlementDao(), fixedClock, dispatchers), AddMemberUseCase(groupRepo), CreateManualBillUseCase(billRepo, fixedClock), dispatchers)
+        val vm = GroupDetailViewModel(SavedStateHandle(mapOf("groupId" to "g1")), groupRepo, billRepo, SettlementRepositoryImpl(db.settlementDao(), fixedClock, dispatchers), AddMemberUseCase(groupRepo), CreateManualBillUseCase(billRepo, fixedClock), dispatchers, com.darshan.splitsmart.data.repository.TrashRepositoryImpl(db.trashDao(), dispatchers), com.darshan.splitsmart.ui.undo.UndoCenter())
         compose.setContent { SplitSmartTheme { GroupDetailRoute(viewModel = vm, onBack = {}, onOpenBill = {}, onScanReceipt = {}) } }
         compose.waitUntilWithMainLooper { compose.scrollListTo(SplitSmartTestTags.DEBT_ITEM) } // below the summary and add-bill cards now
         compose.onNodeWithTag(SplitSmartTestTags.DEBT_ITEM).performScrollTo()

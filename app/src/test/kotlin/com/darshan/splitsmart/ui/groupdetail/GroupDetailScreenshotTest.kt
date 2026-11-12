@@ -96,6 +96,18 @@ class GroupDetailScreenshotTest {
     @Test
     fun add_member_sheet_dark() = shot("add_member_sheet", dark = true, content = screen(GroupDetailUiState(LoadState.Content(detail), memberDraft = MemberDraft("", "", nameError = NameError.BLANK))))
 
+    /** Back on the group after deleting a bill: the shell's Undo over the list (row 17). */
+    @Test
+    fun bill_deleted_undo_light() = shot("bill_deleted_undo", content = {
+        val removal = com.darshan.splitsmart.domain.repository.Removal.Bill(
+            "gone", "goa", "Ferry tickets", com.darshan.splitsmart.testutil.FakeTrashRepository.Rows(null, emptyList(), emptyList()),
+        )
+        Box(Modifier.fillMaxSize()) {
+            GroupDetailScreen(GroupDetailUiState(LoadState.Content(detail)), SsSnackbarState(), noop)
+            com.darshan.splitsmart.ui.undo.UndoSnackbarHost(removal, onUndo = {}, onExpire = {}, modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter))
+        }
+    })
+
     private companion object {
         const val ROOT = "root"
     }

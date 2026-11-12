@@ -122,6 +122,7 @@ class GroupsFlowIntegrationTest {
         val vm = GroupDetailViewModel(
             SavedStateHandle(mapOf("groupId" to group.id)), groups, bills, SettlementRepositoryImpl(db.settlementDao(), fixedClock, dispatchers),
             AddMemberUseCase(groups), CreateManualBillUseCase(bills, fixedClock), dispatchers,
+            com.darshan.splitsmart.data.repository.TrashRepositoryImpl(db.trashDao(), dispatchers), com.darshan.splitsmart.ui.undo.UndoCenter(),
         )
         var openedBill: String? = null
         compose.setContent {

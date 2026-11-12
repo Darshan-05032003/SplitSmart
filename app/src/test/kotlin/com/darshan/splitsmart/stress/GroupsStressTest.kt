@@ -186,7 +186,7 @@ class GroupsStressTest {
         }
         repo.groups.value = listOf(testGroup())
         val bills = FakeBillRepository()
-        val vm = GroupDetailViewModel(SavedStateHandle(mapOf("groupId" to "g1")), repo, bills, com.darshan.splitsmart.testutil.FakeSettlementRepository(), AddMemberUseCase(repo), CreateManualBillUseCase(bills, fixedClock), TestDispatcherProvider(dispatcher))
+        val vm = GroupDetailViewModel(SavedStateHandle(mapOf("groupId" to "g1")), repo, bills, com.darshan.splitsmart.testutil.FakeSettlementRepository(), AddMemberUseCase(repo), CreateManualBillUseCase(bills, fixedClock), TestDispatcherProvider(dispatcher), com.darshan.splitsmart.testutil.FakeTrashRepository(repo, bills), com.darshan.splitsmart.ui.undo.UndoCenter())
         val events = mutableListOf<GroupDetailEvent>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.events.collect { events += it } }
         val ms = measureTimeMillis {

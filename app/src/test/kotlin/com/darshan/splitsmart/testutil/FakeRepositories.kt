@@ -6,6 +6,9 @@ import com.darshan.splitsmart.domain.model.GroupSummary
 import com.darshan.splitsmart.domain.model.Member
 import com.darshan.splitsmart.domain.repository.BillRepository
 import com.darshan.splitsmart.domain.repository.GroupRepository
+import com.darshan.splitsmart.domain.repository.Removal
+import com.darshan.splitsmart.domain.repository.RemovedRows
+import com.darshan.splitsmart.domain.repository.TrashRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -136,5 +139,43 @@ open class FakeSettlementRepository(private val clock: Clock = fixedClock) : com
     override suspend fun delete(settlementId: String) {
         failWith?.let { throw it }
         settlements.update { list -> list.filterNot { it.id == settlementId } }
+    }
+}
+
+/**
+ * Undoable deletes over the fakes: deletes through them (so their counters and [FakeGroupRepository.failWith] apply) and keeps
+ * what it took; [restore] puts it back unless [restoreFails].
+ */
+class FakeTrashRepository(
+    private val groups: FakeGroupRepository = FakeGroupRepository(),
+    private val bills: FakeBillRepository = FakeBillRepository(),
+) : TrashRepository {
+    data class Rows(val group: Group?, val members: List<Member>, val bills: List<Bill>) : RemovedRows
+
+    var restoreFails = false
+    val restores = mutableListOf<Removal>()
+
+    override suspend fun removeGroup(groupId: String): Removal.Group? {
+        val group = groups.groups.value.find { it.id == groupId }
+        val rows = Rows(group, groups.members.value.filter { it.groupId == groupId }, bills.bills.value.filter { it.groupId == groupId })
+        groups.deleteGroup(groupId)
+        bills.bills.update { list -> list.filterNot { it.groupId == groupId } }
+        return group?.let { Removal.Group(groupId, it.name, rows) }
+    }
+
+    override suspend fun removeBill(billId: String): Removal.Bill? {
+        val bill = bills.bills.value.find { it.id == billId }
+        bills.deleteBill(billId)
+        return bill?.let { Removal.Bill(billId, it.groupId, it.title, Rows(null, emptyList(), listOf(it))) }
+    }
+
+    override suspend fun restore(removal: Removal): Boolean {
+        restores += removal
+        if (restoreFails) return false
+        val rows = removal.rows as Rows
+        rows.group?.let { g -> groups.groups.update { it + g } }
+        groups.members.update { it + rows.members }
+        bills.bills.update { it + rows.bills }
+        return true
     }
 }

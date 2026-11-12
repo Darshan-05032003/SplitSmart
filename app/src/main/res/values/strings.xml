@@ -314,7 +314,7 @@
 
     <!-- Bill detail (row 12) -->
     <string name="bill_delete_title">Delete %1$s?</string>
-    <string name="bill_delete_body">Its lines and its split go too. This can\'t be undone.</string>
+    <string name="bill_delete_body">Its lines and its split go too. You\'ll have a few seconds to undo it.</string>
     <string name="bill_delete_keep">Keep it</string>
     <string name="bill_receipt_title">On the receipt</string>
     <string name="bill_total_label">Total</string>
@@ -493,6 +493,8 @@
     <string name="groups_error_title">Couldn\'t load your groups</string>
     <string name="groups_create_button">Create group</string>
     <string name="action_undo">Undo</string>
+    <string name="undo_deleted_message">%1$s deleted</string>
+    <string name="undo_restore_failed">Couldn\'t bring it back: something in it changed meanwhile.</string>
     <string name="retry_label">Try again</string>
     <string name="group_spent_together">Spent together</string>
     <string name="group_all_square">Everyone is square</string>
@@ -502,9 +504,9 @@
     <string name="group_unarchive">Unarchive group</string>
     <string name="group_unarchive_hint">Show it in your list again</string>
     <string name="group_archived_label">Archived</string>
-    <string name="group_delete_hint">Removes its bills and members for good</string>
+    <string name="group_delete_hint">Removes it with its bills, members and payments</string>
     <string name="group_delete_title">Delete %1$s?</string>
-    <string name="group_delete_body">This removes %1$s and %2$s. It can\'t be undone.</string>
+    <string name="group_delete_body">This removes %1$s and %2$s. You\'ll have a few seconds to undo it.</string>
     <string name="group_delete_keep">Keep it</string>
     <string name="group_add_bill_title">Add a bill</string>
     <string name="group_no_bills_title">No bills yet</string>

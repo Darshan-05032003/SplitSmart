@@ -46,7 +46,7 @@ class GroupBalancesTest {
         )
         val vm = GroupDetailViewModel(
             SavedStateHandle(mapOf("groupId" to "g1")), groups, bills, com.darshan.splitsmart.testutil.FakeSettlementRepository(), AddMemberUseCase(groups),
-            CreateManualBillUseCase(bills, fixedClock), TestDispatcherProvider(dispatcher),
+            CreateManualBillUseCase(bills, fixedClock), TestDispatcherProvider(dispatcher), com.darshan.splitsmart.testutil.FakeTrashRepository(groups, bills), com.darshan.splitsmart.ui.undo.UndoCenter(),
         )
         vm.uiState.test {
             awaitItem()
@@ -67,7 +67,7 @@ class GroupBalancesTest {
         settlements.settlements.value = listOf(com.darshan.splitsmart.testutil.testSettlement(from = "b", to = "a", amountPaise = 200))
         val vm = GroupDetailViewModel(
             SavedStateHandle(mapOf("groupId" to "g1")), groups, bills, settlements, AddMemberUseCase(groups),
-            CreateManualBillUseCase(bills, fixedClock), TestDispatcherProvider(dispatcher),
+            CreateManualBillUseCase(bills, fixedClock), TestDispatcherProvider(dispatcher), com.darshan.splitsmart.testutil.FakeTrashRepository(groups, bills), com.darshan.splitsmart.ui.undo.UndoCenter(),
         )
         vm.uiState.test {
             awaitItem()
